@@ -4,6 +4,7 @@ version := "1.0"
 
 scalaVersion := "2.12.0"
 
+
 libraryDependencies  ++= Seq(
   // Last stable release
   "org.scalanlp" %% "breeze" % "0.13.2",
