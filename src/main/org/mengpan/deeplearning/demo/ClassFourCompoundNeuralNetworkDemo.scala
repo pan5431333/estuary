@@ -3,7 +3,7 @@ package org.mengpan.deeplearning.demo
 import breeze.stats.{mean, stddev}
 import org.mengpan.deeplearning.data.GasCensor
 import org.mengpan.deeplearning.helper.{DlCollection, GasCensorDataHelper}
-import org.mengpan.deeplearning.model.{CompoundNeuralNetworkModel, Model, NeuralNetworkModel}
+import org.mengpan.deeplearning.model.{NeuralNetworkModel, Model, SimpleNeuralNetworkModel}
 import org.mengpan.deeplearning.utils.{MyDict, NormalizeUtils, PlotUtils}
 
 /**
@@ -29,7 +29,7 @@ object ClassFourCompoundNeuralNetworkDemo extends App{
   val testLabel = test.getLabelAsVector
 
   //初始化算法模型
-  val nnModel: Model = new CompoundNeuralNetworkModel()
+  val nnModel: Model = new NeuralNetworkModel()
     .setWeightsInitializer(MyDict.INIT_HE)
     .setRegularizer(MyDict.REGULARIZATION_L1)
     .setLambda(0.7)

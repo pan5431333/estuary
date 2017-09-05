@@ -3,7 +3,7 @@ package org.mengpan.deeplearning.demo
 import breeze.stats.{mean, stddev}
 import org.mengpan.deeplearning.data.{Cat, GasCensor}
 import org.mengpan.deeplearning.helper.{CatDataHelper, DlCollection, GasCensorDataHelper}
-import org.mengpan.deeplearning.model.{Model, NeuralNetworkModel, ShallowNeuralNetworkModel}
+import org.mengpan.deeplearning.model.{Model, SimpleNeuralNetworkModel, ShallowNeuralNetworkModel}
 import org.mengpan.deeplearning.utils.{MyDict, NormalizeUtils, PlotUtils}
 
 /**
@@ -29,7 +29,7 @@ object ClassThreeNeuralNetworkDemo extends App{
   val testLabel = test.getLabelAsVector
 
   //初始化算法模型
-  val nnModel: Model = new NeuralNetworkModel()
+  val nnModel: Model = new SimpleNeuralNetworkModel()
     .setHiddenLayerStructure(Map(
       (200, MyDict.ACTIVATION_RELU),
       (100, MyDict.ACTIVATION_RELU)
