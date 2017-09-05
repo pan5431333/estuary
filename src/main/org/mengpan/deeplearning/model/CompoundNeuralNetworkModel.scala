@@ -2,6 +2,8 @@ package org.mengpan.deeplearning.model
 import breeze.linalg.{DenseMatrix, DenseVector}
 import org.apache.log4j.Logger
 import org.mengpan.deeplearning.components._
+import org.mengpan.deeplearning.components.initializer.{HeInitializer, NormalInitializer, WeightsInitializer, XaiverInitializer}
+import org.mengpan.deeplearning.components.regularizer.{L1Regularizer, L2Regularizer, Regularizer, VoidRegularizer}
 import org.mengpan.deeplearning.utils.MyDict
 import org.mengpan.deeplearning.utils.ResultUtils.{BackwardRes, ForwardRes}
 

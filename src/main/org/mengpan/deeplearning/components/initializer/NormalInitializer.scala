@@ -1,4 +1,4 @@
-package org.mengpan.deeplearning.components
+package org.mengpan.deeplearning.components.initializer
 
 /**
   * Created by mengpan on 2017/9/5.

@@ -4,7 +4,7 @@ import java.util
 import breeze.linalg.{DenseMatrix, DenseVector}
 import breeze.numerics.{log, pow}
 import org.apache.log4j.Logger
-import org.mengpan.deeplearning.layers.Layer
+import org.mengpan.deeplearning.components.layers.Layer
 import org.mengpan.deeplearning.utils.{DebugUtils, LayerUtils, ResultUtils}
 import org.mengpan.deeplearning.utils.ResultUtils.{BackwardRes, ForwardRes}
 

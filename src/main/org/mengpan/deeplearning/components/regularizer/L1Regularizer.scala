@@ -1,21 +1,22 @@
-package org.mengpan.deeplearning.components
+package org.mengpan.deeplearning.components.regularizer
+
 import breeze.linalg.{DenseMatrix, DenseVector}
-import breeze.numerics.{log, pow}
-import org.mengpan.deeplearning.layers.Layer
+import breeze.numerics.{abs, pow}
+import org.mengpan.deeplearning.components.layers.Layer
 import org.mengpan.deeplearning.utils.ResultUtils
 import org.mengpan.deeplearning.utils.ResultUtils.BackwardRes
 
 /**
   * Created by mengpan on 2017/9/5.
   */
-class L2Regularizer extends Regularizer{
+class L1Regularizer extends Regularizer{
 
   override protected def getReguCost(paramsList:
                                      List[(DenseMatrix[Double], DenseVector[Double])]):
   Double = {
     paramsList
-    .map(_._1.data.map(pow(_, 2)).reduce(_+_))
-    .reduce(_+_) / 2.0
+      .map(_._1.data.map(abs(_)).reduce(_+_))
+      .reduce(_+_)
   }
 
   override def backward(feature: DenseMatrix[Double],
@@ -25,12 +26,13 @@ class L2Regularizer extends Regularizer{
                         hiddenLayers: List[Layer],
                         outputLayer: Layer):
   List[ResultUtils.BackwardRes] = {
-    val yPredicted = forwardResList.last.yCurrent(::, 0)
-    val numExamples = feature.rows
+    val numExamples = label.length
+    val yHat = forwardResList.last.yCurrent(::, 0)
 
-    val dYPredicted = -(label /:/ (yPredicted + pow(10.0, -9)) - (1.0 - label) /:/ (1.0 - yPredicted + pow(10.0, -9)))
-    var dYCurrent = DenseMatrix.zeros[Double](numExamples, 1)
-    dYCurrent(::, 0) := dYPredicted
+    //+ pow(10.0, -9)防止出现被除数为0，NaN的情况
+    val dYL = -(label /:/ (yHat + pow(10.0, -9)) - (1.0 - label) /:/ (1.0 - yHat + pow(10.0, -9)))
+    var dYCurrent = DenseMatrix.zeros[Double](feature.rows, 1)
+    dYCurrent(::, 0) := dYL
 
     paramsList
       .zip(forwardResList)
@@ -45,9 +47,13 @@ class L2Regularizer extends Regularizer{
         dYCurrent = backwardRes.dYPrevious
 
         new BackwardRes(backwardRes.dYPrevious,
-          backwardRes.dWCurrent + this.lambda * w / numExamples.toDouble,
+          backwardRes.dWCurrent + this.lambda / numExamples.toDouble * sign(w),
           backwardRes.dBCurrent)
       }
       .reverse
+  }
+
+  private def sign(w: DenseMatrix[Double]): DenseMatrix[Double] = {
+    w.map(e => if (e > 0) 1.0 else if (e < 0) -1.0 else 0.0)
   }
 }

@@ -1,6 +1,6 @@
 package org.mengpan.deeplearning.utils
 
-import org.mengpan.deeplearning.layers.{Layer, ReluLayer, SigmoidLayer, TanhLayer}
+import org.mengpan.deeplearning.components.layers.{Layer, ReluLayer, SigmoidLayer, TanhLayer}
 
 /**
   * Created by mengpan on 2017/8/26.

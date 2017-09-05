@@ -1,7 +1,6 @@
-package org.mengpan.deeplearning.components
+package org.mengpan.deeplearning.components.initializer
 
 import breeze.linalg.{DenseMatrix, DenseVector}
-import breeze.numerics.sqrt
 
 /**
   * Created by mengpan on 2017/9/5.

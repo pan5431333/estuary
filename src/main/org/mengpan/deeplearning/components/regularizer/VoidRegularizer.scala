@@ -1,4 +1,5 @@
-package org.mengpan.deeplearning.components
+package org.mengpan.deeplearning.components.regularizer
+
 import breeze.linalg.{DenseMatrix, DenseVector}
 
 /**

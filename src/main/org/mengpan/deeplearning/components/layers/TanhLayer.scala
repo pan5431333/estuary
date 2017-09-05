@@ -1,4 +1,4 @@
-package org.mengpan.deeplearning.layers
+package org.mengpan.deeplearning.components.layers
 import breeze.linalg.{DenseMatrix, DenseVector}
 import org.mengpan.deeplearning.utils.MyDict
 
