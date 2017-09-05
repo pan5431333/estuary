@@ -30,8 +30,8 @@ class NeuralNetworkModel extends Model{
   var paramsList: List[(DenseMatrix[Double], DenseVector[Double])] = _
 
   //神经网络的隐含层与输出层的结构，根据hiddenLayerStructure与outputLayerStructure两个超参数得到
-  private var hiddenLayers: Seq[Layer] = _
-  private var outputLayer: Layer = _
+  protected var hiddenLayers: Seq[Layer] = _
+  protected var outputLayer: Layer = _
 
   def setHiddenLayerStructure(hiddenLayerStructure: Map[Int, Byte]): this.type = {
     if (hiddenLayerStructure.isEmpty) {
@@ -141,7 +141,7 @@ class NeuralNetworkModel extends Model{
     }.toList
   }
 
-  private def forward(feature: DenseMatrix[Double],
+  protected def forward(feature: DenseMatrix[Double],
                       params: List[(DenseMatrix[Double],
                         DenseVector[Double])],
                       hiddenLayers: Seq[Layer],
@@ -212,7 +212,7 @@ class NeuralNetworkModel extends Model{
       .reverse
   }
 
-  private def updateParams(paramsList: List[(DenseMatrix[Double], DenseVector[Double])],
+  protected def updateParams(paramsList: List[(DenseMatrix[Double], DenseVector[Double])],
                            learningrate: Double,
                            backwardResList: List[ResultUtils.BackwardRes],
                            iterationTime: Int, cost: Double): List[(DenseMatrix[Double], DenseVector[Double])] = {

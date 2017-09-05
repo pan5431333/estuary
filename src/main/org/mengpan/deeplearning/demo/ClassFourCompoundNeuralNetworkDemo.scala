@@ -1,15 +1,15 @@
 package org.mengpan.deeplearning.demo
 
 import breeze.stats.{mean, stddev}
-import org.mengpan.deeplearning.data.{Cat, GasCensor}
-import org.mengpan.deeplearning.helper.{CatDataHelper, DlCollection, GasCensorDataHelper}
-import org.mengpan.deeplearning.model.{Model, NeuralNetworkModel, ShallowNeuralNetworkModel}
+import org.mengpan.deeplearning.data.GasCensor
+import org.mengpan.deeplearning.helper.{DlCollection, GasCensorDataHelper}
+import org.mengpan.deeplearning.model.{CompoundNeuralNetworkModel, Model, NeuralNetworkModel}
 import org.mengpan.deeplearning.utils.{MyDict, NormalizeUtils, PlotUtils}
 
 /**
   * Created by mengpan on 2017/8/15.
   */
-object ClassThreeNeuralNetworkDemo extends App{
+object ClassFourCompoundNeuralNetworkDemo extends App{
   // Dataset Download Website: http://archive.ics.uci.edu/ml/machine-learning-databases/00224/
   //加载Gas Censor的数据集
   val data: DlCollection[GasCensor] = GasCensorDataHelper.getAllData
@@ -29,14 +29,17 @@ object ClassThreeNeuralNetworkDemo extends App{
   val testLabel = test.getLabelAsVector
 
   //初始化算法模型
-  val nnModel: Model = new NeuralNetworkModel()
+  val nnModel: Model = new CompoundNeuralNetworkModel()
+    .setWeightsInitializer(MyDict.INIT_HE)
+    .setRegularizer(MyDict.REGULARIZATION_L1)
+    .setLambda(0.7)
     .setHiddenLayerStructure(Map(
       (200, MyDict.ACTIVATION_RELU),
       (100, MyDict.ACTIVATION_RELU)
     ))
     .setOutputLayerStructure((1, MyDict.ACTIVATION_SIGMOID))
     .setLearningRate(0.01)
-    .setIterationTime(5000)
+    .setIterationTime(3000)
 
   //用训练集的数据训练算法
   val trainedModel: Model = nnModel.train(trainingFeature, trainingLabel)

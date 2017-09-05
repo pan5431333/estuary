@@ -11,4 +11,14 @@ object MyDict {
   val ACTIVATION_TANH: Byte = 1
   val ACTIVATION_RELU: Byte = 2
   val ACTIVATION_LEAKY_RELU: Byte = 3
+
+  //设定权重初始化的方法
+  //0 He, 1 Xaiver
+  val INIT_HE: Byte = 0
+  val INIT_XAIVER: Byte = 1
+
+  //设定正则化方法
+  //0 L2, 1 L1
+  val REGULARIZATION_L2: Byte = 0
+  val REGULARIZATION_L1: Byte = 1
 }
