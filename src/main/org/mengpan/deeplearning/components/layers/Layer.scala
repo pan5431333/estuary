@@ -12,7 +12,7 @@ trait Layer{
   private val logger = Logger.getLogger("Layer")
 
   var numHiddenUnits: Int
-  protected var activationFunc: Byte
+//  protected var activationFunc: Byte
 
   protected def activationFuncEval(zCurrent: DenseMatrix[Double]): DenseMatrix[Double]
 

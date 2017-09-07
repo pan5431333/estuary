@@ -8,7 +8,7 @@ import org.mengpan.deeplearning.utils.MyDict
   */
 class TanhLayer extends Layer{
   override var numHiddenUnits: Int = _
-  protected override var activationFunc: Byte = MyDict.ACTIVATION_TANH
+//  protected override var activationFunc: Byte = MyDict.ACTIVATION_TANH
 
   protected override def activationFuncEval(zCurrent: DenseMatrix[Double]):
   DenseMatrix[Double] = {

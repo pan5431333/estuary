@@ -1,10 +1,12 @@
 package org.mengpan.deeplearning.demo
 
 import breeze.stats.{mean, stddev}
+import org.mengpan.deeplearning.components.initializer.HeInitializer
 import org.mengpan.deeplearning.components.layers.{DropoutLayer, ReluLayer, SigmoidLayer}
+import org.mengpan.deeplearning.components.regularizer.L2Regularizer
 import org.mengpan.deeplearning.data.GasCensor
-import org.mengpan.deeplearning.helper.{DlCollection, GasCensorDataHelper}
-import org.mengpan.deeplearning.model.{Model, NeuralNetworkModel, SimpleNeuralNetworkModel}
+import org.mengpan.deeplearning.helper.{CatDataHelper, DlCollection, GasCensorDataHelper}
+import org.mengpan.deeplearning.model.{Model, NeuralNetworkModel}
 import org.mengpan.deeplearning.utils.{MyDict, NormalizeUtils, PlotUtils}
 
 /**
@@ -14,6 +16,7 @@ object ClassFourCompoundNeuralNetworkDemo extends App{
   // Dataset Download Website: http://archive.ics.uci.edu/ml/machine-learning-databases/00224/
   //加载Gas Censor的数据集
   val data: DlCollection[GasCensor] = GasCensorDataHelper.getAllData
+//  val data = CatDataHelper.getAllCatData
 
   //归一化数据特征矩阵
   val normalizedCatData = NormalizeUtils.normalizeBy(data){col =>
@@ -31,13 +34,13 @@ object ClassFourCompoundNeuralNetworkDemo extends App{
 
   //初始化算法模型
   val nnModel: Model = new NeuralNetworkModel()
-    .setWeightsInitializer(MyDict.INIT_HE)
-    .setRegularizer(MyDict.REGULARIZATION_L1)
-    .setLambda(0.7)
+    .setWeightsInitializer(HeInitializer)
+    .setRegularizer(new L2Regularizer().setLambda(0.7))
     .setHiddenLayerStructure(List(
-      new ReluLayer().setNumHiddenUnits(500),
-      new DropoutLayer().setNumHiddenUnits(500).setDropoutRate(0.2),
-      new ReluLayer().setNumHiddenUnits(100)
+      new ReluLayer().setNumHiddenUnits(300),
+      new DropoutLayer().setDropoutRate(0.5),
+      new ReluLayer().setNumHiddenUnits(100),
+      new DropoutLayer().setDropoutRate(0.5)
     ))
     .setOutputLayerStructure(new SigmoidLayer().setNumHiddenUnits(1))
     .setLearningRate(0.01)

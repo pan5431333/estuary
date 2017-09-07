@@ -2,6 +2,7 @@ package org.mengpan.deeplearning.model
 
 import breeze.linalg.{DenseMatrix, DenseVector}
 import breeze.numerics.abs
+import org.apache.log4j.Logger
 
 import scala.collection.mutable
 
@@ -9,9 +10,11 @@ import scala.collection.mutable
   * Created by mengpan on 2017/8/23.
   */
 trait Model {
+  val logger = Logger.getLogger("Model")
+
   var learningRate: Double
   var iterationTime: Int
-  val costHistory: mutable.TreeMap[Int, Double]
+  val costHistory: mutable.TreeMap[Int, Double] = new mutable.TreeMap[Int, Double]()
 
   def setLearningRate(learningRate: Double): this.type = {
     this.learningRate = learningRate

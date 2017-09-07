@@ -1,8 +1,8 @@
 package org.mengpan.deeplearning.components.regularizer
 
-import breeze.linalg.{DenseMatrix, DenseVector}
+import breeze.linalg.{DenseMatrix, DenseVector, sum}
 import breeze.numerics.pow
-import org.mengpan.deeplearning.components.layers.Layer
+import org.mengpan.deeplearning.components.layers.{DropoutLayer, Layer}
 import org.mengpan.deeplearning.utils.ResultUtils
 import org.mengpan.deeplearning.utils.ResultUtils.BackwardRes
 
@@ -11,44 +11,17 @@ import org.mengpan.deeplearning.utils.ResultUtils.BackwardRes
   */
 class L2Regularizer extends Regularizer{
 
-  override protected def getReguCost(paramsList:
-                                     List[(DenseMatrix[Double], DenseVector[Double])]):
+  override def getReguCost(paramsList: List[(DenseMatrix[Double], DenseVector[Double])]):
   Double = {
+
+    //用foldLeft进行List求和操作，比MapReduce更快，这里是Scala的应用重点
     paramsList
-    .map(_._1.data.map(pow(_, 2)).reduce(_+_))
-    .reduce(_+_) / 2.0
+      .foldLeft[Double](0.0){(total, params) =>
+      total + sum(pow(params._1, 2)) / 2.0
+    }
   }
 
-  override def backward(feature: DenseMatrix[Double],
-                        label: DenseVector[Double],
-                        forwardResList: List[ResultUtils.ForwardRes],
-                        paramsList: List[(DenseMatrix[Double], DenseVector[Double])],
-                        hiddenLayers: List[Layer],
-                        outputLayer: Layer):
-  List[ResultUtils.BackwardRes] = {
-    val yPredicted = forwardResList.last.yCurrent(::, 0)
-    val numExamples = feature.rows
 
-    val dYPredicted = -(label /:/ (yPredicted + pow(10.0, -9)) - (1.0 - label) /:/ (1.0 - yPredicted + pow(10.0, -9)))
-    var dYCurrent = DenseMatrix.zeros[Double](numExamples, 1)
-    dYCurrent(::, 0) := dYPredicted
-
-    paramsList
-      .zip(forwardResList)
-      .zip(Nil.::(outputLayer).:::(hiddenLayers))
-      .reverse
-      .map{f =>
-        val (w, b) = f._1._1
-        val forwardRes = f._1._2
-        val layer = f._2
-
-        val backwardRes = layer.backward(dYCurrent, forwardRes, w, b)
-        dYCurrent = backwardRes.dYPrevious
-
-        new BackwardRes(backwardRes.dYPrevious,
-          backwardRes.dWCurrent + this.lambda * w / numExamples.toDouble,
-          backwardRes.dBCurrent)
-      }
-      .reverse
-  }
+  override def getReguCostGrad(w: DenseMatrix[Double], numExamples: Int):
+  DenseMatrix[Double] = this.lambda * w / numExamples.toDouble
 }

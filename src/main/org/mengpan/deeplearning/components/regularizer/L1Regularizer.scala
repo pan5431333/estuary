@@ -1,8 +1,8 @@
 package org.mengpan.deeplearning.components.regularizer
 
-import breeze.linalg.{DenseMatrix, DenseVector}
+import breeze.linalg.{DenseMatrix, DenseVector, sum}
 import breeze.numerics.{abs, pow}
-import org.mengpan.deeplearning.components.layers.Layer
+import org.mengpan.deeplearning.components.layers.{DropoutLayer, Layer}
 import org.mengpan.deeplearning.utils.ResultUtils
 import org.mengpan.deeplearning.utils.ResultUtils.BackwardRes
 
@@ -11,47 +11,16 @@ import org.mengpan.deeplearning.utils.ResultUtils.BackwardRes
   */
 class L1Regularizer extends Regularizer{
 
-  override protected def getReguCost(paramsList:
+  override def getReguCost(paramsList:
                                      List[(DenseMatrix[Double], DenseVector[Double])]):
   Double = {
     paramsList
-      .map(_._1.data.map(abs(_)).reduce(_+_))
-      .reduce(_+_)
+        .foldLeft[Double](0.0){(total, params) => total + sum(abs(params._1))}
   }
 
-  override def backward(feature: DenseMatrix[Double],
-                        label: DenseVector[Double],
-                        forwardResList: List[ResultUtils.ForwardRes],
-                        paramsList: List[(DenseMatrix[Double], DenseVector[Double])],
-                        hiddenLayers: List[Layer],
-                        outputLayer: Layer):
-  List[ResultUtils.BackwardRes] = {
-    val numExamples = label.length
-    val yHat = forwardResList.last.yCurrent(::, 0)
-
-    //+ pow(10.0, -9)防止出现被除数为0，NaN的情况
-    val dYL = -(label /:/ (yHat + pow(10.0, -9)) - (1.0 - label) /:/ (1.0 - yHat + pow(10.0, -9)))
-    var dYCurrent = DenseMatrix.zeros[Double](feature.rows, 1)
-    dYCurrent(::, 0) := dYL
-
-    paramsList
-      .zip(forwardResList)
-      .zip(Nil.::(outputLayer).:::(hiddenLayers))
-      .reverse
-      .map{f =>
-        val (w, b) = f._1._1
-        val forwardRes = f._1._2
-        val layer = f._2
-
-        val backwardRes = layer.backward(dYCurrent, forwardRes, w, b)
-        dYCurrent = backwardRes.dYPrevious
-
-        new BackwardRes(backwardRes.dYPrevious,
-          backwardRes.dWCurrent + this.lambda / numExamples.toDouble * sign(w),
-          backwardRes.dBCurrent)
-      }
-      .reverse
-  }
+  override def getReguCostGrad(w: DenseMatrix[Double],
+                                         numExamples: Int):
+  DenseMatrix[Double] = this.lambda / numExamples.toDouble * sign(w)
 
   private def sign(w: DenseMatrix[Double]): DenseMatrix[Double] = {
     w.map(e => if (e > 0) 1.0 else if (e < 0) -1.0 else 0.0)

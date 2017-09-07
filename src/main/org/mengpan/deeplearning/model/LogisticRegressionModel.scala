@@ -10,13 +10,12 @@ import scala.collection.mutable
   * Created by mengpan on 2017/8/15.
   */
 class LogisticRegressionModel () extends Model {
-  var logger: Logger = Logger.getLogger("LogisticRegressionModel")
+  override val logger: Logger = Logger.getLogger("LogisticRegressionModel")
 
   var learningRate:Double = _
   var iterationTime: Int = _
   var w: DenseVector[Double] = _
   var b: Double = _
-  val costHistory: mutable.TreeMap[Int, Double] = new mutable.TreeMap[Int, Double]()
 
   @Override
   def train(feature: DenseMatrix[Double], label: DenseVector[Double]): this.type = {

@@ -1,14 +1,15 @@
 package org.mengpan.deeplearning.components.layers
 
 import breeze.linalg.{DenseMatrix, DenseVector}
-import org.mengpan.deeplearning.utils.MyDict
+import org.mengpan.deeplearning.utils.ResultUtils.{BackwardRes, ForwardRes}
+import org.mengpan.deeplearning.utils.{MyDict, ResultUtils}
 
 /**
   * Created by mengpan on 2017/9/7.
   */
 class DropoutLayer extends Layer{
   override var numHiddenUnits: Int = _
-  protected override var activationFunc: Byte = MyDict.ACTIVATION_DROPOUT
+//  protected override var activationFunc: Byte = MyDict.ACTIVATION_DROPOUT
 
   protected var dropoutRate: Double = _
 
@@ -34,7 +35,7 @@ class DropoutLayer extends Layer{
       (i, j) => this.dropoutVector(j)
     }
 
-    zCurrent *:* dropoutMatrix / (1.0 - this.dropoutRate)
+    dropoutMatrix / (1.0 - this.dropoutRate)
   }
 
   private def generateDropoutVector(numHiddenUnits: Int, dropoutRate: Double):
@@ -43,5 +44,28 @@ class DropoutLayer extends Layer{
       .map{i =>
         if (i <= this.dropoutRate) 0.0 else 1.0
       }
+  }
+
+  override def forward(yPrevious: DenseMatrix[Double],
+                       w: DenseMatrix[Double],
+                       b: DenseVector[Double]):
+  ResultUtils.ForwardRes = {
+    val zCurrent = yPrevious
+    val yCurrent = activationFuncEval(zCurrent)
+    new ForwardRes(yPrevious, zCurrent, yCurrent)
+  }
+
+  override def backward(dYCurrent: DenseMatrix[Double],
+                        forwardRes: ResultUtils.ForwardRes,
+                        w: DenseMatrix[Double],
+                        b: DenseVector[Double]):
+  ResultUtils.BackwardRes = {
+
+    val zCurrent = forwardRes.zCurrent
+    val dZCurrent = dYCurrent *:* activationGradEval(zCurrent)
+    val dYPrevious = dZCurrent
+    val dW = null
+    val dB = null
+    new BackwardRes(dYPrevious, dW, dB)
   }
 }
