@@ -4,8 +4,8 @@ import java.util
 import breeze.linalg.{DenseMatrix, DenseVector}
 import breeze.numerics.{log, pow}
 import org.apache.log4j.Logger
-import org.mengpan.deeplearning.components.layers.Layer
-import org.mengpan.deeplearning.utils.{DebugUtils, LayerUtils, ResultUtils}
+import org.mengpan.deeplearning.components.layers.{DropoutLayer, Layer}
+import org.mengpan.deeplearning.utils.{ActivationUtils, DebugUtils, ResultUtils}
 import org.mengpan.deeplearning.utils.ResultUtils.{BackwardRes, ForwardRes}
 
 import scala.collection.mutable
@@ -20,8 +20,8 @@ class SimpleNeuralNetworkModel extends Model{
   //神经网络的四个超参数
   override var learningRate: Double = _
   override var iterationTime: Int = _
-  var hiddenLayerStructure: Map[Int, Byte] = _
-  var outputLayerStructure: (Int, Byte) = _
+  protected var hiddenLayers: List[Layer] = _
+  protected var outputLayer: Layer = _
 
   //记录每一次迭代cost变化的历史数据
   override val costHistory: mutable.TreeMap[Int, Double] = new mutable.TreeMap[Int, Double]()
@@ -29,23 +29,17 @@ class SimpleNeuralNetworkModel extends Model{
   //神经网络模型的参数
   var paramsList: List[(DenseMatrix[Double], DenseVector[Double])] = _
 
-  //神经网络的隐含层与输出层的结构，根据hiddenLayerStructure与outputLayerStructure两个超参数得到
-  protected var hiddenLayers: Seq[Layer] = _
-  protected var outputLayer: Layer = _
-
-  def setHiddenLayerStructure(hiddenLayerStructure: Map[Int, Byte]): this.type = {
-    if (hiddenLayerStructure.isEmpty) {
+  def setHiddenLayerStructure(hiddenLayers: List[Layer]): this.type = {
+    if (hiddenLayers.isEmpty) {
       throw new Exception("hidden layer should be at least one layer!")
     }
 
-    this.hiddenLayerStructure = hiddenLayerStructure
-    this.hiddenLayers = getHiddenLayers(this.hiddenLayerStructure)
+    this.hiddenLayers = hiddenLayers
     this
   }
 
-  def setOutputLayerStructure(outputLayerStructure: (Int, Byte)): this.type = {
-    this.outputLayerStructure = outputLayerStructure
-    this.outputLayer = getOutputLayer(this.outputLayerStructure)
+  def setOutputLayerStructure(outputLayer: Layer): this.type = {
+    this.outputLayer = outputLayer
     this
   }
 
@@ -85,7 +79,7 @@ class SimpleNeuralNetworkModel extends Model{
   }
 
   override def predict(feature: DenseMatrix[Double]): DenseVector[Double] = {
-    val forwardResList: List[ForwardRes] = forward(feature, this.paramsList,
+    val forwardResList: List[ForwardRes] = forwardWithoutDropout(feature, this.paramsList,
       this.hiddenLayers, this.outputLayer)
     forwardResList.last.yCurrent(::, 0).map{yHat =>
       if (yHat > 0.5) 1.0 else 0.0
@@ -106,7 +100,7 @@ class SimpleNeuralNetworkModel extends Model{
     val numHiddenUnits = structure._1
     val activationType = structure._2
 
-    val layer: Layer = LayerUtils.getLayerByActivationType(activationType)
+    val layer: Layer = ActivationUtils.getLayerByActivationType(activationType)
       .setNumHiddenUnits(numHiddenUnits)
     layer
   }
@@ -166,6 +160,38 @@ class SimpleNeuralNetworkModel extends Model{
         forwardRes
       }
   }
+
+  protected def forwardWithoutDropout(feature: DenseMatrix[Double],
+                        params: List[(DenseMatrix[Double],
+                          DenseVector[Double])],
+                        hiddenLayers: Seq[Layer],
+                        outputLayer: Layer): List[ForwardRes] = {
+    var yi = feature
+
+    /*
+     *这里注意Scala中zip的用法。假设A=List(1, 2, 3), B=List(3, 4), 则
+     * A.zip(B) 为 List((1, 3), (2, 4))
+     * 复习：A.:+(b)的作用是在A后面加上b元素，注意因为immutable，实际上是生成了一个新对象
+     */
+    params.zip(hiddenLayers.:+(outputLayer))
+      .map{f =>
+        val w = f._1._1
+        val b = f._1._2
+        val oldLayer = f._2
+
+        val layer =
+          if (oldLayer.isInstanceOf[DropoutLayer])
+            new DropoutLayer().setNumHiddenUnits(oldLayer.numHiddenUnits).setDropoutRate(0.0)
+          else oldLayer
+
+        //forward方法需要yPrevious, w, b三个参数
+        val forwardRes = layer.forward(yi, w, b)
+        yi = forwardRes.yCurrent
+
+        forwardRes
+      }
+  }
+
 
   private def calCost(res: ResultUtils.ForwardRes, label: DenseVector[Double]):
   Double = {

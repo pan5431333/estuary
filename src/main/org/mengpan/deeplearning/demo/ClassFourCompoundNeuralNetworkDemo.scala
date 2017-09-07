@@ -1,9 +1,10 @@
 package org.mengpan.deeplearning.demo
 
 import breeze.stats.{mean, stddev}
+import org.mengpan.deeplearning.components.layers.{DropoutLayer, ReluLayer, SigmoidLayer}
 import org.mengpan.deeplearning.data.GasCensor
 import org.mengpan.deeplearning.helper.{DlCollection, GasCensorDataHelper}
-import org.mengpan.deeplearning.model.{NeuralNetworkModel, Model, SimpleNeuralNetworkModel}
+import org.mengpan.deeplearning.model.{Model, NeuralNetworkModel, SimpleNeuralNetworkModel}
 import org.mengpan.deeplearning.utils.{MyDict, NormalizeUtils, PlotUtils}
 
 /**
@@ -20,7 +21,7 @@ object ClassFourCompoundNeuralNetworkDemo extends App{
   }
 
   //获取training set和test set
-  val (training, test) = normalizedCatData.split(0.8)
+  val (training, test) = normalizedCatData.split(0.02)
 
   //分别获取训练集和测试集的feature和label
   val trainingFeature = training.getFeatureAsMatrix
@@ -33,11 +34,12 @@ object ClassFourCompoundNeuralNetworkDemo extends App{
     .setWeightsInitializer(MyDict.INIT_HE)
     .setRegularizer(MyDict.REGULARIZATION_L1)
     .setLambda(0.7)
-    .setHiddenLayerStructure(Map(
-      (200, MyDict.ACTIVATION_RELU),
-      (100, MyDict.ACTIVATION_RELU)
+    .setHiddenLayerStructure(List(
+      new ReluLayer().setNumHiddenUnits(500),
+      new DropoutLayer().setNumHiddenUnits(500).setDropoutRate(0.2),
+      new ReluLayer().setNumHiddenUnits(100)
     ))
-    .setOutputLayerStructure((1, MyDict.ACTIVATION_SIGMOID))
+    .setOutputLayerStructure(new SigmoidLayer().setNumHiddenUnits(1))
     .setLearningRate(0.01)
     .setIterationTime(3000)
 

@@ -7,6 +7,20 @@ import org.mengpan.deeplearning.utils.MyDict
   */
 class ReluLayer extends Layer{
   override var numHiddenUnits: Int = _
-  override var activationFunc: Byte = MyDict.ACTIVATION_RELU
+  protected override var activationFunc: Byte = MyDict.ACTIVATION_RELU
+
+  protected override def activationFuncEval(zCurrent: DenseMatrix[Double]):
+  DenseMatrix[Double] = {
+    zCurrent.map{i =>
+      if (i >= 0) i else 0.0
+    }
+  }
+
+  protected override def activationGradEval(zCurrent: DenseMatrix[Double]):
+  DenseMatrix[Double] = {
+    zCurrent.map{i =>
+      if (i >= 0) 1.0 else 0.0
+    }
+  }
 }
 

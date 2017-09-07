@@ -3,7 +3,7 @@ package org.mengpan.deeplearning.components.layers
 import breeze.linalg.{DenseMatrix, DenseVector}
 import org.apache.log4j.Logger
 import org.mengpan.deeplearning.utils.ResultUtils.{BackwardRes, ForwardRes}
-import org.mengpan.deeplearning.utils.{ActivationUtils, DebugUtils, GradientUtils}
+import org.mengpan.deeplearning.utils.{ActivationUtils, DebugUtils}
 
 /**
   * Created by mengpan on 2017/8/26.
@@ -12,7 +12,11 @@ trait Layer{
   private val logger = Logger.getLogger("Layer")
 
   var numHiddenUnits: Int
-  var activationFunc: Byte
+  protected var activationFunc: Byte
+
+  protected def activationFuncEval(zCurrent: DenseMatrix[Double]): DenseMatrix[Double]
+
+  protected def activationGradEval(zCurrent: DenseMatrix[Double]): DenseMatrix[Double]
 
 
   def setNumHiddenUnits(numHiddenUnits: Int): this.type = {
@@ -27,7 +31,7 @@ trait Layer{
     logger.debug(DebugUtils.matrixShape(w, "w"))
     logger.debug(DebugUtils.vectorShape(b, "b"))
     val zCurrent = yPrevious * w + DenseVector.ones[Double](numExamples) * b.t
-    val yCurrent = ActivationUtils.getActivationFunc(this.activationFunc)(zCurrent)
+    val yCurrent = this.activationFuncEval(zCurrent)
     logger.debug("yCurrent: " + yCurrent)
     ForwardRes(yPrevious, zCurrent, yCurrent)
   }
@@ -40,8 +44,7 @@ trait Layer{
     val zCurrent = forwardRes.zCurrent
     val yCurrent = forwardRes.yCurrent
 
-    val dZCurrent = dYCurrent *:*
-      GradientUtils.getGradByFuncType(this.activationFunc)(zCurrent)
+    val dZCurrent = dYCurrent *:* this.activationGradEval(zCurrent)
 
     val dWCurrent = yPrevious.t * dZCurrent / numExamples.toDouble
     val dBCurrent = (DenseVector.ones[Double](numExamples).t * dZCurrent).t /

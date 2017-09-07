@@ -1,5 +1,6 @@
 package org.mengpan.deeplearning.components.layers
 import breeze.linalg.{DenseMatrix, DenseVector}
+import breeze.numerics.{pow, tanh}
 import org.mengpan.deeplearning.utils.MyDict
 
 /**
@@ -7,6 +8,16 @@ import org.mengpan.deeplearning.utils.MyDict
   */
 class TanhLayer extends Layer{
   override var numHiddenUnits: Int = _
-  override var activationFunc: Byte = MyDict.ACTIVATION_TANH
+  protected override var activationFunc: Byte = MyDict.ACTIVATION_TANH
+
+  protected override def activationFuncEval(zCurrent: DenseMatrix[Double]):
+  DenseMatrix[Double] = {
+    tanh(zCurrent)
+  }
+
+  protected override def activationGradEval(zCurrent: DenseMatrix[Double]):
+  DenseMatrix[Double] = {
+    1.0 - pow(zCurrent, 2)
+  }
 }
 

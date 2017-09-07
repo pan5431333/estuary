@@ -1,9 +1,10 @@
 package org.mengpan.deeplearning.demo
 
 import breeze.stats.{mean, stddev}
+import org.mengpan.deeplearning.components.layers.{DropoutLayer, ReluLayer, SigmoidLayer}
 import org.mengpan.deeplearning.data.{Cat, GasCensor}
 import org.mengpan.deeplearning.helper.{CatDataHelper, DlCollection, GasCensorDataHelper}
-import org.mengpan.deeplearning.model.{Model, SimpleNeuralNetworkModel, ShallowNeuralNetworkModel}
+import org.mengpan.deeplearning.model.{Model, SimpleNeuralNetworkModel}
 import org.mengpan.deeplearning.utils.{MyDict, NormalizeUtils, PlotUtils}
 
 /**
@@ -30,11 +31,12 @@ object ClassThreeNeuralNetworkDemo extends App{
 
   //初始化算法模型
   val nnModel: Model = new SimpleNeuralNetworkModel()
-    .setHiddenLayerStructure(Map(
-      (200, MyDict.ACTIVATION_RELU),
-      (100, MyDict.ACTIVATION_RELU)
+    .setHiddenLayerStructure(List(
+      new ReluLayer().setNumHiddenUnits(200),
+      new DropoutLayer().setNumHiddenUnits(200).setDropoutRate(0.7),
+      new ReluLayer()
     ))
-    .setOutputLayerStructure((1, MyDict.ACTIVATION_SIGMOID))
+    .setOutputLayerStructure(new SigmoidLayer().setNumHiddenUnits(1))
     .setLearningRate(0.01)
     .setIterationTime(5000)
 

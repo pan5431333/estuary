@@ -6,11 +6,12 @@ package org.mengpan.deeplearning.utils
 object MyDict {
 
   //设定激活函数
-  //0 sigmoid, 1 tanh, 2 ReLU, 3 Leaky ReLU
+  //0 sigmoid, 1 tanh, 2 ReLU, 3 Leaky ReLU, 4 Dropout
   val ACTIVATION_SIGMOID: Byte = 0
   val ACTIVATION_TANH: Byte = 1
   val ACTIVATION_RELU: Byte = 2
   val ACTIVATION_LEAKY_RELU: Byte = 3
+  val ACTIVATION_DROPOUT: Byte = 4
 
   //设定权重初始化的方法
   //0 He, 1 Xaiver
