@@ -2,9 +2,6 @@ package org.mengpan.deeplearning.components.regularizer
 
 import breeze.linalg.{DenseMatrix, DenseVector, sum}
 import breeze.numerics.{abs, pow}
-import org.mengpan.deeplearning.components.layers.{DropoutLayer, Layer}
-import org.mengpan.deeplearning.utils.ResultUtils
-import org.mengpan.deeplearning.utils.ResultUtils.BackwardRes
 
 /**
   * Created by mengpan on 2017/9/5.

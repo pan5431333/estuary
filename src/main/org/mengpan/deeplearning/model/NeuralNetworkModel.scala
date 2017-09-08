@@ -35,8 +35,12 @@ class NeuralNetworkModel extends Model{
 
     //重点需要解释的地方，如果某一层是Dropout Layer，则将其神经元数量设置成与前一层神经元数量相同
     //这里重点关注scanLeft的用法！
-    val theHiddenLayer: List[Layer] = hiddenLayers.scanLeft[Layer, List[Layer]](EmptyLayer){(a, b) =>
-      if (b.isInstanceOf[DropoutLayer]) b.setNumHiddenUnits(a.numHiddenUnits) else b
+    val theHiddenLayer: List[Layer] = hiddenLayers
+      .scanLeft[Layer, List[Layer]](EmptyLayer){
+      (previousLayer, currentLayer) =>
+      if (currentLayer.isInstanceOf[DropoutLayer])
+        currentLayer.setNumHiddenUnits(previousLayer.numHiddenUnits)
+      else currentLayer
     }
 
     this.hiddenLayers = theHiddenLayer.tail //取tail的原因是把第一个EmptyLayer去掉
@@ -66,7 +70,7 @@ class NeuralNetworkModel extends Model{
 
     //1. Initialize the weights using initializer
     var paramsList: List[(DenseMatrix[Double], DenseVector[Double])] =
-      this.weightsInitializer.init(numExamples, inputDim, hiddenLayers, outputLayer)
+      this.weightsInitializer.init(numExamples, inputDim, this.allLayers)
 
     //2. Iteration
     (0 until this.iterationTime).foreach{i =>
@@ -105,41 +109,34 @@ class NeuralNetworkModel extends Model{
   protected def forward(feature: DenseMatrix[Double],
                         params: List[(DenseMatrix[Double],
                           DenseVector[Double])]): List[ForwardRes] = {
-    var yi = feature
 
-    /*
-     *这里注意Scala中zip的用法。假设A=List(1, 2, 3), B=List(3, 4), 则
-     * A.zip(B) 为 List((1, 3), (2, 4))
-     * 复习：A.:+(b)的作用是在A后面加上b元素，注意因为immutable，实际上是生成了一个新对象
-     */
-    params.zip(this.allLayers)
-      .map{f =>
-        val w = f._1._1
-        val b = f._1._2
+    val initForwardRes = ForwardRes(null, null, feature)
+    params
+      .zip(this.allLayers)
+      .scanLeft[ForwardRes, List[ForwardRes]](initForwardRes){
+      (previousForwardRes, f) =>
+        val yPrevious = previousForwardRes.yCurrent
+
+        val (w, b) = f._1
         val layer = f._2
 
-        //forward方法需要yPrevious, w, b三个参数
-        val forwardRes = layer.forward(yi, w, b)
-        yi = forwardRes.yCurrent
-
-        forwardRes
+        layer.forward(yPrevious, w, b)
       }
+      .tail
   }
 
   protected def forwardWithoutDropout(feature: DenseMatrix[Double],
                                       params: List[(DenseMatrix[Double], DenseVector[Double])]):
   List[ForwardRes] = {
-    var yi = feature
 
-    /*
-     *这里注意Scala中zip的用法。假设A=List(1, 2, 3), B=List(3, 4), 则
-     * A.zip(B) 为 List((1, 3), (2, 4))
-     * 复习：A.:+(b)的作用是在A后面加上b元素，注意因为immutable，实际上是生成了一个新对象
-     */
-    params.zip(this.allLayers)
-      .map{f =>
-        val w = f._1._1
-        val b = f._1._2
+    val initForwardRes = ForwardRes(null, null, feature)
+    params
+      .zip(this.allLayers)
+      .scanLeft[ForwardRes, List[ForwardRes]](initForwardRes){
+      (previousForwardRes, f) =>
+        val yPrevious = previousForwardRes.yCurrent
+
+        val (w, b) = f._1
         val oldLayer = f._2
 
         val layer =
@@ -147,12 +144,9 @@ class NeuralNetworkModel extends Model{
             new DropoutLayer().setNumHiddenUnits(oldLayer.numHiddenUnits).setDropoutRate(0.0)
           else oldLayer
 
-        //forward方法需要yPrevious, w, b三个参数
-        val forwardRes = layer.forward(yi, w, b)
-        yi = forwardRes.yCurrent
-
-        forwardRes
+        layer.forward(yPrevious, w, b)
       }
+      .tail
   }
 
   protected def updateParams(paramsList: List[(DenseMatrix[Double], DenseVector[Double])],
@@ -176,11 +170,6 @@ class NeuralNetworkModel extends Model{
 
             logger.debug(DebugUtils.matrixShape(w, "w"))
             logger.debug(DebugUtils.matrixShape(dw, "dw"))
-
-            var adjustedLearningRate = this.learningRate
-
-            //如果cost出现NaN则把学习率降低100倍
-            adjustedLearningRate = if (cost.isNaN) adjustedLearningRate/100 else adjustedLearningRate
 
             w :-= dw * learningrate
             b :-= db * learningrate
@@ -206,20 +195,24 @@ class NeuralNetworkModel extends Model{
     val numExamples = feature.rows
 
     val dYPredicted = -(label /:/ (yPredicted + pow(10.0, -9)) - (1.0 - label) /:/ (1.0 - yPredicted + pow(10.0, -9)))
-    var dYCurrent = DenseMatrix.zeros[Double](numExamples, 1)
-    dYCurrent(::, 0) := dYPredicted
+
+    val dYHat = DenseMatrix.zeros[Double](numExamples, 1)
+    dYHat(::, 0) := dYPredicted
+
+    val initBackwardRes = BackwardRes(dYHat, null, null)
 
     paramsList
-      .zip(forwardResList)
       .zip(this.allLayers)
-      .reverse
-      .map{f =>
+      .zip(forwardResList)
+      .scanRight[BackwardRes, List[BackwardRes]](initBackwardRes){
+      (f, previousBackwardRes) =>
+        val dYCurrent = previousBackwardRes.dYPrevious
+
         val (w, b) = f._1._1
-        val forwardRes = f._1._2
-        val layer = f._2
+        val layer = f._1._2
+        val forwardRes = f._2
 
         val backwardRes = layer.backward(dYCurrent, forwardRes, w, b)
-        dYCurrent = backwardRes.dYPrevious
 
         layer match {
           case _: DropoutLayer => backwardRes
@@ -228,9 +221,8 @@ class NeuralNetworkModel extends Model{
               backwardRes.dWCurrent + regularizer.getReguCostGrad(w, numExamples),
               backwardRes.dBCurrent)
         }
-
-      }
-      .reverse
+    }
+      .dropRight(1)
   }
 
 }

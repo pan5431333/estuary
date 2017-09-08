@@ -6,8 +6,6 @@ import breeze.linalg.DenseMatrix
   */
 object EmptyLayer extends Layer{
   override var numHiddenUnits: Int = 0
-//  override protected def activationFunc: Byte =
-//    throw new Error("EmptyLayer.activationFunc")
 
   override protected def activationFuncEval(zCurrent: DenseMatrix[Double]): DenseMatrix[Double] =
     throw new Error("EmptyLayer.activationFuncEval")

@@ -13,6 +13,8 @@ object ResultUtils {
     "zCurrent: {" + zCurrent + "}\n" +
     "yCurrent: {" + yCurrent + "}\n"
   }
+
+
   case class BackwardRes(val dYPrevious: DenseMatrix[Double],
                          val dWCurrent: DenseMatrix[Double],
                          val dBCurrent: DenseVector[Double]) {

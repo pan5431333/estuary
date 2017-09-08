@@ -11,12 +11,10 @@ trait WeightsInitializer {
   protected def getWeightsMultipliyer(previousLayerDim: Int, currentLayerDim: Int): Double
 
   def init(numExamples: Int, inputDim: Int,
-           hiddenLayers: List[Layer],
-           outputLayer: Layer):
+           allLayers: List[Layer]):
   List[(DenseMatrix[Double], DenseVector[Double])] = {
-    val layersDims: Vector[Int] = Nil
-      .::(outputLayer.numHiddenUnits)
-      .:::(hiddenLayers.map(_.numHiddenUnits).toList)
+    val layersDims: Vector[Int] = allLayers
+      .map(_.numHiddenUnits)
       .::(inputDim)
       .toVector
 
