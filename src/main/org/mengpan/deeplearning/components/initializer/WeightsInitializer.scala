@@ -10,7 +10,7 @@ import org.mengpan.deeplearning.components.layers.Layer
 trait WeightsInitializer {
   protected def getWeightsMultipliyer(previousLayerDim: Int, currentLayerDim: Int): Double
 
-  def init(numExamples: Int, inputDim: Int,
+  def init(inputDim: Int,
            allLayers: List[Layer]):
   List[(DenseMatrix[Double], DenseVector[Double])] = {
     val layersDims: Vector[Int] = allLayers

@@ -35,12 +35,12 @@ object ClassFourCompoundNeuralNetworkDemo extends App{
   //初始化算法模型
   val nnModel: Model = new NeuralNetworkModel()
     .setWeightsInitializer(HeInitializer)
-    .setRegularizer(new L2Regularizer().setLambda(0.7))
+    .setRegularizer(new L2Regularizer().setLambda(0.0))
     .setHiddenLayerStructure(List(
       new ReluLayer().setNumHiddenUnits(300),
-      new DropoutLayer().setDropoutRate(0.5),
+      new DropoutLayer().setDropoutRate(0.0),
       new ReluLayer().setNumHiddenUnits(100),
-      new DropoutLayer().setDropoutRate(0.5)
+      new DropoutLayer().setDropoutRate(0.0)
     ))
     .setOutputLayerStructure(new SigmoidLayer().setNumHiddenUnits(1))
     .setLearningRate(0.01)

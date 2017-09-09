@@ -27,6 +27,8 @@ class NeuralNetworkModel extends Model{
   //神经网络模型的参数，由(w,b)组成的List
   var paramsList: List[(DenseMatrix[Double], DenseVector[Double])] = null
 
+  type NNParams = List[(DenseMatrix[Double], DenseVector[Double])]
+
   //以下是一些设定神经网络超参数的setter
   def setHiddenLayerStructure(hiddenLayers: List[Layer]): this.type = {
     if (hiddenLayers.isEmpty) {
@@ -68,33 +70,32 @@ class NeuralNetworkModel extends Model{
     val numExamples = feature.rows
     val inputDim = feature.cols
 
-    //1. Initialize the weights using initializer
-    var paramsList: List[(DenseMatrix[Double], DenseVector[Double])] =
-      this.weightsInitializer.init(numExamples, inputDim, this.allLayers)
+    //1. initialize parameters
+    val initParams = this.weightsInitializer.init(inputDim, this.allLayers)
 
-    //2. Iteration
-    (0 until this.iterationTime).foreach{i =>
+    this.paramsList =
+      (0 until this.iterationTime) //2. iteration
+        .foldLeft[NNParams](initParams){
+        (previousParams, iterationTime) =>
 
-      //3. forward
-      val forwardResList: List[ForwardRes] = forward(feature, paramsList)
+          //3. forward
+          val forwardResList = forward(feature, previousParams)
 
-      //4. calculate cost with regularization
-      val cost = calCost(forwardResList.last.yCurrent(::, 0), label, paramsList, this.regularizer)
+          //4. calculate cost
+          val cost = calCost(label, forwardResList.last.yCurrent(::, 0), previousParams, this.regularizer)
 
-      if (i % 100 == 0) {
-        logger.info("Cost in " + i + "th time of iteration: " + cost)
+          //record cost history
+          if (iterationTime % 100 == 0) {
+            logger.info("Cost in " + iterationTime + "th time of iteration: " + cost)
+          }
+          costHistory.put(iterationTime, cost)
+
+          //5. backward
+          val backwardResList = backward(label, forwardResList, previousParams, this.regularizer)
+
+          //6. update parameters
+          updateParams(previousParams, this.learningRate, backwardResList, iterationTime, cost)
       }
-      costHistory.put(i, cost)
-
-      //5. backward
-      val backwardResList: List[BackwardRes] =
-        backward(feature, label, forwardResList, paramsList, this.regularizer)
-
-      //6. update parameters
-      paramsList = updateParams(paramsList, learningRate, backwardResList, i, cost)
-    }
-
-    this.paramsList = paramsList
 
     this
   }
@@ -187,12 +188,12 @@ class NeuralNetworkModel extends Model{
     originalCost + regularizer.lambda * reguCost / label.length.toDouble
   }
 
-  private def backward(feature: DenseMatrix[Double], label: DenseVector[Double],
+  private def backward(label: DenseVector[Double],
                        forwardResList: List[ResultUtils.ForwardRes],
                        paramsList: List[(DenseMatrix[Double], DenseVector[Double])],
                        regularizer: Regularizer): List[BackwardRes] = {
     val yPredicted = forwardResList.last.yCurrent(::, 0)
-    val numExamples = feature.rows
+    val numExamples = label.length
 
     val dYPredicted = -(label /:/ (yPredicted + pow(10.0, -9)) - (1.0 - label) /:/ (1.0 - yPredicted + pow(10.0, -9)))
 
