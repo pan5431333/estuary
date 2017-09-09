@@ -12,10 +12,10 @@ import scala.collection.mutable
   * Created by mengpan on 2017/8/17.
   */
 object PlotUtils {
-  def plotCostHistory(costHistory: mutable.TreeMap[Int, Double]): Unit = {
+  def plotCostHistory(costHistory: mutable.MutableList[Double]): Unit = {
 
-    val x = costHistory.keys.toArray.map{_.toDouble}
-    val y = costHistory.values.toArray[Double]
+    val x = (0 until costHistory.length).map(_.toDouble).toArray
+    val y = costHistory.toArray[Double]
 
     val data = Array(x, y)
 

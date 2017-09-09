@@ -47,22 +47,25 @@ object CatDataHelper {
 
     try {
       val image = ImageIO.read(new File(animalFileName))
-      val imageData = image.getData
 
-      val redVector = DenseVector.zeros[Double](imageData.getHeight * imageData.getWidth)
-      val greenVector = DenseVector.zeros[Double](imageData.getHeight * imageData.getWidth)
-      val blueVector = DenseVector.zeros[Double](imageData.getHeight * imageData.getWidth)
-
-      (0 until imageData.getHeight).foreach{height =>
-        (0 until imageData.getWidth).foreach{width =>
-          val RGB = imageData.getPixel(width, height, Array(0, 0, 0))
-          redVector(width + height*10) = RGB(0)
-          greenVector(width + height*10) = RGB(1)
-          blueVector(width + height*10) = RGB(2)
+      val (red, greenAndBlue) = (image.getMinX() until image.getWidth).map{
+        width =>
+        (image.getMinY() until image.getHeight).map{
+          height =>
+            val pixel = image.getRGB(width, height)
+            (((pixel & 0xff0000) >> 16).toDouble, ((pixel & 0xff00) >> 8).toDouble, (pixel & 0xff).toDouble)
         }
       }
+        .flatten
+        .toList
+        .unzip[Double, (Double, Double)](f => (f._1, (f._2, f._3)))
 
-      val resVector = DenseMatrix(redVector, greenVector, blueVector).reshape(imageData.getHeight*imageData.getWidth*3, 1).toDenseVector
+      val (green, blue) = greenAndBlue
+        .unzip[Double, Double](asPair => (asPair._1, asPair._2))
+
+      val flattenFeature = red ::: green ::: blue ::: Nil
+
+      val resVector = DenseVector(flattenFeature.toArray)
       Some(resVector)
     } catch {
       case _: Exception => None

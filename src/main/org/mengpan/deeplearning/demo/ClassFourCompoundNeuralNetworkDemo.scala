@@ -3,7 +3,8 @@ package org.mengpan.deeplearning.demo
 import breeze.stats.{mean, stddev}
 import org.mengpan.deeplearning.components.initializer.HeInitializer
 import org.mengpan.deeplearning.components.layers.{DropoutLayer, ReluLayer, SigmoidLayer}
-import org.mengpan.deeplearning.components.regularizer.L2Regularizer
+import org.mengpan.deeplearning.components.optimizer.SGDOptimizer
+import org.mengpan.deeplearning.components.regularizer.{L1Regularizer, L2Regularizer}
 import org.mengpan.deeplearning.data.GasCensor
 import org.mengpan.deeplearning.helper.{CatDataHelper, DlCollection, GasCensorDataHelper}
 import org.mengpan.deeplearning.model.{Model, NeuralNetworkModel}
@@ -15,8 +16,8 @@ import org.mengpan.deeplearning.utils.{MyDict, NormalizeUtils, PlotUtils}
 object ClassFourCompoundNeuralNetworkDemo extends App{
   // Dataset Download Website: http://archive.ics.uci.edu/ml/machine-learning-databases/00224/
   //加载Gas Censor的数据集
-  val data: DlCollection[GasCensor] = GasCensorDataHelper.getAllData
-//  val data = CatDataHelper.getAllCatData
+//  val data: DlCollection[GasCensor] = GasCensorDataHelper.getAllData
+  val data = CatDataHelper.getAllCatData
 
   //归一化数据特征矩阵
   val normalizedCatData = NormalizeUtils.normalizeBy(data){col =>
@@ -24,7 +25,7 @@ object ClassFourCompoundNeuralNetworkDemo extends App{
   }
 
   //获取training set和test set
-  val (training, test) = normalizedCatData.split(0.02)
+  val (training, test) = normalizedCatData.split(0.8)
 
   //分别获取训练集和测试集的feature和label
   val trainingFeature = training.getFeatureAsMatrix
@@ -36,15 +37,16 @@ object ClassFourCompoundNeuralNetworkDemo extends App{
   val nnModel: Model = new NeuralNetworkModel()
     .setWeightsInitializer(HeInitializer)
     .setRegularizer(new L2Regularizer().setLambda(0.0))
+    .setOptimizer(new SGDOptimizer().setMiniBatchSize(64))
     .setHiddenLayerStructure(List(
-      new ReluLayer().setNumHiddenUnits(300),
+      new ReluLayer().setNumHiddenUnits(400),
       new DropoutLayer().setDropoutRate(0.0),
-      new ReluLayer().setNumHiddenUnits(100),
+      new ReluLayer().setNumHiddenUnits(200),
       new DropoutLayer().setDropoutRate(0.0)
     ))
     .setOutputLayerStructure(new SigmoidLayer().setNumHiddenUnits(1))
     .setLearningRate(0.01)
-    .setIterationTime(3000)
+    .setIterationTime(20)
 
   //用训练集的数据训练算法
   val trainedModel: Model = nnModel.train(trainingFeature, trainingLabel)

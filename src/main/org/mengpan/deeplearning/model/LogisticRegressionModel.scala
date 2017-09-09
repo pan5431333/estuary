@@ -28,7 +28,7 @@ class LogisticRegressionModel () extends Model {
 
         if (i % 100 == 0)
           logger.info("Cost in " + i + "th time of iteration: " + cost)
-        costHistory.put(i, cost)
+        costHistory.+=(cost)
 
         val adjustedLearningRate = this.learningRate / (log(i/1000 + 1) + 1)
         w :-= adjustedLearningRate * dw

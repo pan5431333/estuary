@@ -4,6 +4,7 @@ import breeze.numerics.{log, pow}
 import org.apache.log4j.Logger
 import org.mengpan.deeplearning.components.initializer.{HeInitializer, NormalInitializer, WeightsInitializer, XaiverInitializer}
 import org.mengpan.deeplearning.components.layers.{DropoutLayer, EmptyLayer, Layer}
+import org.mengpan.deeplearning.components.optimizer.{GDOptimizer, Optimizer}
 import org.mengpan.deeplearning.components.regularizer.{L1Regularizer, L2Regularizer, Regularizer, VoidRegularizer}
 import org.mengpan.deeplearning.utils.{DebugUtils, MyDict, ResultUtils}
 import org.mengpan.deeplearning.utils.ResultUtils.{BackwardRes, ForwardRes}
@@ -12,7 +13,7 @@ import org.mengpan.deeplearning.utils.ResultUtils.{BackwardRes, ForwardRes}
   * Created by mengpan on 2017/9/5.
   */
 class NeuralNetworkModel extends Model{
-  override val logger = Logger.getLogger("CompoundNeuralNetworkModel")
+  override val logger = Logger.getLogger(this.getClass)
 
   //神经网络超参数
   override var learningRate: Double = 0.01 //学习率，默认0.01
@@ -21,13 +22,14 @@ class NeuralNetworkModel extends Model{
   protected var outputLayer: Layer = null
   protected var weightsInitializer: WeightsInitializer = NormalInitializer //初始化方式，默认一般随机初始化（乘以0.01）
   protected var regularizer: Regularizer = VoidRegularizer //正则化方式，默认无正则化
+  protected var optimizer: Optimizer = GDOptimizer // 优化器，默认原始梯度下降优化器
 
   lazy val allLayers = hiddenLayers ::: outputLayer :: Nil
 
   //神经网络模型的参数，由(w,b)组成的List
-  var paramsList: List[(DenseMatrix[Double], DenseVector[Double])] = null
-
   type NNParams = List[(DenseMatrix[Double], DenseVector[Double])]
+  var paramsList: NNParams = null
+
 
   //以下是一些设定神经网络超参数的setter
   def setHiddenLayerStructure(hiddenLayers: List[Layer]): this.type = {
@@ -64,6 +66,11 @@ class NeuralNetworkModel extends Model{
     this
   }
 
+  def setOptimizer(optimizer: Optimizer): this.type = {
+    this.optimizer = optimizer
+    this
+  }
+
 
   override def train(feature: DenseMatrix[Double], label: DenseVector[Double]):
   NeuralNetworkModel.this.type = {
@@ -73,29 +80,51 @@ class NeuralNetworkModel extends Model{
     //1. initialize parameters
     val initParams = this.weightsInitializer.init(inputDim, this.allLayers)
 
+    //2. divide the dataset into multiple mini-batch datasets
+    val miniBatchesData: List[(DenseMatrix[Double], DenseVector[Double])] =
+      this.optimizer.getMiniBatches(feature, label)
+
+    val initMomentum: NNParams = this.optimizer.init(inputDim, this.allLayers)
+    val initAdam: NNParams = initMomentum
+
     this.paramsList =
-      (0 until this.iterationTime) //2. iteration
-        .foldLeft[NNParams](initParams){
-        (previousParams, iterationTime) =>
+      (0 until this.iterationTime) //3. iteration
+        .map{iterationTime =>
+          miniBatchesData
+          .zipWithIndex
+          .map{f =>
+            val feature = f._1._1
+            val label = f._1._2
+            val miniBatchTime = f._2
+            (iterationTime, feature, label, miniBatchTime)
+          }
+        }
+        .flatten
+        .foldLeft[(NNParams, NNParams, NNParams)]((initParams, initMomentum, initAdam)){
+        (previous, x) =>
+          val (iterationTime, feature, label, miniBatchTime) = x
 
           //3. forward
+          val previousParams = previous._1
+          val previousMomentum = previous._2
+          val previousAdam = previous._3
           val forwardResList = forward(feature, previousParams)
 
           //4. calculate cost
           val cost = calCost(label, forwardResList.last.yCurrent(::, 0), previousParams, this.regularizer)
 
           //record cost history
-          if (iterationTime % 100 == 0) {
-            logger.info("Cost in " + iterationTime + "th time of iteration: " + cost)
-          }
-          costHistory.put(iterationTime, cost)
+          logger.info("Epoch time: " + iterationTime + " " + "=" * (miniBatchTime/10).toInt + ">> cost: " + cost)
+          costHistory.+=(cost)
 
           //5. backward
           val backwardResList = backward(label, forwardResList, previousParams, this.regularizer)
 
           //6. update parameters
-          updateParams(previousParams, this.learningRate, backwardResList, iterationTime, cost)
+          this.optimizer.updateParams(previousParams, previousMomentum, previousAdam,
+            this.learningRate, backwardResList, iterationTime, miniBatchTime, this.allLayers)
       }
+      ._1
 
     this
   }
@@ -127,7 +156,7 @@ class NeuralNetworkModel extends Model{
   }
 
   protected def forwardWithoutDropout(feature: DenseMatrix[Double],
-                                      params: List[(DenseMatrix[Double], DenseVector[Double])]):
+                                      params: NNParams):
   List[ForwardRes] = {
 
     val initForwardRes = ForwardRes(null, null, feature)
@@ -150,37 +179,8 @@ class NeuralNetworkModel extends Model{
       .tail
   }
 
-  protected def updateParams(paramsList: List[(DenseMatrix[Double], DenseVector[Double])],
-                             learningrate: Double,
-                             backwardResList: List[ResultUtils.BackwardRes],
-                             iterationTime: Int,
-                             cost: Double): List[(DenseMatrix[Double], DenseVector[Double])] = {
-    paramsList
-      .zip(backwardResList)
-      .zip(this.allLayers)
-      .map{f =>
-        val layer = f._2
-        val (w, b) = f._1._1
-
-        layer match {
-          case _: DropoutLayer => (w, b)
-          case _ =>
-            val backwardRes = f._1._2
-            val dw = backwardRes.dWCurrent
-            val db = backwardRes.dBCurrent
-
-            logger.debug(DebugUtils.matrixShape(w, "w"))
-            logger.debug(DebugUtils.matrixShape(dw, "dw"))
-
-            w :-= dw * learningrate
-            b :-= db * learningrate
-            (w, b)
-        }
-      }
-  }
-
   private def calCost(label: DenseVector[Double], predicted: DenseVector[Double],
-                      paramsList: List[(DenseMatrix[Double], DenseVector[Double])],
+                      paramsList: NNParams,
                       regularizer: Regularizer): Double = {
     val originalCost = -(label.t * log(predicted + pow(10.0, -9)) + (1.0 - label).t * log(1.0 - predicted + pow(10.0, -9))) / label.length.toDouble
     val reguCost = regularizer.getReguCost(paramsList)
@@ -190,7 +190,7 @@ class NeuralNetworkModel extends Model{
 
   private def backward(label: DenseVector[Double],
                        forwardResList: List[ResultUtils.ForwardRes],
-                       paramsList: List[(DenseMatrix[Double], DenseVector[Double])],
+                       paramsList: NNParams,
                        regularizer: Regularizer): List[BackwardRes] = {
     val yPredicted = forwardResList.last.yCurrent(::, 0)
     val numExamples = label.length

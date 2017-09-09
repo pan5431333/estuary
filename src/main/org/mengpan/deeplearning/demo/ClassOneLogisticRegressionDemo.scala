@@ -47,5 +47,5 @@ object ClassOneLogisticRegressionDemo extends App{
 
   //对算法的训练过程中cost与迭代次数变化关系进行画图
   val costHistory = trainedModel.getCostHistory
-  PlotUtils.plotCostHistory(costHistory)
+//  PlotUtils.plotCostHistory(costHistory)
 }
