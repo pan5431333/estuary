@@ -66,7 +66,7 @@ object CatDataHelper {
       val flattenFeature = red ::: green ::: blue ::: Nil
 
       val resVector = DenseVector(flattenFeature.toArray)
-      Some(resVector)
+      Some(resVector(200 to 400))
     } catch {
       case _: Exception => None
     }

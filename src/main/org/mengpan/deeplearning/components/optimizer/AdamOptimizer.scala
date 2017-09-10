@@ -2,13 +2,14 @@ package org.mengpan.deeplearning.components.optimizer
 
 import breeze.linalg.{DenseMatrix, DenseVector}
 import breeze.numerics.{pow, sqrt}
+import org.mengpan.deeplearning.components.caseclasses.AdamOptimizationParams
 import org.mengpan.deeplearning.components.layers.{DropoutLayer, Layer}
 import org.mengpan.deeplearning.utils.{DebugUtils, ResultUtils}
 
 /**
   * Created by mengpan on 2017/9/10.
   */
-class AdamSGDOptimizer extends Optimizer{
+class AdamOptimizer extends Optimizer{
   override protected var miniBatchSize: Int = _
   protected var momentum: Double = 0.9
   protected var adamParam: Double = 0.999
@@ -17,6 +18,8 @@ class AdamSGDOptimizer extends Optimizer{
     this.miniBatchSize = miniBatchSize
     this
   }
+
+  def getMiniBatchSize: Int = this.miniBatchSize
 
   def setMomentumRate(momentum: Double): this.type = {
     this.momentum = momentum
@@ -28,14 +31,14 @@ class AdamSGDOptimizer extends Optimizer{
     this
   }
 
-  override def updateParams(paramsList: List[(DenseMatrix[Double], DenseVector[Double])],
+  def updateParams(paramsList: List[(DenseMatrix[Double], DenseVector[Double])],
                             previousMomentum: List[(DenseMatrix[Double], DenseVector[Double])],
                             previousAdam: List[(DenseMatrix[Double], DenseVector[Double])],
                             learningrate: Double,
                             backwardResList: List[ResultUtils.BackwardRes],
                             iterationTime: Int,
                             miniBatchTime: Double,
-                            layers: List[Layer]): (NNParams, NNParams, NNParams) = {
+                            layers: List[Layer]): AdamOptimizationParams = {
 
     val updatedParams = paramsList
       .zip(backwardResList)
@@ -56,20 +59,23 @@ class AdamSGDOptimizer extends Optimizer{
             val dw = backwardRes.dWCurrent
             val db = backwardRes.dBCurrent
 
-            val vWCorrected = (this.momentum * momentum._1 + (1.0 - this.momentum) * dw) / (1 - pow(this.momentum, miniBatchTime.toInt + 1))
-            val vBCorrected = (this.momentum * momentum._2 + (1.0 - this.momentum) * db) / (1 - pow(this.momentum, miniBatchTime.toInt + 1))
+            val vW = (this.momentum * momentum._1 + (1.0 - this.momentum) * dw)
+            val vB = (this.momentum * momentum._2 + (1.0 - this.momentum) * db)
+            val vWCorrected = vW / (1 - pow(this.momentum, miniBatchTime.toInt + 1))
+            val vBCorrected = vB / (1 - pow(this.momentum, miniBatchTime.toInt + 1))
 
-            val aWCorrected = (this.adamParam * adam._1 + (1.0 - this.adamParam) * pow(dw, 2)) / (1 - pow(this.adamParam, miniBatchTime.toInt + 1))
-            val aBCorrected = (this.adamParam * adam._2 + (1.0 - this.adamParam) * pow(db, 2)) / (1 - pow(this.adamParam, miniBatchTime.toInt + 1))
+            val aW = (this.adamParam * adam._1 + (1.0 - this.adamParam) * pow(dw, 2))
+            val aB = (this.adamParam * adam._2 + (1.0 - this.adamParam) * pow(db, 2))
+            val aWCorrected = aW / (1 - pow(this.adamParam, miniBatchTime.toInt + 1))
+            val aBCorrected = aB / (1 - pow(this.adamParam, miniBatchTime.toInt + 1))
 
             logger.debug(DebugUtils.matrixShape(w, "w"))
             logger.debug(DebugUtils.matrixShape(dw, "dw"))
 
-            w :-= learningrate * vWCorrected /:/ (sqrt(aWCorrected) + pow(10.0, -9))
-            b :-= learningrate * vBCorrected /:/ (sqrt(aBCorrected) + pow(10.0, -9))
+            w :-= learningrate * vWCorrected /:/ (sqrt(aWCorrected) + 1E-8)
+            b :-= learningrate * vBCorrected /:/ (sqrt(aBCorrected) + 1E-8)
 
-            println(vWCorrected /:/ (sqrt(aWCorrected) + pow(10.0, -9)))
-            ((w, b), (vWCorrected, vBCorrected), (aWCorrected, aBCorrected))
+            ((w, b), (vW, vB), (aW, aB))
         }
       }
 
@@ -78,7 +84,7 @@ class AdamSGDOptimizer extends Optimizer{
 
     val (momentum, adam) = momentumAndAdam.unzip(f => (f._1, f._2))
 
-    (modelParams, momentum, adam)
+    AdamOptimizationParams(modelParams, momentum, adam)
   }
 
 

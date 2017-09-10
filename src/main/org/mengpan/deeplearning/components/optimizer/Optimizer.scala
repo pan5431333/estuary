@@ -21,29 +21,22 @@ trait Optimizer {
   protected var miniBatchSize: Int
 
   def updateParams(paramsList: List[(DenseMatrix[Double], DenseVector[Double])],
-                    previousMomentum: List[(DenseMatrix[Double], DenseVector[Double])],
-                    previousAdam: List[(DenseMatrix[Double], DenseVector[Double])],
-                    learningrate: Double,
-                    backwardResList: List[ResultUtils.BackwardRes],
-                    iterationTime: Int,
-                    miniBatchTime: Double,
-                    layers: List[Layer]): (NNParams, NNParams, NNParams) = {
+                   learningrate: Double,
+                   backwardResList: List[ResultUtils.BackwardRes],
+                   iterationTime: Int,
+                   miniBatchTime: Double,
+                   layers: List[Layer]): NNParams = {
 
-    val updatedParams = paramsList
+    paramsList
       .zip(backwardResList)
       .zip(layers)
-      .zip(previousMomentum)
-      .zip(previousAdam)
       .map{f =>
-        val layer = f._1._1._2
-        val (w, b) = f._1._1._1._1
-
-        val backwardRes = f._1._1._1._2
-        val momentum = f._1._2
-        val adam = f._2
+        val layer = f._2
+        val (w, b) = f._1._1
+        val backwardRes = f._1._2
 
         layer match {
-          case _:DropoutLayer => ((w, b), momentum, adam)
+          case _:DropoutLayer => (w, b)
           case _ =>
             val dw = backwardRes.dWCurrent
             val db = backwardRes.dBCurrent
@@ -54,16 +47,9 @@ trait Optimizer {
             w :-= learningrate * dw
             b :-= learningrate * db
 
-            ((w, b), momentum, adam)
+            (w, b)
         }
       }
-
-    val (modelParams, momentumAndAdam) = updatedParams
-      .unzip(f => (f._1, (f._2, f._3)))
-
-    val (momentum, adam) = momentumAndAdam.unzip(f => (f._1, f._2))
-
-    (modelParams, momentum, adam)
   }
 
   def getMiniBatches(feature: DenseMatrix[Double],
@@ -73,7 +59,7 @@ trait Optimizer {
       case -100 => List((feature, label))
       case a if a > feature.rows => throw new IllegalArgumentException(
         "mini batch size(" + this.miniBatchSize + ")must be less than the number of examples(" + feature.rows + ")!")
-      case a if a > 0 => getPositiveNumMiniBatches(feature, label, this.miniBatchSize)
+      case a if a > 0 => getPositiveNumMiniBatches(feature, label, a)
       case _ => throw new IllegalArgumentException("mini-batch size: " + this.miniBatchSize + " number of exmaples: " + feature.rows)
     }
   }

@@ -15,4 +15,6 @@ class SGDOptimizer extends Optimizer{
     this.miniBatchSize = miniBatchSize
     this
   }
+
+  def getMiniBatchSize: Int = this.miniBatchSize
 }

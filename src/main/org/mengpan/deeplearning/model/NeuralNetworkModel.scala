@@ -2,9 +2,10 @@ package org.mengpan.deeplearning.model
 import breeze.linalg.{DenseMatrix, DenseVector}
 import breeze.numerics.{log, pow}
 import org.apache.log4j.Logger
+import org.mengpan.deeplearning.components.caseclasses.AdamOptimizationParams
 import org.mengpan.deeplearning.components.initializer.{HeInitializer, NormalInitializer, WeightsInitializer, XaiverInitializer}
 import org.mengpan.deeplearning.components.layers.{DropoutLayer, EmptyLayer, Layer}
-import org.mengpan.deeplearning.components.optimizer.{GDOptimizer, Optimizer}
+import org.mengpan.deeplearning.components.optimizer.{AdamOptimizer, GDOptimizer, Optimizer}
 import org.mengpan.deeplearning.components.regularizer.{L1Regularizer, L2Regularizer, Regularizer, VoidRegularizer}
 import org.mengpan.deeplearning.utils.{DebugUtils, MyDict, ResultUtils}
 import org.mengpan.deeplearning.utils.ResultUtils.{BackwardRes, ForwardRes}
@@ -74,57 +75,64 @@ class NeuralNetworkModel extends Model{
 
   override def train(feature: DenseMatrix[Double], label: DenseVector[Double]):
   NeuralNetworkModel.this.type = {
-    val numExamples = feature.rows
-    val inputDim = feature.cols
 
-    //1. initialize parameters
-    val initParams = this.weightsInitializer.init(inputDim, this.allLayers)
+    this.paramsList = this.optimizer match {
+      case op: AdamOptimizer => trainWithMomentumAndAdam(feature, label, op)
+      case op => trainWithoutMomentum(feature, label, op)
+    }
 
-    //2. divide the dataset into multiple mini-batch datasets
-    val miniBatchesData: List[(DenseMatrix[Double], DenseVector[Double])] =
-      this.optimizer.getMiniBatches(feature, label)
 
-    val initMomentum: NNParams = this.optimizer.init(inputDim, this.allLayers)
-    val initAdam: NNParams = initMomentum
-
-    this.paramsList =
-      (0 until this.iterationTime) //3. iteration
-        .map{iterationTime =>
-          miniBatchesData
-          .zipWithIndex
-          .map{f =>
-            val feature = f._1._1
-            val label = f._1._2
-            val miniBatchTime = f._2
-            (iterationTime, feature, label, miniBatchTime)
-          }
-        }
-        .flatten
-        .foldLeft[(NNParams, NNParams, NNParams)]((initParams, initMomentum, initAdam)){
-        (previous, x) =>
-          val (iterationTime, feature, label, miniBatchTime) = x
-
-          //3. forward
-          val previousParams = previous._1
-          val previousMomentum = previous._2
-          val previousAdam = previous._3
-          val forwardResList = forward(feature, previousParams)
-
-          //4. calculate cost
-          val cost = calCost(label, forwardResList.last.yCurrent(::, 0), previousParams, this.regularizer)
-
-          //record cost history
-          logger.info("Epoch time: " + iterationTime + " " + "=" * (miniBatchTime/10).toInt + ">> cost: " + cost)
-          costHistory.+=(cost)
-
-          //5. backward
-          val backwardResList = backward(label, forwardResList, previousParams, this.regularizer)
-
-          //6. update parameters
-          this.optimizer.updateParams(previousParams, previousMomentum, previousAdam,
-            this.learningRate, backwardResList, iterationTime, miniBatchTime, this.allLayers)
-      }
-      ._1
+//    val numExamples = feature.rows
+//    val inputDim = feature.cols
+//
+//    //1. initialize parameters
+//    val initParams = this.weightsInitializer.init(inputDim, this.allLayers)
+//
+//    //2. divide the dataset into multiple mini-batch datasets
+//    val miniBatchesData: List[(DenseMatrix[Double], DenseVector[Double])] =
+//      this.optimizer.getMiniBatches(feature, label)
+//
+//    val initMomentum: NNParams = this.optimizer.init(inputDim, this.allLayers)
+//    val initAdam: NNParams = initMomentum
+//
+//    this.paramsList =
+//      (0 until this.iterationTime) //3. iteration
+//        .map{iterationTime =>
+//          miniBatchesData
+//          .zipWithIndex
+//          .map{f =>
+//            val feature = f._1._1
+//            val label = f._1._2
+//            val miniBatchTime = f._2
+//            (iterationTime, feature, label, miniBatchTime)
+//          }
+//        }
+//        .flatten
+//        .foldLeft[(NNParams, NNParams, NNParams)]((initParams, initMomentum, initAdam)){
+//        (previous, x) =>
+//          val (iterationTime, feature, label, miniBatchTime) = x
+//
+//          //3. forward
+//          val previousParams = previous._1
+//          val previousMomentum = previous._2
+//          val previousAdam = previous._3
+//          val forwardResList = forward(feature, previousParams)
+//
+//          //4. calculate cost
+//          val cost = calCost(label, forwardResList.last.yCurrent(::, 0), previousParams, this.regularizer)
+//
+//          //record cost history
+//          logger.info("Epoch time: " + iterationTime + " " + "=" * (miniBatchTime/10).toInt + ">> cost: " + cost)
+//          costHistory.+=(cost)
+//
+//          //5. backward
+//          val backwardResList = backward(label, forwardResList, previousParams, this.regularizer)
+//
+//          //6. update parameters
+//          this.optimizer.updateParams(previousParams, previousMomentum, previousAdam,
+//            this.learningRate, backwardResList, iterationTime, miniBatchTime, this.allLayers)
+//      }
+//      ._1
 
     this
   }
@@ -136,7 +144,7 @@ class NeuralNetworkModel extends Model{
     }
   }
 
-  protected def forward(feature: DenseMatrix[Double],
+  private def forward(feature: DenseMatrix[Double],
                         params: List[(DenseMatrix[Double],
                           DenseVector[Double])]): List[ForwardRes] = {
 
@@ -155,7 +163,7 @@ class NeuralNetworkModel extends Model{
       .tail
   }
 
-  protected def forwardWithoutDropout(feature: DenseMatrix[Double],
+  private def forwardWithoutDropout(feature: DenseMatrix[Double],
                                       params: NNParams):
   List[ForwardRes] = {
 
@@ -224,6 +232,108 @@ class NeuralNetworkModel extends Model{
         }
     }
       .dropRight(1)
+  }
+
+  private def trainWithMomentumAndAdam(feature: DenseMatrix[Double],
+                                       label: DenseVector[Double],
+                                       op: AdamOptimizer): NNParams = {
+    val numExamples = feature.rows
+    val inputDim = feature.cols
+
+    val initModelParams = this.weightsInitializer.init(inputDim, this.allLayers)
+    val initMomentum = op.init(inputDim, this.allLayers)
+    val initAdam = op.init(inputDim, this.allLayers)
+    val initParams = AdamOptimizationParams(initModelParams, initMomentum, initAdam)
+
+    val iterationWithMiniBatches = getIterationWithMiniBatches(feature, label, this.iterationTime, op)
+
+    val trainedParams = iterationWithMiniBatches
+      .foldLeft[AdamOptimizationParams](initParams){(previousAdamParams, batchData) =>
+      val iteration = batchData._1
+      val batchFeature = batchData._2
+      val batchLabel = batchData._3
+      val miniBatchTime = batchData._4
+
+      val forwardResList = forward(batchFeature, previousAdamParams.modelParams)
+      val cost = calCost(batchLabel, forwardResList.last.yCurrent(::, 0),
+        previousAdamParams.modelParams, this.regularizer)
+
+      val printMiniBatchUnit = ((numExamples / op.getMiniBatchSize).toInt / 10).toInt
+      if (miniBatchTime % printMiniBatchUnit == 0)
+        logger.info("Iteration: " + iteration + "|=" + "=" * (miniBatchTime / 10) + ">> Cost: " + cost)
+      costHistory.+=(cost)
+
+      val backwardResList = backward(batchLabel, forwardResList,
+        previousAdamParams.modelParams, this.regularizer)
+      op.updateParams(previousAdamParams.modelParams, previousAdamParams.momentumParams,
+        previousAdamParams.adamParams, this.learningRate, backwardResList, iteration,
+        miniBatchTime, this.allLayers)
+    }.modelParams
+
+    val forwardRes = forward(feature, trainedParams)
+    val totalCost = calCost(label, forwardRes.last.yCurrent(::, 0), trainedParams, this.regularizer)
+    logger.info("Cost on the entire training set: " + totalCost)
+
+    trainedParams
+  }
+
+  private def trainWithoutMomentum(feature: DenseMatrix[Double],
+                                   label: DenseVector[Double],
+                                   op: Optimizer): NNParams = {
+    val numExamples = feature.rows
+    val inputDim = feature.cols
+
+    val initParams = this.weightsInitializer.init(inputDim, this.allLayers)
+
+    val iterationWithMiniBatches = getIterationWithMiniBatches(feature, label, this.iterationTime, op)
+
+    val trainedParams = iterationWithMiniBatches
+      .foldLeft[NNParams](initParams){(previousParams, batchIteration) =>
+
+      val iteration = batchIteration._1
+      val batchFeature = batchIteration._2
+      val batchLabel = batchIteration._3
+      val miniBatchTime = batchIteration._4
+
+      val forwardResList = forward(batchFeature, previousParams)
+      val cost = calCost(batchLabel, forwardResList.last.yCurrent(::, 0), previousParams, this.regularizer)
+
+      if (miniBatchTime % 10 == 0)
+        logger.info("Iteration: " + iteration + "|=" + "=" * (miniBatchTime / 10) + ">> Cost: " + cost)
+      costHistory.+=(cost)
+
+      val backwardResList = backward(batchLabel, forwardResList, previousParams, this.regularizer)
+      op.updateParams(previousParams, this.learningRate, backwardResList, iteration, miniBatchTime, this.allLayers)
+    }
+
+    val forwardRes = forward(feature, trainedParams)
+    val totalCost = calCost(label, forwardRes.last.yCurrent(::, 0), trainedParams, this.regularizer)
+    logger.info("Cost on the entire training set: " + totalCost)
+
+    trainedParams
+  }
+
+  private def getIterationWithMiniBatches(feature: DenseMatrix[Double],
+                                          label: DenseVector[Double],
+                                          iterationTime: Int,
+                                          op: Optimizer): Iterator[(Int, DenseMatrix[Double], DenseVector[Double], Int)] = {
+
+    (0 until iterationTime)
+      .toIterator
+      .map{iteration =>
+        val minibatches = op
+          .getMiniBatches(feature, label)
+          .zipWithIndex
+
+        minibatches
+          .map{minibatch =>
+            val miniBatchFeature = minibatch._1._1
+            val miniBatchLabel = minibatch._1._2
+            val miniBatchTime = minibatch._2
+            (iteration, miniBatchFeature, miniBatchLabel, miniBatchTime)
+          }
+      }
+      .flatten
   }
 
 }
