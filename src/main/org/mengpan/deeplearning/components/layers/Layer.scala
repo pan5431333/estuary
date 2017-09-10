@@ -20,6 +20,8 @@ trait Layer{
 
 
   def setNumHiddenUnits(numHiddenUnits: Int): this.type = {
+    assert(numHiddenUnits > 0, "Number of hidden units must be positive.")
+
     this.numHiddenUnits = numHiddenUnits
     this
   }

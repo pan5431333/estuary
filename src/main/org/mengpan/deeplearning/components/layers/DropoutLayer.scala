@@ -14,6 +14,8 @@ class DropoutLayer extends Layer{
   protected var dropoutRate: Double = _
 
   def setDropoutRate(dropoutRate: Double): this.type = {
+    assert(dropoutRate <= 1 && dropoutRate >= 0, "dropout rate must be between 0 and 1")
+
     this.dropoutRate = dropoutRate
     this
   }
@@ -67,5 +69,13 @@ class DropoutLayer extends Layer{
     val dW = null
     val dB = null
     new BackwardRes(dYPrevious, dW, dB)
+  }
+}
+
+object DropoutLayer {
+  def apply(numHiddenUnits: Int, dropoutRate: Double): DropoutLayer = {
+    new DropoutLayer()
+      .setNumHiddenUnits(numHiddenUnits)
+      .setDropoutRate(dropoutRate)
   }
 }

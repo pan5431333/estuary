@@ -23,3 +23,10 @@ class L1Regularizer extends Regularizer{
     w.map(e => if (e > 0) 1.0 else if (e < 0) -1.0 else 0.0)
   }
 }
+
+object L1Regularizer {
+  def apply(lambda: Double): L1Regularizer = {
+    new L1Regularizer()
+      .setLambda(lambda)
+  }
+}

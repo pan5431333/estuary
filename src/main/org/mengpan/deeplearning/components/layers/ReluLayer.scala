@@ -24,3 +24,10 @@ class ReluLayer extends Layer{
   }
 }
 
+object ReluLayer {
+  def apply(numHiddenUnits: Int): ReluLayer = {
+    new ReluLayer()
+      .setNumHiddenUnits(numHiddenUnits)
+  }
+}
+

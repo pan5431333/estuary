@@ -9,36 +9,18 @@ import org.mengpan.deeplearning.utils.{DebugUtils, ResultUtils}
 /**
   * Created by mengpan on 2017/9/10.
   */
-class AdamOptimizer extends Optimizer{
-  override protected var miniBatchSize: Int = _
-  protected var momentum: Double = 0.9
-  protected var adamParam: Double = 0.999
-
-  def setMiniBatchSize(miniBatchSize: Int): this.type = {
-    this.miniBatchSize = miniBatchSize
-    this
-  }
-
-  def getMiniBatchSize: Int = this.miniBatchSize
-
-  def setMomentumRate(momentum: Double): this.type = {
-    this.momentum = momentum
-    this
-  }
-
-  def setAdamParam(adamRate: Double): this.type = {
-    this.adamParam = adamRate
-    this
-  }
+class AdamOptimizer extends Optimizer with MiniBatchable with Heuristic{
+  protected var momentumRate: Double = 0.9
+  protected var adamRate: Double = 0.999
 
   def updateParams(paramsList: List[(DenseMatrix[Double], DenseVector[Double])],
-                            previousMomentum: List[(DenseMatrix[Double], DenseVector[Double])],
-                            previousAdam: List[(DenseMatrix[Double], DenseVector[Double])],
-                            learningrate: Double,
-                            backwardResList: List[ResultUtils.BackwardRes],
-                            iterationTime: Int,
-                            miniBatchTime: Double,
-                            layers: List[Layer]): AdamOptimizationParams = {
+                   previousMomentum: List[(DenseMatrix[Double], DenseVector[Double])],
+                   previousAdam: List[(DenseMatrix[Double], DenseVector[Double])],
+                   learningrate: Double,
+                   backwardResList: List[ResultUtils.BackwardRes],
+                   iterationTime: Int,
+                   miniBatchTime: Double,
+                   layers: List[Layer]): AdamOptimizationParams = {
 
     val updatedParams = paramsList
       .zip(backwardResList)
@@ -59,15 +41,15 @@ class AdamOptimizer extends Optimizer{
             val dw = backwardRes.dWCurrent
             val db = backwardRes.dBCurrent
 
-            val vW = (this.momentum * momentum._1 + (1.0 - this.momentum) * dw)
-            val vB = (this.momentum * momentum._2 + (1.0 - this.momentum) * db)
-            val vWCorrected = vW / (1 - pow(this.momentum, miniBatchTime.toInt + 1))
-            val vBCorrected = vB / (1 - pow(this.momentum, miniBatchTime.toInt + 1))
+            val vW = (this.momentumRate * momentum._1 + (1.0 - this.momentumRate) * dw)
+            val vB = (this.momentumRate * momentum._2 + (1.0 - this.momentumRate) * db)
+            val vWCorrected = vW / (1 - pow(this.momentumRate, miniBatchTime.toInt + 1))
+            val vBCorrected = vB / (1 - pow(this.momentumRate, miniBatchTime.toInt + 1))
 
-            val aW = (this.adamParam * adam._1 + (1.0 - this.adamParam) * pow(dw, 2))
-            val aB = (this.adamParam * adam._2 + (1.0 - this.adamParam) * pow(db, 2))
-            val aWCorrected = aW / (1 - pow(this.adamParam, miniBatchTime.toInt + 1))
-            val aBCorrected = aB / (1 - pow(this.adamParam, miniBatchTime.toInt + 1))
+            val aW = (this.adamRate * adam._1 + (1.0 - this.adamRate) * pow(dw, 2))
+            val aB = (this.adamRate * adam._2 + (1.0 - this.adamRate) * pow(db, 2))
+            val aWCorrected = aW / (1 - pow(this.adamRate, miniBatchTime.toInt + 1))
+            val aBCorrected = aB / (1 - pow(this.adamRate, miniBatchTime.toInt + 1))
 
             logger.debug(DebugUtils.matrixShape(w, "w"))
             logger.debug(DebugUtils.matrixShape(dw, "dw"))
@@ -88,4 +70,13 @@ class AdamOptimizer extends Optimizer{
   }
 
 
+}
+
+object AdamOptimizer{
+  def apply(miniBatchSize: Int = 64, momentumRate: Double = 0.9, adamRate: Double = 0.999): AdamOptimizer = {
+    new AdamOptimizer()
+      .setMiniBatchSize(miniBatchSize)
+      .setAdamRate(adamRate)
+      .setMomentumRate(momentumRate)
+  }
 }

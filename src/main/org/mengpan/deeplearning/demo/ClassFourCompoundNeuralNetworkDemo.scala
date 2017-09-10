@@ -8,7 +8,7 @@ import org.mengpan.deeplearning.components.regularizer.{L1Regularizer, L2Regular
 import org.mengpan.deeplearning.data.GasCensor
 import org.mengpan.deeplearning.helper.{CatDataHelper, DlCollection, GasCensorDataHelper}
 import org.mengpan.deeplearning.model.{Model, NeuralNetworkModel}
-import org.mengpan.deeplearning.utils.{MyDict, NormalizeUtils, PlotUtils}
+import org.mengpan.deeplearning.utils.{NormalizeUtils, PlotUtils}
 
 /**
   * Created by mengpan on 2017/8/15.
@@ -34,20 +34,24 @@ object ClassFourCompoundNeuralNetworkDemo extends App{
   val testLabel = test.getLabelAsVector
 
   //初始化算法模型
-  val nnModel: Model = new NeuralNetworkModel()
-    .setWeightsInitializer(HeInitializer)
-    .setRegularizer(new L2Regularizer().setLambda(0.0))
-    .setOptimizer{
-      new AdamOptimizer().setMiniBatchSize(64).setMomentumRate(0.9).setAdamParam(0.999)
-//        new SGDOptimizer().setMiniBatchSize(64)
-    }
-    .setHiddenLayerStructure(List(
-      new ReluLayer().setNumHiddenUnits(400),
-      new ReluLayer().setNumHiddenUnits(200)
-    ))
-    .setOutputLayerStructure(new SigmoidLayer().setNumHiddenUnits(1))
-    .setLearningRate(0.001)
-    .setIterationTime(100)
+//  val nnModel: Model = new NeuralNetworkModel()
+//    .setWeightsInitializer(HeInitializer)
+//    .setRegularizer(new L2Regularizer().setLambda(0.0))
+//    .setOptimizer{
+//      new AdamOptimizer().setMiniBatchSize(64).setMomentumRate(0.9).setAdamRate(0.999)
+////        new SGDOptimizer().setMiniBatchSize(64)
+//    }
+//    .setHiddenLayerStructure(List(
+//      new ReluLayer().setNumHiddenUnits(400),
+//      new DropoutLayer().setDropoutRate(0.5),
+//      new ReluLayer().setNumHiddenUnits(200)
+//    ))
+//    .setOutputLayerStructure(new SigmoidLayer().setNumHiddenUnits(1))
+//    .setLearningRate(0.001)
+//    .setIterationTime(30)
+
+  //API 2nd version
+  val nnModel = NeuralNetworkModel(List(ReluLayer(200), ReluLayer(100)), SigmoidLayer(1))
 
   //用训练集的数据训练算法
   val trainedModel: Model = nnModel.train(trainingFeature, trainingLabel)

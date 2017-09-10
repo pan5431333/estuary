@@ -5,7 +5,6 @@ import javax.imageio.ImageIO
 
 import breeze.linalg.DenseVector
 import org.apache.log4j.Logger
-import org.mengpan.deeplearning.helper.CatDataHelper.logger
 
 /**
   * Created by mengpan on 2017/9/10.
@@ -37,7 +36,7 @@ object ImageReader {
       val flattenFeature = red ::: green ::: blue ::: Nil
 
       val resVector = DenseVector(flattenFeature.toArray)
-      Some(resVector(200 to 400))
+      Some(resVector)
     } catch {
       case _: Exception => None
     }

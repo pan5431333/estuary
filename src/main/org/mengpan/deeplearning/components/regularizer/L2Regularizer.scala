@@ -22,3 +22,10 @@ class L2Regularizer extends Regularizer{
   override def getReguCostGrad(w: DenseMatrix[Double], numExamples: Int):
   DenseMatrix[Double] = this.lambda * w / numExamples.toDouble
 }
+
+object L2Regularizer {
+  def apply(lambda: Double): L2Regularizer = {
+    new L2Regularizer()
+      .setLambda(lambda)
+  }
+}
