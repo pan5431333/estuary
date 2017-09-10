@@ -73,66 +73,13 @@ class NeuralNetworkModel extends Model{
   }
 
 
-  override def train(feature: DenseMatrix[Double], label: DenseVector[Double]):
-  NeuralNetworkModel.this.type = {
+  override def train(feature: DenseMatrix[Double],
+                     label: DenseVector[Double]): NeuralNetworkModel.this.type = {
 
     this.paramsList = this.optimizer match {
       case op: AdamOptimizer => trainWithMomentumAndAdam(feature, label, op)
       case op => trainWithoutMomentum(feature, label, op)
     }
-
-
-//    val numExamples = feature.rows
-//    val inputDim = feature.cols
-//
-//    //1. initialize parameters
-//    val initParams = this.weightsInitializer.init(inputDim, this.allLayers)
-//
-//    //2. divide the dataset into multiple mini-batch datasets
-//    val miniBatchesData: List[(DenseMatrix[Double], DenseVector[Double])] =
-//      this.optimizer.getMiniBatches(feature, label)
-//
-//    val initMomentum: NNParams = this.optimizer.init(inputDim, this.allLayers)
-//    val initAdam: NNParams = initMomentum
-//
-//    this.paramsList =
-//      (0 until this.iterationTime) //3. iteration
-//        .map{iterationTime =>
-//          miniBatchesData
-//          .zipWithIndex
-//          .map{f =>
-//            val feature = f._1._1
-//            val label = f._1._2
-//            val miniBatchTime = f._2
-//            (iterationTime, feature, label, miniBatchTime)
-//          }
-//        }
-//        .flatten
-//        .foldLeft[(NNParams, NNParams, NNParams)]((initParams, initMomentum, initAdam)){
-//        (previous, x) =>
-//          val (iterationTime, feature, label, miniBatchTime) = x
-//
-//          //3. forward
-//          val previousParams = previous._1
-//          val previousMomentum = previous._2
-//          val previousAdam = previous._3
-//          val forwardResList = forward(feature, previousParams)
-//
-//          //4. calculate cost
-//          val cost = calCost(label, forwardResList.last.yCurrent(::, 0), previousParams, this.regularizer)
-//
-//          //record cost history
-//          logger.info("Epoch time: " + iterationTime + " " + "=" * (miniBatchTime/10).toInt + ">> cost: " + cost)
-//          costHistory.+=(cost)
-//
-//          //5. backward
-//          val backwardResList = backward(label, forwardResList, previousParams, this.regularizer)
-//
-//          //6. update parameters
-//          this.optimizer.updateParams(previousParams, previousMomentum, previousAdam,
-//            this.learningRate, backwardResList, iterationTime, miniBatchTime, this.allLayers)
-//      }
-//      ._1
 
     this
   }
@@ -145,8 +92,7 @@ class NeuralNetworkModel extends Model{
   }
 
   private def forward(feature: DenseMatrix[Double],
-                        params: List[(DenseMatrix[Double],
-                          DenseVector[Double])]): List[ForwardRes] = {
+                      params: List[(DenseMatrix[Double], DenseVector[Double])]): List[ForwardRes] = {
 
     val initForwardRes = ForwardRes(null, null, feature)
     params
@@ -164,8 +110,7 @@ class NeuralNetworkModel extends Model{
   }
 
   private def forwardWithoutDropout(feature: DenseMatrix[Double],
-                                      params: NNParams):
-  List[ForwardRes] = {
+                                    params: NNParams): List[ForwardRes] = {
 
     val initForwardRes = ForwardRes(null, null, feature)
     params
@@ -190,6 +135,7 @@ class NeuralNetworkModel extends Model{
   private def calCost(label: DenseVector[Double], predicted: DenseVector[Double],
                       paramsList: NNParams,
                       regularizer: Regularizer): Double = {
+
     val originalCost = -(label.t * log(predicted + pow(10.0, -9)) + (1.0 - label).t * log(1.0 - predicted + pow(10.0, -9))) / label.length.toDouble
     val reguCost = regularizer.getReguCost(paramsList)
 
@@ -200,6 +146,7 @@ class NeuralNetworkModel extends Model{
                        forwardResList: List[ResultUtils.ForwardRes],
                        paramsList: NNParams,
                        regularizer: Regularizer): List[BackwardRes] = {
+
     val yPredicted = forwardResList.last.yCurrent(::, 0)
     val numExamples = label.length
 
@@ -258,7 +205,7 @@ class NeuralNetworkModel extends Model{
       val cost = calCost(batchLabel, forwardResList.last.yCurrent(::, 0),
         previousAdamParams.modelParams, this.regularizer)
 
-      val printMiniBatchUnit = ((numExamples / op.getMiniBatchSize).toInt / 10).toInt
+      val printMiniBatchUnit = ((numExamples / op.getMiniBatchSize).toInt / 5).toInt
       if (miniBatchTime % printMiniBatchUnit == 0)
         logger.info("Iteration: " + iteration + "|=" + "=" * (miniBatchTime / 10) + ">> Cost: " + cost)
       costHistory.+=(cost)
