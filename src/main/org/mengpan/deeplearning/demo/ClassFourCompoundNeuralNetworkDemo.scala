@@ -2,7 +2,7 @@ package org.mengpan.deeplearning.demo
 
 import breeze.stats.{mean, stddev}
 import org.mengpan.deeplearning.components.initializer.HeInitializer
-import org.mengpan.deeplearning.components.layers.{DropoutLayer, ReluLayer, SigmoidLayer}
+import org.mengpan.deeplearning.components.layers.{DropoutLayer, ReluLayer, SigmoidLayer, SoftmaxLayer}
 import org.mengpan.deeplearning.components.optimizer.{AdamOptimizer, GDOptimizer, SGDOptimizer}
 import org.mengpan.deeplearning.components.regularizer.{L1Regularizer, L2Regularizer}
 import org.mengpan.deeplearning.data.GasCensor
@@ -34,24 +34,24 @@ object ClassFourCompoundNeuralNetworkDemo extends App{
   val testLabel = test.getLabelAsVector
 
   //初始化算法模型
-//  val nnModel: Model = new NeuralNetworkModel()
-//    .setWeightsInitializer(HeInitializer)
-//    .setRegularizer(new L2Regularizer().setLambda(0.0))
-//    .setOptimizer{
-//      new AdamOptimizer().setMiniBatchSize(64).setMomentumRate(0.9).setAdamRate(0.999)
-////        new SGDOptimizer().setMiniBatchSize(64)
-//    }
-//    .setHiddenLayerStructure(List(
-//      new ReluLayer().setNumHiddenUnits(400),
-//      new DropoutLayer().setDropoutRate(0.5),
-//      new ReluLayer().setNumHiddenUnits(200)
-//    ))
-//    .setOutputLayerStructure(new SigmoidLayer().setNumHiddenUnits(1))
-//    .setLearningRate(0.001)
-//    .setIterationTime(30)
+  val nnModel: Model = new NeuralNetworkModel()
+    .setWeightsInitializer(HeInitializer)
+    .setRegularizer(new L2Regularizer().setLambda(0.0))
+    .setOptimizer{
+      new AdamOptimizer().setMiniBatchSize(64).setMomentumRate(0.9).setAdamRate(0.999)
+//      GDOptimizer
+    }
+    .setHiddenLayerStructure(List(
+      new ReluLayer().setNumHiddenUnits(400),
+      new DropoutLayer().setDropoutRate(0.5),
+      new ReluLayer().setNumHiddenUnits(200)
+    ))
+    .setOutputLayerStructure(new SoftmaxLayer().setNumHiddenUnits(2))
+    .setLearningRate(0.0001)
+    .setIterationTime(10)
 
   //API 2nd version
-  val nnModel = NeuralNetworkModel(List(ReluLayer(200), ReluLayer(100)), SigmoidLayer(1))
+//  val nnModel = NeuralNetworkModel(List(ReluLayer(200), ReluLayer(100)), SigmoidLayer(1))
 
   //用训练集的数据训练算法
   val trainedModel: Model = nnModel.train(trainingFeature, trainingLabel)

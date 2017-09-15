@@ -58,13 +58,15 @@ object CatDataHelper {
       .map{label =>
       val numLabel = label._2 match {
         case "cat" => 1
-        case "automobile" => 0
-        case _ => 2
+        case "frog" => 2
+        case "truck" => 3
+        case "automobile" => 4
+        case _ => 0
       }
       (label._1, numLabel)
     }
       .filter{label =>
-        label._2 != 2
+        label._2 != 0
       }
   }
 

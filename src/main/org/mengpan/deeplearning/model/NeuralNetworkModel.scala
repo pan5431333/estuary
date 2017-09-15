@@ -1,5 +1,5 @@
 package org.mengpan.deeplearning.model
-import breeze.linalg.{DenseMatrix, DenseVector}
+import breeze.linalg.{DenseMatrix, DenseVector, max, sum}
 import breeze.numerics.{log, pow}
 import org.apache.log4j.Logger
 import org.mengpan.deeplearning.components.caseclasses.AdamOptimizationParams
@@ -29,6 +29,8 @@ class NeuralNetworkModel extends Model{
 
   type NNParams = List[(DenseMatrix[Double], DenseVector[Double])] //Neural Network Model parameters, consisting of List[(w, b)]
   var paramsList: NNParams = null
+
+  private var labelsMapping: List[Double] = _
 
   def setHiddenLayerStructure(hiddenLayers: List[Layer]): this.type = {
     if (hiddenLayers.isEmpty) {
@@ -80,10 +82,12 @@ class NeuralNetworkModel extends Model{
     */
   override def train(feature: DenseMatrix[Double],
                      label: DenseVector[Double]): NeuralNetworkModel.this.type = {
+    val labelMatrix: DenseMatrix[Double] = convertVectorToMatrix(label)
+    this.outputLayer.setNumHiddenUnits(this.labelsMapping.size)
 
     this.paramsList = this.optimizer match {
-      case op: AdamOptimizer => trainByAdam(feature, label, op)
-      case op: NonHeuristic => trainWithoutMomentum(feature, label, op)
+      case op: AdamOptimizer => trainByAdam(feature, labelMatrix, op)
+      case op: NonHeuristic => trainWithoutMomentum(feature, labelMatrix, op)
     }
 
     this
@@ -100,9 +104,16 @@ class NeuralNetworkModel extends Model{
     assert(this.paramsList.head._1.rows == feature.cols, "Prediction's features' dimension is not as the same as trained features'")
 
     val forwardResList: List[ForwardRes] = forwardWithoutDropout(feature, this.paramsList)
-    forwardResList.last.yCurrent(::, 0).map{yHat =>
-      if (yHat > 0.5) 1.0 else 0.0
+    val predicted = forwardResList.last.yCurrent
+    val predictedMatrix = DenseMatrix.zeros[Double](feature.rows, predicted.cols)
+    for (i <- 0 until predicted.rows) {
+      val sliced = predicted(i, ::)
+      val maxRow = max(sliced)
+      predictedMatrix(i, ::) := sliced.t.map(d => if (d == maxRow) 1.0 else 0.0).t
     }
+
+    val predictedVector = convertMatrixToVector(predictedMatrix, this.labelsMapping)
+    predictedVector
   }
 
   /**
@@ -171,8 +182,8 @@ class NeuralNetworkModel extends Model{
 
   /**
     * Calculate value of the cost function, consisting the sum of cross-entropy cost and regularization cost.
-    * @param label True label vector, of length numExamples.
-    * @param predicted Predicted label vector, of length numExamples.
+    * @param label True transformed label matrix, of shape (numExamples, numOutputUnits)
+    * @param predicted Predicted label matrix, of shape (numExamples, numOutputUnits)
     * @param paramsList Model parameters of the form List((w, b)), used for calculating regularization cost,
     *                   where w is of shape (d(L-1), d(L)) and b of (d(L)) for Lth layer
     *                   where d(L) is the number of hidden units in Lth layer.
@@ -180,14 +191,13 @@ class NeuralNetworkModel extends Model{
     *                    Potential candidates: VoidRegularizer, new L1Regularizer, new L2Regularizer
     * @return value of the cost function.
     */
-  private def calCost(label: DenseVector[Double], predicted: DenseVector[Double],
+  private def calCost(label: DenseMatrix[Double], predicted: DenseMatrix[Double],
                       paramsList: NNParams,
                       regularizer: Regularizer): Double = {
-
-    val originalCost = -(label.t * log(predicted + 1E-9) + (1.0 - label).t * log(1.0 - predicted + 1E-9)) / label.length.toDouble
+    val originalCost = - sum(label *:* log(predicted + 1E-9)) / label.rows.toDouble
     val reguCost = regularizer.getReguCost(paramsList)
 
-    originalCost + regularizer.lambda * reguCost / label.length.toDouble
+    originalCost + regularizer.lambda * reguCost / label.rows.toDouble
   }
 
   /**
@@ -204,32 +214,23 @@ class NeuralNetworkModel extends Model{
     *         dBCurrent = dZCurrent.t * OneColumnVector / numExamples,
     *         dYPrevious = dZCurrent * wCurrent.t
     */
-  private def backward(label: DenseVector[Double],
+  private def backward(label: DenseMatrix[Double],
                        forwardResList: List[ResultUtils.ForwardRes],
                        paramsList: NNParams,
                        regularizer: Regularizer): List[BackwardRes] = {
 
-    val yPredicted = forwardResList.last.yCurrent(::, 0)
-    val numExamples = label.length
+    val yPredicted = forwardResList.last.yCurrent
+    val numExamples = label.rows
 
-    val dYPredicted = -(label /:/ (yPredicted + 1E-9) - (1.0 - label) /:/ (1.0 - yPredicted + 1E-9)) // gradients of cross-entropy function.
-
-    //dYHat should be a matrix in the following calculation, but it's just a vector. So convert a vector to a (n, 1) matrix
-    val dYHat = DenseMatrix.zeros[Double](numExamples, 1)
-    dYHat(::, 0) := dYPredicted
-
-    val initBackwardRes = BackwardRes(dYHat, null, null) // constructing a BackwardRes for cost function.
+    //HACK!
+    val initBackwardRes = BackwardRes(label, null, null)
 
     paramsList
       .zip(this.allLayers)
       .zip(forwardResList)
       .scanRight[BackwardRes, List[BackwardRes]](initBackwardRes){
-      (f, previousBackwardRes) =>
+      case ((((w, b), layer), forwardRes), previousBackwardRes) =>
         val dYCurrent = previousBackwardRes.dYPrevious
-
-        val (w, b) = f._1._1
-        val layer = f._1._2
-        val forwardRes = f._2
 
         val backwardRes = layer.backward(dYCurrent, forwardRes, w, b)
 
@@ -252,7 +253,7 @@ class NeuralNetworkModel extends Model{
     * @return Updated list of model parameters, of the form List((w, b)).
     */
   private def trainByAdam(feature: DenseMatrix[Double],
-                                       label: DenseVector[Double],
+                                       label: DenseMatrix[Double],
                                        op: AdamOptimizer): NNParams = {
     val numExamples = feature.rows
     val inputDim = feature.cols
@@ -262,31 +263,29 @@ class NeuralNetworkModel extends Model{
     val initAdam = op.initMomentumOrAdam(inputDim, this.allLayers)
     val initParams = AdamOptimizationParams(initModelParams, initMomentum, initAdam) //Combine model parameters, momentum and adam into one case class. Convenient for the following foldLeft operation.
 
-    //TODO refactor mini-batches datasets to Iterator, NOT a List, for saving the storage memory.
     val iterationWithMiniBatches = getIterationWithMiniBatches(feature, label, this.iterationTime, op)
 
-    val trainedParams = iterationWithMiniBatches
-      .foldLeft[AdamOptimizationParams](initParams){(previousAdamParams, batchData) =>
-      val iteration = batchData._1
-      val batchFeature = batchData._2
-      val batchLabel = batchData._3
-      val miniBatchTime = batchData._4
+    val trainedParams = iterationWithMiniBatches.foldLeft(initModelParams){
+      case (previousParams, (iteration, batches)) =>
+        val initParams = AdamOptimizationParams(previousParams, initMomentum, initAdam)
+        batches.zipWithIndex.foldLeft[AdamOptimizationParams](initParams){
+          case (previousAdamParams, ((batchFeature, batchLabel), miniBatchTime)) =>
+            val forwardResList = forward(batchFeature, previousAdamParams.modelParams)
+            val cost = calCost(batchLabel, forwardResList.last.yCurrent,
+              previousAdamParams.modelParams, this.regularizer)
 
-      val forwardResList = forward(batchFeature, previousAdamParams.modelParams)
-      val cost = calCost(batchLabel, forwardResList.last.yCurrent(::, 0),
-        previousAdamParams.modelParams, this.regularizer)
+            val printMiniBatchUnit = ((numExamples / op.getMiniBatchSize).toInt / 5).toInt //for each iteration, only print minibatch cost FIVE times.
+            if (miniBatchTime % printMiniBatchUnit == 0)
+              logger.info("Iteration: " + iteration + "|=" + "=" * (miniBatchTime / 10) + ">> Cost: " + cost)
+            costHistory.+=(cost)
 
-      val printMiniBatchUnit = ((numExamples / op.getMiniBatchSize).toInt / 5).toInt //for each iteration, only print minibatch cost FIVE times.
-      if (miniBatchTime % printMiniBatchUnit == 0)
-        logger.info("Iteration: " + iteration + "|=" + "=" * (miniBatchTime / 10) + ">> Cost: " + cost)
-      costHistory.+=(cost)
-
-      val backwardResList = backward(batchLabel, forwardResList, previousAdamParams.modelParams, this.regularizer)
-      op.updateParams(previousAdamParams.modelParams, previousAdamParams.momentumParams, previousAdamParams.adamParams, this.learningRate, backwardResList, iteration, miniBatchTime, this.allLayers)
-    }.modelParams
+            val backwardResList = backward(batchLabel, forwardResList, previousAdamParams.modelParams, this.regularizer)
+            op.updateParams(previousAdamParams.modelParams, previousAdamParams.momentumParams, previousAdamParams.adamParams, this.learningRate, backwardResList, iteration, miniBatchTime, this.allLayers)
+        }.modelParams
+    }
 
     val forwardRes = forward(feature, trainedParams)
-    val totalCost = calCost(label, forwardRes.last.yCurrent(::, 0), trainedParams, this.regularizer) //Cost on the entire training set.
+    val totalCost = calCost(label, forwardRes.last.yCurrent, trainedParams, this.regularizer) //Cost on the entire training set.
     logger.info("Cost on the entire training set: " + totalCost)
 
     trainedParams
@@ -300,74 +299,110 @@ class NeuralNetworkModel extends Model{
     * @return Updated list of model parameters, of the form List((w, b)).
     */
   private def trainWithoutMomentum(feature: DenseMatrix[Double],
-                                   label: DenseVector[Double],
+                                   label: DenseMatrix[Double],
                                    op: NonHeuristic): NNParams = {
     val numExamples = feature.rows
     val inputDim = feature.cols
 
     val initParams = this.weightsInitializer.init(inputDim, this.allLayers)
 
-    //TODO refactor mini-batches data sets to Iterator, NOT a List, for saving storage memory.
     val iterationWithMiniBatches = op match {
       case op: MiniBatchable => getIterationWithMiniBatches(feature, label, this.iterationTime, op)
       case _ => getIterationWithOneBatch(feature, label, this.iterationTime)
     }
 
-    val trainedParams = iterationWithMiniBatches
-      .foldLeft[NNParams](initParams){(previousParams, batchIteration) =>
+    val trainedParams = iterationWithMiniBatches.foldLeft(initParams){
+      case (previousParams, (iteration, batch)) =>
+        batch.zipWithIndex.foldLeft(previousParams){
+          case (previousBatchParams, ((batchFeature, batchLabel), miniBatchTime)) =>
+            val fordwardResList = forward(batchFeature, previousBatchParams)
+            val cost = calCost(batchLabel, fordwardResList.last.yCurrent, previousBatchParams, this.regularizer)
 
-      val iteration = batchIteration._1
-      val batchFeature = batchIteration._2
-      val batchLabel = batchIteration._3
-      val miniBatchTime = batchIteration._4
+            if (miniBatchTime % 10 == 0)
+              logger.info("Iteration: " + iteration + "|=" + "=" * (miniBatchTime / 10) + ">> Cost: " + cost)
+            costHistory.+=(cost)
 
-      val forwardResList = forward(batchFeature, previousParams)
-      val cost = calCost(batchLabel, forwardResList.last.yCurrent(::, 0), previousParams, this.regularizer)
-
-      if (miniBatchTime % 10 == 0)
-        logger.info("Iteration: " + iteration + "|=" + "=" * (miniBatchTime / 10) + ">> Cost: " + cost)
-      costHistory.+=(cost)
-
-      val backwardResList = backward(batchLabel, forwardResList, previousParams, this.regularizer)
-      op.updateParams(previousParams, this.learningRate, backwardResList, iteration, this.allLayers)
+            val backwardResList = backward(batchLabel, fordwardResList, previousBatchParams, this.regularizer)
+            op.updateParams(previousBatchParams, this.learningRate, backwardResList, iteration, this.allLayers)
+        }
     }
 
     val forwardRes = forward(feature, trainedParams)
-    val totalCost = calCost(label, forwardRes.last.yCurrent(::, 0), trainedParams, this.regularizer) //Cost on the entire training set.
+    val totalCost = calCost(label, forwardRes.last.yCurrent, trainedParams, this.regularizer) //Cost on the entire training set.
     logger.info("Cost on the entire training set: " + totalCost)
 
     trainedParams
   }
 
   private def getIterationWithMiniBatches(feature: DenseMatrix[Double],
-                                          label: DenseVector[Double],
+                                          label: DenseMatrix[Double],
                                           iterationTime: Int,
-                                          op: MiniBatchable): Iterator[(Int, DenseMatrix[Double], DenseVector[Double], Int)] = {
+                                          op: MiniBatchable): Iterator[(Int, Iterator[(DenseMatrix[Double], DenseMatrix[Double])])] = {
 
     (0 until iterationTime)
       .toIterator
       .map{iteration =>
         val minibatches = op
           .getMiniBatches(feature, label)
-          .zipWithIndex
 
-        minibatches
-          .map{minibatch =>
-            val miniBatchFeature = minibatch._1._1
-            val miniBatchLabel = minibatch._1._2
-            val miniBatchTime = minibatch._2
-            (iteration, miniBatchFeature, miniBatchLabel, miniBatchTime)
-          }
+        (iteration, minibatches)
       }
-      .flatten
+
   }
 
-  private def getIterationWithOneBatch(feature: DenseMatrix[Double], label: DenseVector[Double], iterTimes: Int): Iterator[(Int, DenseMatrix[Double], DenseVector[Double], Int)] = {
+  private def getIterationWithOneBatch(feature: DenseMatrix[Double], label: DenseMatrix[Double], iterTimes: Int): Iterator[(Int, Iterator[(DenseMatrix[Double], DenseMatrix[Double])])] = {
     (0 until iterTimes)
       .toIterator
       .map{iter =>
-        (iter, feature, label, 0)
+        (iter, Iterator((feature, label)))
       }
+  }
+
+  /**
+    * Convert labels in a single vector to a matrix.
+    * e.g. Vector(0, 1, 0, 1) => Matrix(Vector(1, 0, 1, 0), Vector(0, 1, 0, 1))
+    * Vector(0, 1, 2) => Matrix(Vector(1, 0, 0), Vector(0, 1, 0), Vector(0, 0, 1))
+    * @param labelVector
+    * @return
+    */
+  private def convertVectorToMatrix(labelVector: DenseVector[Double]): DenseMatrix[Double] = {
+    val labels = labelVector.toArray.toSet.toList.sorted //distinct elelents by toSet.
+    this.labelsMapping = labels
+
+    val numLabels = labels.size
+    val res = DenseMatrix.zeros[Double](labelVector.length, numLabels)
+
+    for ((label, i) <- labels.zipWithIndex) {
+      val helperVector = DenseVector.ones[Double](labelVector.length) * label
+      res(::, i) := elementWiseEqualCompare(labelVector, helperVector)
+    }
+    res
+  }
+
+  private def convertMatrixToVector(labelMatrix: DenseMatrix[Double], labelsMapping: List[Double]): DenseVector[Double] = {
+    val labelsMappingVec = labelsMapping.toVector
+
+    val res = DenseVector.zeros[Double](labelMatrix.rows)
+
+    for (i <- 0 until labelMatrix.cols) {
+      res :+= labelMatrix(::, i) * labelsMappingVec(i)
+    }
+    res
+  }
+
+  /**
+    * Compare two vector for equality in element-wise.
+    * e.g. a = Vector(1, 2, 3), b = Vector(1, 0, 0), then return Vector(1, 0, 0)
+    * @param a
+    * @param b
+    * @return
+    */
+  private def elementWiseEqualCompare(a: DenseVector[Double], b: DenseVector[Double]): DenseVector[Double] = {
+    assert(a.length == b.length, "a.length != b.length")
+    val compareArr = a.toArray.zip(b.toArray).map{case (i, j) =>
+      if (i == j) 1.0 else 0.0
+    }
+    DenseVector(compareArr)
   }
 
 }

@@ -11,7 +11,7 @@ import org.mengpan.deeplearning.utils.{ActivationUtils, DebugUtils}
 trait Layer{
   private val logger = Logger.getLogger("Layer")
 
-  var numHiddenUnits: Int
+  var numHiddenUnits: Int = _
 //  protected var activationFunc: Byte
 
   protected def activationFuncEval(zCurrent: DenseMatrix[Double]): DenseMatrix[Double]

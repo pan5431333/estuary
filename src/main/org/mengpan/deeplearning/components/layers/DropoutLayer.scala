@@ -8,8 +8,6 @@ import org.mengpan.deeplearning.utils.{MyDict, ResultUtils}
   * Created by mengpan on 2017/9/7.
   */
 class DropoutLayer extends Layer{
-  override var numHiddenUnits: Int = _
-//  protected override var activationFunc: Byte = MyDict.ACTIVATION_DROPOUT
 
   protected var dropoutRate: Double = _
 

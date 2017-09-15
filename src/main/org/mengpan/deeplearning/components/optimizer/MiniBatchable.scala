@@ -1,6 +1,6 @@
 package org.mengpan.deeplearning.components.optimizer
 
-import breeze.linalg.{DenseMatrix, DenseVector}
+import breeze.linalg.{DenseMatrix, DenseVector, min}
 
 import scala.util.Random
 
@@ -20,7 +20,7 @@ trait MiniBatchable {
   def getMiniBatchSize: Int = this.miniBatchSize
 
   def getMiniBatches(feature: DenseMatrix[Double],
-                     label: DenseVector[Double]): List[(DenseMatrix[Double], DenseVector[Double])] = {
+                     label: DenseMatrix[Double]): Iterator[(DenseMatrix[Double], DenseMatrix[Double])] = {
 
     this.miniBatchSize match {
       case a if a > feature.rows => throw new IllegalArgumentException(
@@ -30,35 +30,19 @@ trait MiniBatchable {
     }
   }
 
-  private def getPositiveNumMiniBatches(feature: DenseMatrix[Double], label: DenseVector[Double], miniBatchSize: Int): List[(DenseMatrix[Double], DenseVector[Double])] = {
-    val numExamples = feature.rows.toDouble
+  private def getPositiveNumMiniBatches(feature: DenseMatrix[Double], label: DenseMatrix[Double], miniBatchSize: Int): Iterator[(DenseMatrix[Double], DenseMatrix[Double])] = {
+    val numExamples = feature.rows
     val inputDim = feature.cols
-    val shuffledIndex = Random.shuffle((0 until numExamples.toInt).toList).toList
+    val outputDim = label.cols
+    val shuffledIndex = Random.shuffle[Int, Vector]((0 until numExamples).toVector)
     val numMiniBatchesFloor = numExamples / miniBatchSize
-    val numMiniBatches = if (numMiniBatchesFloor % 1 < 1E-8) numMiniBatchesFloor.toInt else numMiniBatchesFloor.toInt + 1
+    val isDivided = numExamples % miniBatchSize == 0
+    val numMiniBatches = if (isDivided) numMiniBatchesFloor else numMiniBatchesFloor + 1
 
-    (0 until numMiniBatches)
-      .map{List.fill[Int](miniBatchSize)(_)}
-      .flatten
-      .zip(shuffledIndex)
-      .map{f =>
-        val (miniBatch, rowIndex) = f
-        (miniBatch, feature(rowIndex, ::), label(rowIndex))
-      }
-      .groupBy(_._1)
-      .map{f =>
-        val groupData = f._2
-
-        val feature = DenseMatrix.zeros[Double](groupData.length, inputDim)
-        val label = DenseVector.zeros[Double](groupData.length)
-
-        (0 until groupData.length).foreach{rowIndex =>
-          feature(rowIndex, ::) := groupData(rowIndex)._2
-          label(rowIndex) = groupData(rowIndex)._3
-        }
-
-        (feature, label)
-      }
-      .toList
+    (0 until numMiniBatches).toIterator.map{i =>
+      val startIndex = i * miniBatchSize
+      val endIndex = min((i+1) * miniBatchSize, numExamples)
+      (feature(startIndex until endIndex, ::), label(startIndex until endIndex, ::))
+    }
   }
 }
