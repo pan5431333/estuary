@@ -71,9 +71,9 @@ class DropoutLayer extends Layer{
 }
 
 object DropoutLayer {
-  def apply(numHiddenUnits: Int, dropoutRate: Double): DropoutLayer = {
+  def apply(dropoutRate: Double): DropoutLayer = {
     new DropoutLayer()
-      .setNumHiddenUnits(numHiddenUnits)
+      .setNumHiddenUnits(100)
       .setDropoutRate(dropoutRate)
   }
 }

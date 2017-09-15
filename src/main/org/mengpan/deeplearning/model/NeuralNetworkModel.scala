@@ -32,19 +32,19 @@ class NeuralNetworkModel extends Model{
 
   private var labelsMapping: List[Double] = _
 
-  def setHiddenLayerStructure(hiddenLayers: List[Layer]): this.type = {
+  def setHiddenLayerStructure(hiddenLayers: Layer*): this.type = {
     if (hiddenLayers.isEmpty) {
       throw new IllegalArgumentException("hidden layer should be at least one layer!")
     }
 
     //if a layer is Dropout Layer，then set its number of hidden units to be same as its previous layer
     val theHiddenLayer: List[Layer] = hiddenLayers
-      .scanLeft[Layer, List[Layer]](EmptyLayer){
+      .scanLeft[Layer, Seq[Layer]](EmptyLayer){
       (previousLayer, currentLayer) =>
       if (currentLayer.isInstanceOf[DropoutLayer])
         currentLayer.setNumHiddenUnits(previousLayer.numHiddenUnits)
       else currentLayer
-    }
+    }.toList
 
     this.hiddenLayers = theHiddenLayer.tail //drop the first EmptyLayer in the list
     this
@@ -265,10 +265,9 @@ class NeuralNetworkModel extends Model{
 
     val iterationWithMiniBatches = getIterationWithMiniBatches(feature, label, this.iterationTime, op)
 
-    val trainedParams = iterationWithMiniBatches.foldLeft(initModelParams){
+    val trainedParams = iterationWithMiniBatches.foldLeft(initParams){
       case (previousParams, (iteration, batches)) =>
-        val initParams = AdamOptimizationParams(previousParams, initMomentum, initAdam)
-        batches.zipWithIndex.foldLeft[AdamOptimizationParams](initParams){
+        batches.zipWithIndex.foldLeft[AdamOptimizationParams](previousParams){
           case (previousAdamParams, ((batchFeature, batchLabel), miniBatchTime)) =>
             val forwardResList = forward(batchFeature, previousAdamParams.modelParams)
             val cost = calCost(batchLabel, forwardResList.last.yCurrent,
@@ -281,8 +280,8 @@ class NeuralNetworkModel extends Model{
 
             val backwardResList = backward(batchLabel, forwardResList, previousAdamParams.modelParams, this.regularizer)
             op.updateParams(previousAdamParams.modelParams, previousAdamParams.momentumParams, previousAdamParams.adamParams, this.learningRate, backwardResList, iteration, miniBatchTime, this.allLayers)
-        }.modelParams
-    }
+        }
+    }.modelParams
 
     val forwardRes = forward(feature, trainedParams)
     val totalCost = calCost(label, forwardRes.last.yCurrent, trainedParams, this.regularizer) //Cost on the entire training set.
@@ -408,13 +407,13 @@ class NeuralNetworkModel extends Model{
 }
 
 object NeuralNetworkModel {
-  def apply(hiddenLayers: List[Layer], outputLayer: Layer,
+  def apply(hiddenLayers: Seq[Layer], outputLayer: Layer,
            learningRate: Double = 0.001, iterTimes: Int = 300,
            weightsInitializer: WeightsInitializer = HeInitializer,
            regularizer: Regularizer = VoidRegularizer,
            optimizer: Optimizer = AdamOptimizer()): NeuralNetworkModel = {
     new NeuralNetworkModel()
-      .setHiddenLayerStructure(hiddenLayers)
+      .setHiddenLayerStructure(hiddenLayers: _*)
       .setOutputLayerStructure(outputLayer)
       .setWeightsInitializer(weightsInitializer)
       .setRegularizer(regularizer)

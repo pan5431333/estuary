@@ -76,8 +76,13 @@ class SoftmaxLayer extends Layer{
     val summation = sum(exped)
     val logsum = math.log(summation)
     val logged = x.map(i => i - logsum)
-    val res = exp(logged)
-    println(res)
-    res
+    exp(logged)
+  }
+}
+
+object SoftmaxLayer {
+  def apply(numHiddenUnits: Int): SoftmaxLayer = {
+    new SoftmaxLayer()
+      .setNumHiddenUnits(numHiddenUnits)
   }
 }

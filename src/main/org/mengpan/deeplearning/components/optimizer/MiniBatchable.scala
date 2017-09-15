@@ -42,7 +42,8 @@ trait MiniBatchable {
     (0 until numMiniBatches).toIterator.map{i =>
       val startIndex = i * miniBatchSize
       val endIndex = min((i+1) * miniBatchSize, numExamples)
-      (feature(startIndex until endIndex, ::), label(startIndex until endIndex, ::))
+      val indexes = shuffledIndex.slice(startIndex, endIndex)
+      (feature(indexes, ::).toDenseMatrix, label(indexes, ::).toDenseMatrix)
     }
   }
 }
