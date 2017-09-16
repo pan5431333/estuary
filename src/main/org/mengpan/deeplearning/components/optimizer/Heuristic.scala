@@ -20,21 +20,4 @@ trait Heuristic extends Optimizer{
     this.adamRate = adamRate
     this
   }
-
-  def initMomentumOrAdam(inputDim: Int, layers: List[Layer]): NNParams = {
-    val layersDims: Vector[Int] = layers
-      .map(_.numHiddenUnits)
-      .::(inputDim)
-      .toVector
-
-    val numLayers = layersDims.length
-
-    (1 until numLayers).map{i =>
-      val w = DenseMatrix.zeros[Double](layersDims(i-1), layersDims(i))
-      val b = DenseVector.zeros[Double](layersDims(i))
-      (w, b)
-    }
-      .toList
-  }
-
 }

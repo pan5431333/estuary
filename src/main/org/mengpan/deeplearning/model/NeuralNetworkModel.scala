@@ -2,13 +2,11 @@ package org.mengpan.deeplearning.model
 import breeze.linalg.{DenseMatrix, DenseVector, max, sum}
 import breeze.numerics.{log, pow}
 import org.apache.log4j.Logger
-import org.mengpan.deeplearning.components.caseclasses.AdamOptimizationParams
 import org.mengpan.deeplearning.components.initializer.{HeInitializer, NormalInitializer, WeightsInitializer, XaiverInitializer}
 import org.mengpan.deeplearning.components.layers.{DropoutLayer, EmptyLayer, Layer}
 import org.mengpan.deeplearning.components.optimizer._
 import org.mengpan.deeplearning.components.regularizer.{L1Regularizer, L2Regularizer, Regularizer, VoidRegularizer}
-import org.mengpan.deeplearning.utils.{DebugUtils, MyDict, ResultUtils}
-import org.mengpan.deeplearning.utils.ResultUtils.{BackwardRes, ForwardRes}
+
 
 /**
   * Created by meng.pan on 2017/9/5.
@@ -27,9 +25,6 @@ class NeuralNetworkModel extends Model{
 
   lazy val allLayers = hiddenLayers ::: outputLayer :: Nil //concat hidden layers and output layer
 
-  type NNParams = List[(DenseMatrix[Double], DenseVector[Double])] //Neural Network Model parameters, consisting of List[(w, b)]
-  var paramsList: NNParams = null
-
   private var labelsMapping: List[Double] = _
 
   def setHiddenLayerStructure(hiddenLayers: Layer*): this.type = {
@@ -42,8 +37,8 @@ class NeuralNetworkModel extends Model{
       .scanLeft[Layer, Seq[Layer]](EmptyLayer){
       (previousLayer, currentLayer) =>
       if (currentLayer.isInstanceOf[DropoutLayer])
-        currentLayer.setNumHiddenUnits(previousLayer.numHiddenUnits)
-      else currentLayer
+        currentLayer.setNumHiddenUnits(previousLayer.numHiddenUnits).setPreviousHiddenUnits(previousLayer.numHiddenUnits)
+      else currentLayer.setPreviousHiddenUnits(previousLayer.numHiddenUnits)
     }.toList
 
     this.hiddenLayers = theHiddenLayer.tail //drop the first EmptyLayer in the list
@@ -52,6 +47,7 @@ class NeuralNetworkModel extends Model{
 
   def setOutputLayerStructure(outputLayer: Layer): this.type = {
     this.outputLayer = outputLayer
+    this.outputLayer.setPreviousHiddenUnits(this.hiddenLayers.last.numHiddenUnits)
     this
   }
 
@@ -73,21 +69,28 @@ class NeuralNetworkModel extends Model{
 
   /**
     * Train the model.
-    * If the optimizer chosen is AdamOptimizer, then use method trainWithMomentumAndAdam.
+    * If the optimizer chosen is AdamOptimizer, then use method trainByAdam.
     * else use trainWithoutMomentum.
-    * @param feature Feature matrix whose shape is (numTrainingExamples, inputFeatureDimension)
+    * @param feature Feature matrix whose shape is (numTrainingExamples, inputFeatureDim)
     * @param label Label vector whose length is numTrainingExamples
     * @todo when any other optimizer is created, the case MUST be added here
     * @return A trained model whose model parameters have been updated
     */
-  override def train(feature: DenseMatrix[Double],
-                     label: DenseVector[Double]): NeuralNetworkModel.this.type = {
-    val labelMatrix: DenseMatrix[Double] = convertVectorToMatrix(label)
-    this.outputLayer.setNumHiddenUnits(this.labelsMapping.size)
+  override def train(feature: DenseMatrix[Double], label: DenseVector[Double]): this.type = {
+    this.allLayers.head.setPreviousHiddenUnits(feature.cols)
+    this.optimizer.setIteration(iterationTime).setLearningRate(learningRate)
+    val labelMatrix = convertVectorToMatrix(label)
+    val initParams = this.allLayers.map(_.init(weightsInitializer))
 
-    this.paramsList = this.optimizer match {
-      case op: AdamOptimizer => trainByAdam(feature, labelMatrix, op)
-      case op: NonHeuristic => trainWithoutMomentum(feature, labelMatrix, op)
+    val trainedParams = this.optimizer.optimize(feature, labelMatrix)(initParams){
+      case (feature, label, params) =>
+            val yHat = forward(this.allLayers, feature)
+            calCost(label, yHat, this.allLayers, this.regularizer)
+    }{backward}
+
+    this.allLayers.zip(trainedParams).foreach{
+      case (layer, param) =>
+        layer.setParam(param)
     }
 
     this
@@ -95,16 +98,15 @@ class NeuralNetworkModel extends Model{
 
   /**
     * Do predictions. Note prediction is done without the dropout layer.
+ *
     * @param feature Feature matrix with shape (numExamples, inputFeatureDim)
     * @return Predicted labels
     */
   override def predict(feature: DenseMatrix[Double]): DenseVector[Double] = {
 
-    assert(this.paramsList != null, "Model has not been trained, please train it first")
-    assert(this.paramsList.head._1.rows == feature.cols, "Prediction's features' dimension is not as the same as trained features'")
+    val nonDropoutLayers = this.allLayers.filter(!_.isInstanceOf[DropoutLayer])
+    val predicted =  forward(nonDropoutLayers, feature)
 
-    val forwardResList: List[ForwardRes] = forwardWithoutDropout(feature, this.paramsList)
-    val predicted = forwardResList.last.yCurrent
     val predictedMatrix = DenseMatrix.zeros[Double](feature.rows, predicted.cols)
     for (i <- 0 until predicted.rows) {
       val sliced = predicted(i, ::)
@@ -127,57 +129,12 @@ class NeuralNetworkModel extends Model{
     *         zCurrent = yPrevious * w(L) + DenseVector.ones[Double](numExamples) * b(L).t
     *         yCurrent = g(zCurrent) where g is the activation function in Lth layer.
     */
-  private def forward(feature: DenseMatrix[Double],
-                      params: List[(DenseMatrix[Double], DenseVector[Double])]): List[ForwardRes] = {
+  private def forward(layers: Seq[Layer], feature: DenseMatrix[Double]): DenseMatrix[Double] = {
 
-    val initForwardRes = ForwardRes(null, null, feature) // constructing a ForwardRes instance for input layer
-
-    params
-      .zip(this.allLayers)
-      .scanLeft[ForwardRes, List[ForwardRes]](initForwardRes){
-      (previousForwardRes, f) =>
-        val yPrevious = previousForwardRes.yCurrent
-
-        val (w, b) = f._1
-        val layer = f._2
-
-        layer.forward(yPrevious, w, b)
-      }
-      .tail //Drop the first ForwardRes in input layer
-  }
-
-  /**
-    * Forward propagation of all layers with setting dropout rate of all Dropout layers as 0.
-    * @param feature Feature matrix of shape (numExamples, inputFeatureDim)
-    * @param params Model parameters of the form List((w, b))
-    *               where w is of shape (d(L-1), d(L)) and b of (d(L)) for Lth layer
-    *               where d(L) is the number of hidden units in Lth layer.
-    * @return List of ForwardRes consisting of (yPrevious, zCurrent, yCurrent)
-    *         where yPrevious: the output from previous layer, say L-1 th layer, of shape (numExamples, d(L-1))
-    *         zCurrent = yPrevious * w(L) + DenseVector.ones[Double](numExamples) * b(L).t
-    *         yCurrent = g(zCurrent) where g is the activation function in Lth layer.
-    */
-  private def forwardWithoutDropout(feature: DenseMatrix[Double],
-                                    params: NNParams): List[ForwardRes] = {
-
-    val initForwardRes = ForwardRes(null, null, feature) // constructing a ForwardRes instance for input layer
-
-    params
-      .zip(this.allLayers)
-      .scanLeft[ForwardRes, List[ForwardRes]](initForwardRes){
-      (previousForwardRes, f) =>
-        val yPrevious = previousForwardRes.yCurrent
-
-        val (w, b) = f._1
-        val oldLayer = f._2
-
-        val layer = if (oldLayer.isInstanceOf[DropoutLayer])
-                      new DropoutLayer().setNumHiddenUnits(oldLayer.numHiddenUnits).setDropoutRate(0.0) //set dropout rate to 0.0, i.e. turn off dropout.
-                    else oldLayer
-
-        layer.forward(yPrevious, w, b)
-      }
-      .tail // drop the first ForwardRes of input layer
+    layers.foldLeft[DenseMatrix[Double]](feature){
+      case (yPrevious, layer) =>
+        layer.forward(yPrevious)
+    }
   }
 
   /**
@@ -192,10 +149,13 @@ class NeuralNetworkModel extends Model{
     * @return value of the cost function.
     */
   private def calCost(label: DenseMatrix[Double], predicted: DenseMatrix[Double],
-                      paramsList: NNParams,
+                      layers: Seq[Layer],
                       regularizer: Regularizer): Double = {
     val originalCost = - sum(label *:* log(predicted + 1E-9)) / label.rows.toDouble
-    val reguCost = regularizer.getReguCost(paramsList)
+    val reguCost = layers.foldLeft[Double](0.0){
+      case (totalReguCost, layer) =>
+        totalReguCost + layer.getReguCost(regularizer)
+    }
 
     originalCost + regularizer.lambda * reguCost / label.rows.toDouble
   }
@@ -214,147 +174,17 @@ class NeuralNetworkModel extends Model{
     *         dBCurrent = dZCurrent.t * OneColumnVector / numExamples,
     *         dYPrevious = dZCurrent * wCurrent.t
     */
-  private def backward(label: DenseMatrix[Double],
-                       forwardResList: List[ResultUtils.ForwardRes],
-                       paramsList: NNParams,
-                       regularizer: Regularizer): List[BackwardRes] = {
+  private def backward(label: DenseMatrix[Double], params: List[DenseMatrix[Double]]): List[DenseMatrix[Double]] = {
 
-    val yPredicted = forwardResList.last.yCurrent
-    val numExamples = label.rows
-
-    //HACK!
-    val initBackwardRes = BackwardRes(label, null, null)
-
-    paramsList
-      .zip(this.allLayers)
-      .zip(forwardResList)
-      .scanRight[BackwardRes, List[BackwardRes]](initBackwardRes){
-      case ((((w, b), layer), forwardRes), previousBackwardRes) =>
-        val dYCurrent = previousBackwardRes.dYPrevious
-
-        val backwardRes = layer.backward(dYCurrent, forwardRes, w, b)
-
-        layer match {
-          case _: DropoutLayer => backwardRes // for DropoutLayer, parameters are all ONEs, never need to be updated.
-          case _ =>
-            new BackwardRes(backwardRes.dYPrevious,
-              backwardRes.dWCurrent + regularizer.getReguCostGrad(w, numExamples),
-              backwardRes.dBCurrent)
-        }
-    }
-      .dropRight(1)
-  }
-
-  /**
-    *Train the model using Adam Optimization method. Recommended to use.
-    * @param feature
-    * @param label
-    * @param op MUST be AdamOptimizer
-    * @return Updated list of model parameters, of the form List((w, b)).
-    */
-  private def trainByAdam(feature: DenseMatrix[Double],
-                                       label: DenseMatrix[Double],
-                                       op: AdamOptimizer): NNParams = {
-    val numExamples = feature.rows
-    val inputDim = feature.cols
-
-    val initModelParams = this.weightsInitializer.init(inputDim, this.allLayers)
-    val initMomentum = op.initMomentumOrAdam(inputDim, this.allLayers)
-    val initAdam = op.initMomentumOrAdam(inputDim, this.allLayers)
-    val initParams = AdamOptimizationParams(initModelParams, initMomentum, initAdam) //Combine model parameters, momentum and adam into one case class. Convenient for the following foldLeft operation.
-
-    val iterationWithMiniBatches = getIterationWithMiniBatches(feature, label, this.iterationTime, op)
-
-    val trainedParams = iterationWithMiniBatches.foldLeft(initParams){
-      case (previousParams, (iteration, batches)) =>
-        batches.zipWithIndex.foldLeft[AdamOptimizationParams](previousParams){
-          case (previousAdamParams, ((batchFeature, batchLabel), miniBatchTime)) =>
-            val forwardResList = forward(batchFeature, previousAdamParams.modelParams)
-            val cost = calCost(batchLabel, forwardResList.last.yCurrent,
-              previousAdamParams.modelParams, this.regularizer)
-
-            val printMiniBatchUnit = ((numExamples / op.getMiniBatchSize).toInt / 5).toInt //for each iteration, only print minibatch cost FIVE times.
-            if (miniBatchTime % printMiniBatchUnit == 0)
-              logger.info("Iteration: " + iteration + "|=" + "=" * (miniBatchTime / 10) + ">> Cost: " + cost)
-            costHistory.+=(cost)
-
-            val backwardResList = backward(batchLabel, forwardResList, previousAdamParams.modelParams, this.regularizer)
-            op.updateParams(previousAdamParams.modelParams, previousAdamParams.momentumParams, previousAdamParams.adamParams, this.learningRate, backwardResList, iteration, miniBatchTime, this.allLayers)
-        }
-    }.modelParams
-
-    val forwardRes = forward(feature, trainedParams)
-    val totalCost = calCost(label, forwardRes.last.yCurrent, trainedParams, this.regularizer) //Cost on the entire training set.
-    logger.info("Cost on the entire training set: " + totalCost)
-
-    trainedParams
-  }
-
-  /**
-    * Train without momentum or adam. Maybe Batch gradient descent or Mini-batch gradient descent.
-    * @param feature
-    * @param label
-    * @param op MUST be Non-heuristic optimizer. Maybe GDOptimizer or new SGDOptimizer.
-    * @return Updated list of model parameters, of the form List((w, b)).
-    */
-  private def trainWithoutMomentum(feature: DenseMatrix[Double],
-                                   label: DenseMatrix[Double],
-                                   op: NonHeuristic): NNParams = {
-    val numExamples = feature.rows
-    val inputDim = feature.cols
-
-    val initParams = this.weightsInitializer.init(inputDim, this.allLayers)
-
-    val iterationWithMiniBatches = op match {
-      case op: MiniBatchable => getIterationWithMiniBatches(feature, label, this.iterationTime, op)
-      case _ => getIterationWithOneBatch(feature, label, this.iterationTime)
+    this.allLayers.zip(params).foreach{
+      case (layer, param) =>
+        layer.setParam(param)
     }
 
-    val trainedParams = iterationWithMiniBatches.foldLeft(initParams){
-      case (previousParams, (iteration, batch)) =>
-        batch.zipWithIndex.foldLeft(previousParams){
-          case (previousBatchParams, ((batchFeature, batchLabel), miniBatchTime)) =>
-            val fordwardResList = forward(batchFeature, previousBatchParams)
-            val cost = calCost(batchLabel, fordwardResList.last.yCurrent, previousBatchParams, this.regularizer)
-
-            if (miniBatchTime % 10 == 0)
-              logger.info("Iteration: " + iteration + "|=" + "=" * (miniBatchTime / 10) + ">> Cost: " + cost)
-            costHistory.+=(cost)
-
-            val backwardResList = backward(batchLabel, fordwardResList, previousBatchParams, this.regularizer)
-            op.updateParams(previousBatchParams, this.learningRate, backwardResList, iteration, this.allLayers)
-        }
-    }
-
-    val forwardRes = forward(feature, trainedParams)
-    val totalCost = calCost(label, forwardRes.last.yCurrent, trainedParams, this.regularizer) //Cost on the entire training set.
-    logger.info("Cost on the entire training set: " + totalCost)
-
-    trainedParams
-  }
-
-  private def getIterationWithMiniBatches(feature: DenseMatrix[Double],
-                                          label: DenseMatrix[Double],
-                                          iterationTime: Int,
-                                          op: MiniBatchable): Iterator[(Int, Iterator[(DenseMatrix[Double], DenseMatrix[Double])])] = {
-
-    (0 until iterationTime)
-      .toIterator
-      .map{iteration =>
-        val minibatches = op
-          .getMiniBatches(feature, label)
-
-        (iteration, minibatches)
-      }
-
-  }
-
-  private def getIterationWithOneBatch(feature: DenseMatrix[Double], label: DenseMatrix[Double], iterTimes: Int): Iterator[(Int, Iterator[(DenseMatrix[Double], DenseMatrix[Double])])] = {
-    (0 until iterTimes)
-      .toIterator
-      .map{iter =>
-        (iter, Iterator((feature, label)))
-      }
+    this.allLayers.scanRight((label, DenseMatrix.zeros[Double](1, 1))){
+      case (layer, (dYCurrent, _)) =>
+        layer.backward(dYCurrent)
+    }.init.map(_._2)
   }
 
   /**
@@ -403,6 +233,8 @@ class NeuralNetworkModel extends Model{
     }
     DenseVector(compareArr)
   }
+
+  override def getCostHistory = optimizer.costHistory
 
 }
 

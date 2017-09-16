@@ -10,7 +10,6 @@ import org.mengpan.deeplearning.utils.{MyDict, ResultUtils}
 class DropoutLayer extends Layer{
 
   protected var dropoutRate: Double = _
-
   def setDropoutRate(dropoutRate: Double): this.type = {
     assert(dropoutRate <= 1 && dropoutRate >= 0, "dropout rate must be between 0 and 1")
 
@@ -18,24 +17,24 @@ class DropoutLayer extends Layer{
     this
   }
 
-  protected lazy val dropoutVector: DenseVector[Double] = generateDropoutVector(numHiddenUnits, dropoutRate)
+  protected var dropoutVector: DenseVector[Double] = _
 
   protected override def activationFuncEval(zCurrent: DenseMatrix[Double]):
   DenseMatrix[Double] = {
-    val dropoutMatrix = DenseMatrix.tabulate[Double](zCurrent.rows, this.dropoutVector.length){
-      (i, j) => this.dropoutVector(j)
-    }
+    dropoutVector = generateDropoutVector(numHiddenUnits, dropoutRate)
 
-    dropoutMatrix *:* zCurrent / (1.0 - this.dropoutRate)
+    val numExamples = zCurrent.rows
+    val oneVector = DenseVector.ones[Double](numExamples)
+
+    zCurrent *:* (oneVector * dropoutVector.t) / (1.0 - this.dropoutRate)
   }
 
   protected override def activationGradEval(zCurrent: DenseMatrix[Double]):
   DenseMatrix[Double] = {
-    val dropoutMatrix = DenseMatrix.tabulate[Double](zCurrent.rows, this.dropoutVector.length){
-      (i, j) => this.dropoutVector(j)
-    }
+    val numExamples = zCurrent.rows
+    val oneVector = DenseVector.ones[Double](numExamples)
 
-    dropoutMatrix / (1.0 - this.dropoutRate)
+    (oneVector * dropoutVector.t) / (1.0 - this.dropoutRate)
   }
 
   private def generateDropoutVector(numHiddenUnits: Int, dropoutRate: Double):
@@ -46,27 +45,16 @@ class DropoutLayer extends Layer{
       }
   }
 
-  override def forward(yPrevious: DenseMatrix[Double],
-                       w: DenseMatrix[Double],
-                       b: DenseVector[Double]):
-  ResultUtils.ForwardRes = {
-    val zCurrent = yPrevious
-    val yCurrent = activationFuncEval(zCurrent)
-    new ForwardRes(yPrevious, zCurrent, yCurrent)
+
+  override def forward(yPrevious: DenseMatrix[Double]): DenseMatrix[Double] = {
+    this.yPrevious = yPrevious
+    activationFuncEval(yPrevious)
   }
 
-  override def backward(dYCurrent: DenseMatrix[Double],
-                        forwardRes: ResultUtils.ForwardRes,
-                        w: DenseMatrix[Double],
-                        b: DenseVector[Double]):
-  ResultUtils.BackwardRes = {
+  override def backward(dYCurrent: DenseMatrix[Double]): (DenseMatrix[Double], DenseMatrix[Double]) = {
+    val filterMat = activationGradEval(yPrevious)
 
-    val zCurrent = forwardRes.zCurrent
-    val dZCurrent = dYCurrent *:* activationGradEval(zCurrent)
-    val dYPrevious = dZCurrent
-    val dW = null
-    val dB = null
-    new BackwardRes(dYPrevious, dW, dB)
+    (dYCurrent *:* filterMat, DenseMatrix.zeros[Double](previousHiddenUnits+1, numHiddenUnits))
   }
 }
 

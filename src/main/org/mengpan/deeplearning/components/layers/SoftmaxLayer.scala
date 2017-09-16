@@ -9,24 +9,20 @@ import org.mengpan.deeplearning.utils.{NormalizeUtils, ResultUtils}
   */
 class SoftmaxLayer extends Layer{
 
-  override def backward(dYCurrent: DenseMatrix[Double],
-                        forwardRes: ResultUtils.ForwardRes,
-                        w: DenseMatrix[Double],
-                        b: DenseVector[Double]): ResultUtils.BackwardRes = {
+  override def backward(dYCurrent: DenseMatrix[Double]): (DenseMatrix[Double], DenseMatrix[Double]) = {
     val numExamples = dYCurrent.rows
-    val yPrevious = forwardRes.yPrevious
 
     //HACK!
     val label = dYCurrent
 
-    val yHat = forwardRes.yCurrent
-    val dZCurrent = yHat - label
+    val dZCurrent = y - label
 
     val dWCurrent = yPrevious.t * dZCurrent / numExamples.toDouble
     val dBCurrent = (DenseVector.ones[Double](numExamples).t * dZCurrent).t /
       numExamples.toDouble
-    val dYPrevious = dZCurrent * w.t
-    BackwardRes(dYPrevious, dWCurrent, dBCurrent)
+
+    val grads = DenseMatrix.vertcat(dWCurrent, dBCurrent.toDenseMatrix)
+    (dZCurrent * w.t, grads)
   }
 
   /**

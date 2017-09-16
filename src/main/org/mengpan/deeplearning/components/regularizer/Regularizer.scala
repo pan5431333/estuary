@@ -9,8 +9,8 @@ import org.mengpan.deeplearning.utils.ResultUtils.{BackwardRes, ForwardRes}
   * Created by mengpan on 2017/9/5.
   */
 trait Regularizer {
-  def getReguCost(paramsList: List[(DenseMatrix[Double], DenseVector[Double])]): Double
-  def getReguCostGrad(w: DenseMatrix[Double], numExamples: Int): DenseMatrix[Double]
+  def getReguCost(m: DenseMatrix[Double]*): Double
+  def getReguCostGrad(w: DenseMatrix[Double]): DenseMatrix[Double]
 
   var lambda: Double = 0.7
 

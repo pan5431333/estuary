@@ -13,63 +13,65 @@ class AdamOptimizer extends Optimizer with MiniBatchable with Heuristic{
   protected var momentumRate: Double = 0.9
   protected var adamRate: Double = 0.999
 
-  def updateParams(paramsList: List[(DenseMatrix[Double], DenseVector[Double])],
-                   previousMomentum: List[(DenseMatrix[Double], DenseVector[Double])],
-                   previousAdam: List[(DenseMatrix[Double], DenseVector[Double])],
-                   learningrate: Double,
-                   backwardResList: List[ResultUtils.BackwardRes],
-                   iterationTime: Int,
-                   miniBatchTime: Double,
-                   layers: List[Layer]): AdamOptimizationParams = {
+  case class AdamParam[T <: Seq[DenseMatrix[Double]]](modelParam: T, momentumParam: T, adamParam: T)
 
-    val updatedParams = paramsList
-      .zip(backwardResList)
-      .zip(layers)
-      .zip(previousMomentum)
-      .zip(previousAdam)
-      .map{f =>
-        val layer = f._1._1._2
-        val (w, b) = f._1._1._1._1
+  override def optimize[T <: Seq[DenseMatrix[Double]]](feature: DenseMatrix[Double], label: DenseMatrix[Double])
+                                                      (initParams: T)
+                                                      (forwardFunc: (DenseMatrix[Double], DenseMatrix[Double], T) => Double)
+                                                      (backwardFunc: (DenseMatrix[Double], T) => T): T = {
+    val initMomentum = initMomentumOrAdam(initParams)
+    val initAdam = initMomentumOrAdam(initParams)
+    val initAdamParam = AdamParam[T](initParams, initMomentum, initAdam)
+    val numExamples = feature.rows
+    val printMiniBatchUnit = ((numExamples / this.getMiniBatchSize).toInt / 5).toInt //for each iteration, only print minibatch cost FIVE times.
 
-        val backwardRes = f._1._1._1._2
-        val momentum = f._1._2
-        val adam = f._2
+    (0 until this.iteration).toIterator.foldLeft[AdamParam[T]](initAdamParam){
+      case (preParam, iterTime) =>
+        val minibatches = getMiniBatches(feature, label)
+        minibatches.zipWithIndex.foldLeft[AdamParam[T]](preParam){
+          case (preBatchParams, ((batchFeature, batchLabel), miniBatchTime)) =>
+            val cost = forwardFunc(batchFeature, batchLabel, preBatchParams.modelParam)
+            val grads = backwardFunc(batchLabel, preBatchParams.modelParam)
 
-        layer match {
-          case _:DropoutLayer => ((w, b), momentum, adam)
-          case _ =>
-            val dw = backwardRes.dWCurrent
-            val db = backwardRes.dBCurrent
+            if (miniBatchTime % printMiniBatchUnit == 0)
+              logger.info("Iteration: " + iterTime + "|=" + "=" * (miniBatchTime / 10) + ">> Cost: " + cost)
+            costHistory.+=(cost)
 
-            val vW = (this.momentumRate * momentum._1 + (1.0 - this.momentumRate) * dw)
-            val vB = (this.momentumRate * momentum._2 + (1.0 - this.momentumRate) * db)
-            val vWCorrected = vW / (1 - pow(this.momentumRate, miniBatchTime.toInt + 1))
-            val vBCorrected = vB / (1 - pow(this.momentumRate, miniBatchTime.toInt + 1))
-
-            val aW = (this.adamRate * adam._1 + (1.0 - this.adamRate) * pow(dw, 2))
-            val aB = (this.adamRate * adam._2 + (1.0 - this.adamRate) * pow(db, 2))
-            val aWCorrected = aW / (1 - pow(this.adamRate, miniBatchTime.toInt + 1))
-            val aBCorrected = aB / (1 - pow(this.adamRate, miniBatchTime.toInt + 1))
-
-            logger.debug(DebugUtils.matrixShape(w, "w"))
-            logger.debug(DebugUtils.matrixShape(dw, "dw"))
-
-            w :-= learningrate * vWCorrected /:/ (sqrt(aWCorrected) + 1E-8)
-            b :-= learningrate * vBCorrected /:/ (sqrt(aBCorrected) + 1E-8)
-
-            ((w, b), (vW, vB), (aW, aB))
+            updateFunc(preBatchParams, grads, miniBatchTime)
         }
-      }
+    }.modelParam
+  }
+
+  private def initMomentumOrAdam[T <: Seq[DenseMatrix[Double]]](t: T): T = {
+    t.map{m =>
+      DenseMatrix.zeros[Double](m.rows, m.cols)
+    }.asInstanceOf[T]
+  }
+
+  private def updateFunc[T <: Seq[DenseMatrix[Double]]](value: AdamParam[T], grads: T, miniBatchTime: Int): AdamParam[T] = {
+    val (ps, vs, ws) = value match {
+      case AdamParam(a, b, c) => (a, b, c)
+    }
+
+    val updatedParams = ps.zip(vs).zip(ws).zip(grads).map{
+      case (((p, v), a), grad) =>
+        val vN = (this.momentumRate * v + (1.0 - this.momentumRate) * grad)
+        val vNCorrected = vN / (1 - pow(this.momentumRate, miniBatchTime.toInt + 1))
+
+        val aN = (this.adamRate * a + (1.0 - this.adamRate) * pow(grad, 2))
+        val aNCorrected = aN / (1 - pow(this.adamRate, miniBatchTime.toInt + 1))
+
+        val pN = p - learningRate * vNCorrected /:/ (sqrt(aNCorrected) + 1E-8)
+        (pN, vN, aN)
+    }
 
     val (modelParams, momentumAndAdam) = updatedParams
       .unzip(f => (f._1, (f._2, f._3)))
 
     val (momentum, adam) = momentumAndAdam.unzip(f => (f._1, f._2))
 
-    AdamOptimizationParams(modelParams, momentum, adam)
+    AdamParam[T](modelParams.asInstanceOf[T], momentum.asInstanceOf[T], adam.asInstanceOf[T])
   }
-
-
 }
 
 object AdamOptimizer{

@@ -14,7 +14,6 @@ trait Model {
 
   var learningRate: Double
   var iterationTime: Int
-  val costHistory: mutable.MutableList[Double] = new mutable.MutableList[Double]()
 
   def setLearningRate(learningRate: Double): this.type = {
     this.learningRate = learningRate
@@ -40,7 +39,10 @@ trait Model {
     numCorrect.toDouble / label.length.toDouble
   }
 
-  def getCostHistory: mutable.MutableList[Double] = this.costHistory
   def getLearningRate: Double = this.learningRate
   def getIterationTime: Int = this.iterationTime
+
+  def getCostHistory: mutable.MutableList[Double] = this match {
+    case model: NeuralNetworkModel => model.getCostHistory
+  }
 }
