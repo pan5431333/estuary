@@ -40,11 +40,11 @@ object ClassFourCompoundNeuralNetworkDemo extends App{
     .setRegularizer(VoidRegularizer)
     .setOptimizer(AdamOptimizer())
     .setHiddenLayerStructure(
-      ReluLayer(400, batchNorm = true),
+      ReluLayer(1000, batchNorm = true),
       DropoutLayer(0.3),
       ReluLayer(200, batchNorm = true),
       DropoutLayer(0.3),
-      ReluLayer(100, batchNorm = true)
+      ReluLayer(20, batchNorm = true)
     )
     .setOutputLayerStructure(SoftmaxLayer())
     .setLearningRate(0.0003)

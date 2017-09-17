@@ -1,8 +1,6 @@
 package org.mengpan.deeplearning.components.layers
 import breeze.linalg.{DenseMatrix, DenseVector, min, softmax, sum}
 import breeze.numerics.exp
-import org.mengpan.deeplearning.utils.ResultUtils.BackwardRes
-import org.mengpan.deeplearning.utils.{NormalizeUtils, ResultUtils}
 
 /**
   * Created by mengpan on 2017/9/14.

@@ -1,8 +1,6 @@
 package org.mengpan.deeplearning.components.layers
 
 import breeze.linalg.{DenseMatrix, DenseVector}
-import org.mengpan.deeplearning.utils.ResultUtils.{BackwardRes, ForwardRes}
-import org.mengpan.deeplearning.utils.{MyDict, ResultUtils}
 
 /**
   * Created by mengpan on 2017/9/7.

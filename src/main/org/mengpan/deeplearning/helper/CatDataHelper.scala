@@ -60,7 +60,7 @@ object CatDataHelper {
         case "cat" => 1
         case "frog" => 2
         case "truck" => 3
-//        case "automobile" => 4
+        case "automobile" => 4
         case _ => 0
       }
       (label._1, numLabel)

@@ -166,8 +166,8 @@ trait Layer{
     val (znorm, meanVec, stddevVec) = normalize(z)
 
     zNorm = znorm
-    meanZ = if (meanZ == null) meanVec else (meanZ + meanVec) / 2.0
-    stddevZ = if (stddevZ == null) stddevVec else (stddevZ + stddevVec) / 2.0
+    meanZ = if (meanZ == null) meanVec else 0.9 * meanZ + 0.1 * meanVec
+    stddevZ = if (stddevZ == null) stddevVec else 0.9 * stddevZ + 0.1 * stddevVec
 
     zDelta = (zNorm + oneVector * alpha.t) *:* (oneVector * beta.t)
     this.activationFuncEval(zDelta)
