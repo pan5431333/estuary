@@ -66,7 +66,7 @@ object CatDataHelper {
       (label._1, numLabel)
     }
       .filter{label =>
-        label._2 != 0
+        label._2 == 1 || label._2 == 3
       }
   }
 

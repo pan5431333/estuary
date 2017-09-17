@@ -3,10 +3,7 @@ package org.mengpan.deeplearning.components.layers
 import breeze.linalg.{DenseMatrix, DenseVector}
 import org.apache.log4j.Logger
 import org.mengpan.deeplearning.components.initializer.WeightsInitializer
-import org.mengpan.deeplearning.components.optimizer.{AdamOptimizer, NonHeuristic, Optimizer}
 import org.mengpan.deeplearning.components.regularizer.Regularizer
-import org.mengpan.deeplearning.utils.ResultUtils.{BackwardRes, ForwardRes}
-import org.mengpan.deeplearning.utils.{ActivationUtils, DebugUtils}
 
 /**
   * Created by mengpan on 2017/8/26.
@@ -60,6 +57,13 @@ trait Layer{
       case _ => forwardWithoutBatchNorm(yPrevious)
     }
     y
+  }
+
+  def forwardForPrediction(yPrevious: DenseMatrix[Double]): DenseMatrix[Double] = {
+    this.batchNorm match {
+      case true => forwardWithBatchNormForPrediction(yPrevious)
+      case _ => forwardWithoutBatchNorm(yPrevious)
+    }
   }
 
   def backward(dYCurrent: DenseMatrix[Double]): (DenseMatrix[Double], DenseMatrix[Double]) = {
@@ -121,6 +125,22 @@ trait Layer{
     this.activationFuncEval(zDelta)
   }
 
+  private def forwardWithBatchNormForPrediction(yPrevious: DenseMatrix[Double]): DenseMatrix[Double] = {
+    val numExamples = yPrevious.rows
+    val oneVector = DenseVector.ones[Double](numExamples)
+
+    z = yPrevious * w
+    val zNorm = DenseMatrix.zeros[Double](z.rows, z.cols)
+
+    for (j <- 0 until z.cols) {
+      val jthCol = z(::, j)
+      zNorm(::, j) := (jthCol - this.meanZ(j)) / (this.stddevZ(j) + 1E-9)
+    }
+
+    zDelta = (zNorm + oneVector * alpha.t) *:* (oneVector * beta.t)
+    this.activationFuncEval(zDelta)
+  }
+
   private def normalize(z: DenseMatrix[Double]): (DenseMatrix[Double], DenseVector[Double], DenseVector[Double]) = {
     val res = DenseMatrix.zeros[Double](z.rows, z.cols)
     val meanVec = DenseVector.zeros[Double](z.cols)
@@ -159,7 +179,7 @@ trait Layer{
     val dZDelta = dYCurrent *:* this.activationFuncEval(zDelta)
     val dZNorm = dZDelta *:* (oneVector * beta.t)
     val dAlpha = dZNorm.t * oneVector / numExamples.toDouble
-    val dBeta = dZDelta *:* (zNorm + oneVector * alpha.t).t * oneVector / numExamples.toDouble
+    val dBeta = (dZDelta *:* (zNorm + oneVector * alpha.t)).t * oneVector / numExamples.toDouble
     val dZCurrent = dZNorm /:/ (oneVector * stddevZ.t)
     val dWCurrent = yPrevious.t * dZCurrent / numExamples.toDouble
     val dYPrevious = dZCurrent * w.t

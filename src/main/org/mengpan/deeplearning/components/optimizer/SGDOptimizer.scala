@@ -9,6 +9,8 @@ class SGDOptimizer extends Optimizer with MiniBatchable with NonHeuristic {
                                                       (initParams: T)
                                                       (forwardFunc: (DenseMatrix[Double], DenseMatrix[Double], T) => Double)
                                                       (backwardFunc: (DenseMatrix[Double], T) => T): T = {
+    val printMiniBatchUnit = ((feature.rows / this.getMiniBatchSize).toInt / 5).toInt //for each iteration, only print minibatch cost FIVE times.
+
     (0 until this.iteration).toIterator.foldLeft[T](initParams){
       case (preParams, iterTime) =>
         val minibatches = getMiniBatches(feature, label)
@@ -16,6 +18,11 @@ class SGDOptimizer extends Optimizer with MiniBatchable with NonHeuristic {
           case (preBatchParams, ((batchFeature, batchLabel), miniBatchTime)) =>
             val cost = forwardFunc(batchFeature, batchLabel, preBatchParams)
             val grads = backwardFunc(batchLabel, preBatchParams)
+
+            if (miniBatchTime % printMiniBatchUnit == 0)
+              logger.info("Iteration: " + iterTime + "|=" + "=" * (miniBatchTime / 10) + ">> Cost: " + cost)
+            costHistory.+=(cost)
+
             updateFunc(preBatchParams, grads)
         }
     }

@@ -1,11 +1,8 @@
 package org.mengpan.deeplearning.components.optimizer
 
-import breeze.linalg.{DenseMatrix, DenseVector, Matrix}
+import breeze.linalg.{DenseMatrix, DenseVector}
 import org.apache.log4j.Logger
-import org.mengpan.deeplearning.components.regularizer.Regularizer
-
 import scala.collection.mutable
-import scala.{specialized => spec}
 
 
 /**

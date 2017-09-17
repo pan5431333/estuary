@@ -9,6 +9,7 @@ import org.mengpan.deeplearning.utils.{NormalizeUtils, ResultUtils}
   */
 class SoftmaxLayer extends Layer{
 
+
   override def backward(dYCurrent: DenseMatrix[Double]): (DenseMatrix[Double], DenseMatrix[Double]) = {
     val numExamples = dYCurrent.rows
 
@@ -77,8 +78,9 @@ class SoftmaxLayer extends Layer{
 }
 
 object SoftmaxLayer {
-  def apply(numHiddenUnits: Int): SoftmaxLayer = {
+  def apply(numHiddenUnits: Int, batchNorm: Boolean = false): SoftmaxLayer = {
     new SoftmaxLayer()
       .setNumHiddenUnits(numHiddenUnits)
+      .setBatchNorm(batchNorm)
   }
 }

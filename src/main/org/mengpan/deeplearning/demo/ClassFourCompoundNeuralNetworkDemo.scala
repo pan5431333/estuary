@@ -40,12 +40,12 @@ object ClassFourCompoundNeuralNetworkDemo extends App{
     .setOptimizer(AdamOptimizer())
     .setHiddenLayerStructure(
       ReluLayer(400),
-      DropoutLayer(0.5),
+//      DropoutLayer(0.5),
       ReluLayer(200)
     )
-    .setOutputLayerStructure(SoftmaxLayer(4))
+    .setOutputLayerStructure(SoftmaxLayer(2))
     .setLearningRate(0.0001)
-    .setIterationTime(30)
+    .setIterationTime(20)
 
   //API 2nd version
 //  val nnModel = NeuralNetworkModel(List(ReluLayer(200), ReluLayer(100)), SigmoidLayer(1))

@@ -21,9 +21,10 @@ class SigmoidLayer extends Layer{
 }
 
 object SigmoidLayer {
-  def apply(numHiddenUnits: Int): SigmoidLayer = {
+  def apply(numHiddenUnits: Int, batchNorm: Boolean = false): SigmoidLayer = {
     new SigmoidLayer()
       .setNumHiddenUnits(numHiddenUnits)
+      .setBatchNorm(batchNorm)
   }
 }
 

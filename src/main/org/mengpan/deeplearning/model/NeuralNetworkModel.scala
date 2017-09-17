@@ -105,7 +105,10 @@ class NeuralNetworkModel extends Model{
   override def predict(feature: DenseMatrix[Double]): DenseVector[Double] = {
 
     val nonDropoutLayers = this.allLayers.filter(!_.isInstanceOf[DropoutLayer])
-    val predicted =  forward(nonDropoutLayers, feature)
+    val predicted =  nonDropoutLayers.foldLeft(feature){
+      case (yPrevious, layer) =>
+        layer.forwardForPrediction(yPrevious)
+    }
 
     val predictedMatrix = DenseMatrix.zeros[Double](feature.rows, predicted.cols)
     for (i <- 0 until predicted.rows) {
