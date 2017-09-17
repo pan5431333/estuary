@@ -59,10 +59,10 @@ class DropoutLayer extends Layer{
 }
 
 object DropoutLayer {
-  def apply(dropoutRate: Double, batchNorm: Boolean = false): DropoutLayer = {
+  def apply(dropoutRate: Double): DropoutLayer = {
     new DropoutLayer()
       .setNumHiddenUnits(100)
       .setDropoutRate(dropoutRate)
-      .setBatchNorm(batchNorm)
+      .setBatchNorm(false)
   }
 }

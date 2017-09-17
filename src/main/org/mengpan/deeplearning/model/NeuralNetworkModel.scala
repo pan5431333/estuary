@@ -80,12 +80,20 @@ class NeuralNetworkModel extends Model{
     this.allLayers.head.setPreviousHiddenUnits(feature.cols)
     this.optimizer.setIteration(iterationTime).setLearningRate(learningRate)
     val labelMatrix = convertVectorToMatrix(label)
+    this.allLayers.last.setNumHiddenUnits(this.labelsMapping.length)
     val initParams = this.allLayers.map(_.init(weightsInitializer))
 
     val trainedParams = this.optimizer.optimize(feature, labelMatrix)(initParams){
       case (feature, label, params) =>
-            val yHat = forward(this.allLayers, feature)
-            calCost(label, yHat, this.allLayers, this.regularizer)
+
+        this.allLayers.zip(params).foreach{
+          case (layer, param) =>
+            layer.setParam(param)
+        }
+
+        val yHat = forward(this.allLayers, feature)
+        calCost(label, yHat, this.allLayers, this.regularizer)
+
     }{backward}
 
     this.allLayers.zip(trainedParams).foreach{
@@ -178,11 +186,6 @@ class NeuralNetworkModel extends Model{
     *         dYPrevious = dZCurrent * wCurrent.t
     */
   private def backward(label: DenseMatrix[Double], params: List[DenseMatrix[Double]]): List[DenseMatrix[Double]] = {
-
-    this.allLayers.zip(params).foreach{
-      case (layer, param) =>
-        layer.setParam(param)
-    }
 
     this.allLayers.scanRight((label, DenseMatrix.zeros[Double](1, 1))){
       case (layer, (dYCurrent, _)) =>

@@ -60,13 +60,13 @@ object CatDataHelper {
         case "cat" => 1
         case "frog" => 2
         case "truck" => 3
-        case "automobile" => 4
+//        case "automobile" => 4
         case _ => 0
       }
       (label._1, numLabel)
     }
       .filter{label =>
-        label._2 == 1 || label._2 == 3
+        label._2 != 0
       }
   }
 

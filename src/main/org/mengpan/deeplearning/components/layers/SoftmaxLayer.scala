@@ -78,9 +78,9 @@ class SoftmaxLayer extends Layer{
 }
 
 object SoftmaxLayer {
-  def apply(numHiddenUnits: Int, batchNorm: Boolean = false): SoftmaxLayer = {
+  def apply(batchNorm: Boolean = false): SoftmaxLayer = {
     new SoftmaxLayer()
-      .setNumHiddenUnits(numHiddenUnits)
       .setBatchNorm(batchNorm)
+      .setNumHiddenUnits(1)
   }
 }

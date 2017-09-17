@@ -6,7 +6,7 @@ import org.mengpan.deeplearning.components.initializer.WeightsInitializer
 import org.mengpan.deeplearning.components.regularizer.Regularizer
 
 /**
-  * Created by mengpan on 2017/8/26.
+  * Interface for neural network's layer.
   */
 trait Layer{
   private val logger = Logger.getLogger("Layer")
@@ -22,6 +22,7 @@ trait Layer{
   protected var beta: DenseVector[Double] = _
 
   /**Cache processed data*/
+  protected var yPrevious: DenseMatrix[Double] = _
   protected var z: DenseMatrix[Double] = _
   protected var meanZ: DenseVector[Double] = _
   protected var stddevZ: DenseVector[Double] = _
@@ -48,8 +49,15 @@ trait Layer{
     this
   }
 
-  protected var yPrevious: DenseMatrix[Double] = _
-
+  /**
+    * Forward propagation of current layer.
+    * @param yPrevious Output of previous layer, of the shape (n, d(l-1)), where
+    *                  n: #training examples,
+    *                  d(l-1): #hidden units in previous layer L-1.
+    * @return Output of this layer, of the shape (n, d(l)), where
+    *         n: #training examples,
+    *         d(l): #hidden units in current layer L.
+    */
   def forward(yPrevious: DenseMatrix[Double]): DenseMatrix[Double] = {
     this.yPrevious = yPrevious
     y = this.batchNorm match {
@@ -59,6 +67,18 @@ trait Layer{
     y
   }
 
+  /**
+    * Forward propagation of current layer for prediction's usage.
+    * @note The difference between "forward" and "forwardForPrediction" is that,
+    *       when the layer is batch normed, i.e. batchNorm is true, we use
+    *       "forwardWithBatchNormForPrediction" instead of "forwardWithBatchNorm".
+    * @param yPrevious Output of previous layer, of the shape (n, d(l-1)), where
+    *                  n: #training examples,
+    *                  d(l-1): #hidden units in previous layer L-1.
+    * @return Output of this layer, of the shape (n, d(l)), where
+    *         n: #training examples,
+    *         d(l): #hidden units in current layer L.
+    */
   def forwardForPrediction(yPrevious: DenseMatrix[Double]): DenseMatrix[Double] = {
     this.batchNorm match {
       case true => forwardWithBatchNormForPrediction(yPrevious)
@@ -66,6 +86,16 @@ trait Layer{
     }
   }
 
+  /**
+    * Backward propagation of current layer.
+    * @param dYCurrent Gradients of current layer's output, DenseMatrix of shape (n, d(l))
+    *                  where n: #training examples,
+    *                  d(l): #hidden units in current layer L.
+    * @return (dYPrevious, grads), where dYPrevious is gradients for output of previous
+    *         layer; grads is gradients of current layer's parameters, i.e. for layer
+    *         without batchNorm, parameters are w and b, for layers with batchNorm,
+    *         parameters are w, alpha and beta.
+    */
   def backward(dYCurrent: DenseMatrix[Double]): (DenseMatrix[Double], DenseMatrix[Double]) = {
     this.batchNorm match {
       case true => backWithBatchNorm(dYCurrent, yPrevious)
@@ -73,6 +103,13 @@ trait Layer{
     }
   }
 
+  /**
+    * Initialization for parameters in current layer.
+    * @param initializer coule be HeInitializer, NormalInitializer of XaiverInitializer.
+    * @return An DenseMatrix containing all parameters in current layer.
+    *         For batchNorm is true, return's shape is (d(l-1) + 2, d(l)),
+    *         For batchNorm is false, return's shape is (d(l-1) + 1, d(l))
+    */
   def init(initializer: WeightsInitializer): DenseMatrix[Double] = {
     this.batchNorm match {
       case true => this.w = initializer.init(previousHiddenUnits, numHiddenUnits)
@@ -85,13 +122,24 @@ trait Layer{
     }
   }
 
-  def getReguCost(regularizer: Regularizer): Double = {
-    this.batchNorm match {
-      case true => regularizer.getReguCost(w)
-      case _ => regularizer.getReguCost(w)
-    }
-  }
+  /**
+    * Get regularization cost, i.e. L1 norm or Frobinious norm of matrix w.
+    * @param regularizer Could be L1Regularizer, or L2Regularizer.
+    * @return Regularization cost of type Double.
+    */
+  def getReguCost(regularizer: Regularizer): Double = regularizer.getReguCost(w)
 
+
+  /**
+    * Set model parameters of current layer according to the input, which is a vertically
+    * concatenated matrix containing all parameters.
+    * @param param For batchNorm is true, param is of shape (d(l-1) + 2, d(l)),
+    *              where d(l-1) is #hidden units in previous layer; d(l) is #hidden units
+    *              in current layer. The top d(l-1) rows represent 'w', the (d(l-1)+1)th
+    *              row represents transpose of 'alpha', the last row represents 'beta'.
+    *              For batchNorm is false, param is of shape (d(l-1) + 1, d(l)). The top
+    *              d(l-1) rows represent 'w', the last row represents 'b'.
+    */
   def setParam(param: DenseMatrix[Double]): Unit = {
     if (this.batchNorm) {
       this.w = param(0 until previousHiddenUnits, ::)

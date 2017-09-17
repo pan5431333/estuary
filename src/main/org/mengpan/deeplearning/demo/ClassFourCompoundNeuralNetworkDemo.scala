@@ -2,6 +2,7 @@ package org.mengpan.deeplearning.demo
 
 import breeze.stats.{mean, stddev}
 import org.mengpan.deeplearning.components.initializer.HeInitializer
+import org.mengpan.deeplearning.components.layers
 import org.mengpan.deeplearning.components.layers.{DropoutLayer, ReluLayer, SigmoidLayer, SoftmaxLayer}
 import org.mengpan.deeplearning.components.optimizer.{AdamOptimizer, GDOptimizer, SGDOptimizer}
 import org.mengpan.deeplearning.components.regularizer.{L1Regularizer, L2Regularizer, VoidRegularizer}
@@ -39,12 +40,14 @@ object ClassFourCompoundNeuralNetworkDemo extends App{
     .setRegularizer(VoidRegularizer)
     .setOptimizer(AdamOptimizer())
     .setHiddenLayerStructure(
-      ReluLayer(400),
-//      DropoutLayer(0.5),
-      ReluLayer(200)
+      ReluLayer(400, batchNorm = true),
+      DropoutLayer(0.3),
+      ReluLayer(200, batchNorm = true),
+      DropoutLayer(0.3),
+      ReluLayer(100, batchNorm = true)
     )
-    .setOutputLayerStructure(SoftmaxLayer(2))
-    .setLearningRate(0.0001)
+    .setOutputLayerStructure(SoftmaxLayer())
+    .setLearningRate(0.0003)
     .setIterationTime(20)
 
   //API 2nd version

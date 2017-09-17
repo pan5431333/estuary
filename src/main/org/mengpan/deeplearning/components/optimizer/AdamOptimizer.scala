@@ -4,23 +4,49 @@ import breeze.linalg.{DenseMatrix, DenseVector}
 import breeze.numerics.{pow, sqrt}
 
 /**
-  * Created by mengpan on 2017/9/10.
+  * Adam Optimizer, a very efficient and recommended optimizer for Deep Neural Network.
   */
 class AdamOptimizer extends Optimizer with MiniBatchable with Heuristic{
   protected var momentumRate: Double = 0.9
   protected var adamRate: Double = 0.999
-
+  def setMomentumRate(momentum: Double): this.type = {
+    this.momentumRate = momentum
+    this
+  }
+  def setAdamRate(adamRate: Double): this.type = {
+    this.adamRate = adamRate
+    this
+  }
   case class AdamParam[T <: Seq[DenseMatrix[Double]]](modelParam: T, momentumParam: T, adamParam: T)
 
+  /**
+    * Implementation of Optimizer.optimize(). Optimizing Machine Learning-like models'
+    * parameters on a training dataset (feature, label).
+    * @param feature DenseMatrix of shape (n, p) where n: the number of training
+    *                examples, p: the dimension of input feature.
+    * @param label DenseMatrix of shape (n, q) where n: the number of training examples,
+    *              q: number of distinct labels.
+    * @param initParams Initialized parameters.
+    * @param forwardFunc The cost function.
+    *                    inputs: (feature, label, params) of type
+    *                           (DenseMatrix[Double], DenseMatrix[Double], T)
+    *                    output: cost of type Double.
+    * @param backwardFunc A function calculating gradients of all parameters.
+    *                     input: (label, params) of type (DenseMatrix[Double], T)
+    *                     output: gradients of params of type T.
+    * @tparam T The type of model parameters. For Neural Network, T is
+    *           List[DenseMatrix[Double]]
+    * @return Trained parameters.
+    */
   override def optimize[T <: Seq[DenseMatrix[Double]]](feature: DenseMatrix[Double], label: DenseMatrix[Double])
                                                       (initParams: T)
                                                       (forwardFunc: (DenseMatrix[Double], DenseMatrix[Double], T) => Double)
                                                       (backwardFunc: (DenseMatrix[Double], T) => T): T = {
-    val initMomentum = initMomentumOrAdam(initParams)
-    val initAdam = initMomentumOrAdam(initParams)
+    val initMomentum = getInitAdam(initParams)
+    val initAdam = getInitAdam(initParams)
     val initAdamParam = AdamParam[T](initParams, initMomentum, initAdam)
     val numExamples = feature.rows
-    val printMiniBatchUnit = ((numExamples / this.getMiniBatchSize).toInt / 5).toInt //for each iteration, only print minibatch cost FIVE times.
+    val printMiniBatchUnit = ((numExamples / this.miniBatchSize).toInt / 5).toInt //for each iteration, only print minibatch cost FIVE times.
 
     (0 until this.iteration).toIterator.foldLeft[AdamParam[T]](initAdamParam){
       case (preParam, iterTime) =>
@@ -39,14 +65,29 @@ class AdamOptimizer extends Optimizer with MiniBatchable with Heuristic{
     }.modelParam
   }
 
-  private def initMomentumOrAdam[T <: Seq[DenseMatrix[Double]]](t: T): T = {
-    t.map{m =>
+  /**
+    * Initialize momentum or RMSProp parameters to all zeros.
+    * @param modelParams
+    * @tparam T
+    * @return
+    */
+  private def getInitAdam[T <: Seq[DenseMatrix[Double]]](modelParams: T): T = {
+    modelParams.map{m =>
       DenseMatrix.zeros[Double](m.rows, m.cols)
     }.asInstanceOf[T]
   }
 
-  private def updateFunc[T <: Seq[DenseMatrix[Double]]](value: AdamParam[T], grads: T, miniBatchTime: Int): AdamParam[T] = {
-    val (ps, vs, ws) = value match {
+  /**
+    * Update model parameters, momentum parameters and RMSProp parameters by Adam method.
+    * @param params model parameters, momentum parameters and RMSProp parameters of type
+    *               AdamParam[T], where T is the type of model parameters.
+    * @param grads Gradients of model parameters on current iteration.
+    * @param miniBatchTime Current minibatch time.
+    * @tparam T the type of model paramaters. For neural network, T is List[DenseMatrix[Double]]
+    * @return Updated model parameters, momentum parameters and RMSProp parameters.
+    */
+  private def updateFunc[T <: Seq[DenseMatrix[Double]]](params: AdamParam[T], grads: T, miniBatchTime: Int): AdamParam[T] = {
+    val (ps, vs, ws) = params match {
       case AdamParam(a, b, c) => (a, b, c)
     }
 

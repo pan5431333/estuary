@@ -1,12 +1,16 @@
 package org.mengpan.deeplearning.components.optimizer
 
-import breeze.linalg.{DenseMatrix, DenseVector}
+import breeze.linalg.{DenseMatrix}
 import org.apache.log4j.Logger
 import scala.collection.mutable
 
 
 /**
-  * Created by mengpan on 2017/9/9.
+  * Optimizer Interface, all of whose implementations
+  * MUST implement abstract method: "optimize"
+  * @note This optimizer can be ONLY used for optimizing Machine Learning-like
+  *       problems, which means that input-output (i.e. feature-label) data are needed.
+  *       NOT for general optimization or mathematical planning problem.
   */
 trait Optimizer {
   val logger = Logger.getLogger(this.getClass)
@@ -23,8 +27,28 @@ trait Optimizer {
     this
   }
 
+  /**Storing cost history after every iteration. */
   val costHistory: mutable.MutableList[Double] = new mutable.MutableList[Double]()
 
+  /**
+    * Optimizing Machine Learning-like models' parameters on a training
+    * dataset (feature, label).
+    * @param feature DenseMatrix of shape (n, p) where n: the number of
+    *                training examples, p: the dimension of input feature.
+    * @param label DenseMatrix of shape (n, q) where n: the number of
+    *              training examples, q: number of distinct labels.
+    * @param initParams Initialized parameters.
+    * @param forwardFunc The cost function.
+    *                    inputs: (feature, label, params) of type
+    *                           (DenseMatrix[Double], DenseMatrix[Double], T)
+    *                    output: cost of type Double.
+    * @param backwardFunc A function calculating gradients of all parameters.
+    *                     input: (label, params) of type (DenseMatrix[Double], T)
+    *                     output: gradients of params of type T.
+    * @tparam T The type of model parameters.
+    *           For Neural Network, T is List[DenseMatrix[Double]]
+    * @return Trained parameters.
+    */
   def optimize[T <: Seq[DenseMatrix[Double]]](feature: DenseMatrix[Double], label: DenseMatrix[Double])
                                              (initParams: T)
                                              (forwardFunc: (DenseMatrix[Double], DenseMatrix[Double], T) => Double)
