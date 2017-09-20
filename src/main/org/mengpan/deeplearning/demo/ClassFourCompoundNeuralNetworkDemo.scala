@@ -38,17 +38,14 @@ object ClassFourCompoundNeuralNetworkDemo extends App{
   val nnModel: Model = new NeuralNetworkModel()
     .setWeightsInitializer(HeInitializer)
     .setRegularizer(VoidRegularizer)
-    .setOptimizer(AdamOptimizer())
+    .setOptimizer(AdamOptimizer(miniBatchSize = 64))
     .setHiddenLayerStructure(
-      ReluLayer(1000, batchNorm = true),
-      DropoutLayer(0.3),
-      ReluLayer(200, batchNorm = true),
-      DropoutLayer(0.3),
-      ReluLayer(20, batchNorm = true)
+      ReluLayer(400, batchNorm = true),
+      ReluLayer(200, batchNorm = true)
     )
     .setOutputLayerStructure(SoftmaxLayer())
-    .setLearningRate(0.0003)
-    .setIterationTime(20)
+    .setLearningRate(0.001)
+    .setIterationTime(10)
 
   //API 2nd version
 //  val nnModel = NeuralNetworkModel(List(ReluLayer(200), ReluLayer(100)), SigmoidLayer(1))

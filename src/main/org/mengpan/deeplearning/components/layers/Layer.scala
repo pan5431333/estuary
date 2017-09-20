@@ -1,9 +1,12 @@
 package org.mengpan.deeplearning.components.layers
 
-import breeze.linalg.{DenseMatrix, DenseVector}
+import breeze.linalg.{DenseMatrix, DenseVector, sum}
+import breeze.numerics.pow
 import org.apache.log4j.Logger
 import org.mengpan.deeplearning.components.initializer.WeightsInitializer
 import org.mengpan.deeplearning.components.regularizer.Regularizer
+import org.mengpan.deeplearning.utils.DebugUtils
+import sun.security.ssl.Debug
 
 /**
   * Interface for neural network's layer.
@@ -26,6 +29,8 @@ trait Layer{
   protected var z: DenseMatrix[Double] = _
   protected var meanZ: DenseVector[Double] = _
   protected var stddevZ: DenseVector[Double] = _
+  protected var currentMeanZ: DenseVector[Double] = _
+  protected var currentStddevZ: DenseVector[Double] = _
   protected var zNorm: DenseMatrix[Double] = _
   protected var zDelta: DenseMatrix[Double] = _
   protected var y: DenseMatrix[Double] = _
@@ -112,11 +117,13 @@ trait Layer{
     */
   def init(initializer: WeightsInitializer): DenseMatrix[Double] = {
     this.batchNorm match {
-      case true => this.w = initializer.init(previousHiddenUnits, numHiddenUnits)
+      case true =>
+        this.w = initializer.init(previousHiddenUnits, numHiddenUnits)
         this.alpha = DenseVector.zeros[Double](numHiddenUnits)
         this.beta = DenseVector.ones[Double](numHiddenUnits)
         DenseMatrix.vertcat(this.w, this.alpha.toDenseMatrix, this.beta.toDenseMatrix)
-      case false => this.w = initializer.init(previousHiddenUnits, numHiddenUnits)
+      case false =>
+        this.w = initializer.init(previousHiddenUnits, numHiddenUnits)
         this.b = DenseVector.zeros[Double](numHiddenUnits)
         DenseMatrix.vertcat(this.w, this.b.toDenseMatrix)
     }
@@ -168,8 +175,10 @@ trait Layer{
     zNorm = znorm
     meanZ = if (meanZ == null) meanVec else 0.9 * meanZ + 0.1 * meanVec
     stddevZ = if (stddevZ == null) stddevVec else 0.9 * stddevZ + 0.1 * stddevVec
+    currentMeanZ = meanVec
+    currentStddevZ = stddevVec
 
-    zDelta = (zNorm + oneVector * alpha.t) *:* (oneVector * beta.t)
+    zDelta = zNorm *:* (oneVector * beta.t) + oneVector * alpha.t
     this.activationFuncEval(zDelta)
   }
 
@@ -226,16 +235,45 @@ trait Layer{
 
     val dZDelta = dYCurrent *:* this.activationFuncEval(zDelta)
     val dZNorm = dZDelta *:* (oneVector * beta.t)
-    val dAlpha = dZNorm.t * oneVector / numExamples.toDouble
-    val dBeta = (dZDelta *:* (zNorm + oneVector * alpha.t)).t * oneVector / numExamples.toDouble
-    val dZCurrent = dZNorm /:/ (oneVector * stddevZ.t)
-    val dWCurrent = yPrevious.t * dZCurrent / numExamples.toDouble
-    val dYPrevious = dZCurrent * w.t
+    val dAlpha = dZDelta.t * oneVector
+    val dBeta = (dZDelta *:* zNorm).t * oneVector
+//    println("alpha: " + alpha)
+//    println("dAlpha: " + dAlpha)
+//    println()
+//    println("beta: " + beta)
+//    println("dBeta: " + dBeta)
+//    println()
+//    println()
+
+    //todo This formula is wrong. To be changed later.
+//    val dvar = (dZNorm *:* (z - oneVector * currentMeanZ.t) * -0.5 *:* (oneVector * pow((currentStddevZ + 1E-9), -1.5).t)).t * oneVector
+//    val dx_ = 1.0 / breeze.numerics.sqrt(currentStddevZ + 1E-9)
+//    val dvar_ = 2.0 * (z - oneVector * currentMeanZ.t) / numExamples.toDouble
+//
+//    val di = dZNorm *:* (oneVector * dx_.t) + dvar * dvar_
+////    val dmean = -1 * np.sum(di, axis=0)
+//    val dmean = -1.0 * (di.t * oneVector)
+////    val dmean_ = np.ones_like(x) / N
+//    val dmean_ = DenseMatrix.ones[Double](z.rows, z.cols) / numExamples.toDouble
+////
+////    val dZ = di + dmean * dmean_
+//    val dZ = di + (oneVector * dmean.t) *:* dmean_
+
+    val dStddevZ = (-oneVector * currentMeanZ.t + z) /:/ (oneVector * currentStddevZ.t + 1E-9)
+    val dZ = ((1.0 - 1.0/numExamples.toDouble) * (oneVector * currentStddevZ.t) + (dStddevZ) *:* (z - oneVector * currentMeanZ.t)) /:/ (oneVector * pow(currentStddevZ, 2.0).t + 1E-9)
+
+    val dWCurrent = yPrevious.t * dZ / numExamples.toDouble
+    val dYPrevious = dZ * w.t
 
     val grads = DenseMatrix.vertcat(dWCurrent, dAlpha.toDenseMatrix, dBeta.toDenseMatrix)
 
     (dYPrevious, grads)
   }
 
-  override def toString: String = super.toString
+  override def toString: String =
+    s"""
+      |Layer: ${getClass.getSimpleName},
+      |Number of Hidden Units: $numHiddenUnits,
+      |Is Batch Normed? $batchNorm
+    """.stripMargin
 }

@@ -60,7 +60,7 @@ class AdamOptimizer extends Optimizer with MiniBatchable with Heuristic{
               logger.info("Iteration: " + iterTime + "|=" + "=" * (miniBatchTime / 10) + ">> Cost: " + cost)
             costHistory.+=(cost)
 
-            updateFunc(preBatchParams, grads, miniBatchTime)
+            updateFunc(preBatchParams, grads, iterTime * miniBatchSize + miniBatchTime)
         }
     }.modelParam
   }
