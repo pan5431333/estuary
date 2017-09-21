@@ -101,6 +101,11 @@ class NeuralNetworkModel extends Model{
         layer.setParam(param)
     }
 
+    val yHat = forward(this.allLayers, feature)
+    val cost = calCost(labelMatrix, yHat, this.allLayers, this.regularizer)
+
+    logger.info("Cost on the entire training set: " + cost)
+
     this
   }
 

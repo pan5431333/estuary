@@ -1,6 +1,6 @@
 package org.mengpan.deeplearning.components.layers
 import breeze.linalg.{DenseMatrix, DenseVector, min, softmax, sum}
-import breeze.numerics.exp
+import breeze.numerics.{exp, pow}
 
 /**
   * Created by mengpan on 2017/9/14.
@@ -9,6 +9,15 @@ class SoftmaxLayer extends Layer{
 
 
   override def backward(dYCurrent: DenseMatrix[Double]): (DenseMatrix[Double], DenseMatrix[Double]) = {
+    this.batchNorm match {
+      case true => backwardWithBatchNorm(dYCurrent)
+      case _ => backwardWithoutBatchNorm(dYCurrent)
+    }
+
+
+  }
+
+  private def backwardWithoutBatchNorm(dYCurrent: DenseMatrix[Double]): (DenseMatrix[Double], DenseMatrix[Double]) = {
     val numExamples = dYCurrent.rows
 
     //HACK!
@@ -22,6 +31,33 @@ class SoftmaxLayer extends Layer{
 
     val grads = DenseMatrix.vertcat(dWCurrent, dBCurrent.toDenseMatrix)
     (dZCurrent * w.t, grads)
+  }
+
+  private def backwardWithBatchNorm(dYCurrent: DenseMatrix[Double]): (DenseMatrix[Double], DenseMatrix[Double]) = {
+    val numExamples = dYCurrent.rows
+    val oneVector = DenseVector.ones[Double](numExamples)
+
+    //HACK!
+    val label = dYCurrent
+
+    val dZDelta = y - label
+    val dZNorm = dZDelta *:* (oneVector * beta.t)
+    val dAlpha = dZDelta.t * oneVector / numExamples.toDouble
+    val dBeta = (dZDelta *:* zNorm).t * oneVector / numExamples.toDouble
+
+    val dZ = DenseMatrix.zeros[Double](z.rows, z.cols)
+    for (j <- 0 until z.cols) {
+      val dZNormJ = dZNorm(::, j)
+      val dZJ = (DenseMatrix.eye[Double](dZNormJ.length) / currentStddevZ(j) - DenseMatrix.ones[Double](dZNormJ.length, dZNormJ.length) / (numExamples.toDouble * currentStddevZ(j)) - (z(::, j) - currentMeanZ(j)) * (z(::, j) - currentMeanZ(j)).t / (numExamples.toDouble * pow(currentStddevZ(j), 3.0))) * dZNormJ
+      dZ(::, j) := dZJ
+    }
+
+    val dWCurrent = yPrevious.t * dZ / numExamples.toDouble
+    val dYPrevious = dZ * w.t
+
+    val grads = DenseMatrix.vertcat(dWCurrent, dAlpha.toDenseMatrix, dBeta.toDenseMatrix)
+
+    (dYPrevious, grads)
   }
 
   /**

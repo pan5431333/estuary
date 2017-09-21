@@ -35,6 +35,9 @@ trait Layer{
   protected var zDelta: DenseMatrix[Double] = _
   protected var y: DenseMatrix[Double] = _
 
+  /**Record iteration time of this layer*/
+  protected var currentIterTime: Int = 0
+
   /**Layer hyperparameters and their setters*/
   var numHiddenUnits: Int = 0
   var batchNorm: Boolean = false
@@ -149,11 +152,11 @@ trait Layer{
     */
   def setParam(param: DenseMatrix[Double]): Unit = {
     if (this.batchNorm) {
-      this.w = param(0 until previousHiddenUnits, ::)
-      this.alpha = param(previousHiddenUnits, ::).t
+      this.w = param(0 to param.rows-3, ::)
+      this.alpha = param(param.rows-2, ::).t
       this.beta = param(param.rows-1, ::).t
     } else {
-      this.w = param(0 until previousHiddenUnits, ::)
+      this.w = param(0 to param.rows - 2, ::)
       this.b = param(param.rows - 1, ::).t
     }
   }
@@ -178,6 +181,12 @@ trait Layer{
     currentMeanZ = meanVec
     currentStddevZ = stddevVec
 
+    if (this.currentIterTime == 0) {
+      alpha = meanVec
+      beta = stddevVec
+    }
+    this.currentIterTime += 1
+
     zDelta = zNorm *:* (oneVector * beta.t) + oneVector * alpha.t
     this.activationFuncEval(zDelta)
   }
@@ -194,7 +203,7 @@ trait Layer{
       zNorm(::, j) := (jthCol - this.meanZ(j)) / (this.stddevZ(j) + 1E-9)
     }
 
-    zDelta = (zNorm + oneVector * alpha.t) *:* (oneVector * beta.t)
+    zDelta = zNorm *:* (oneVector * beta.t) + oneVector * alpha.t
     this.activationFuncEval(zDelta)
   }
 
@@ -206,8 +215,9 @@ trait Layer{
     for (j <- 0 until z.cols) {
       val jthCol = z(::, j)
       val mean = breeze.stats.mean(jthCol)
-      val stdDev = breeze.stats.stddev(jthCol)
-      res(::, j) := (jthCol - mean) / (stdDev + 1E-9)
+      val variance = breeze.stats.variance(jthCol)
+      val stdDev = breeze.numerics.sqrt(variance + 1E-9)
+      res(::, j) := (jthCol - mean) / stdDev
       meanVec(j) = mean
       stddevVec(j) = stdDev
     }
@@ -235,32 +245,15 @@ trait Layer{
 
     val dZDelta = dYCurrent *:* this.activationFuncEval(zDelta)
     val dZNorm = dZDelta *:* (oneVector * beta.t)
-    val dAlpha = dZDelta.t * oneVector
-    val dBeta = (dZDelta *:* zNorm).t * oneVector
-//    println("alpha: " + alpha)
-//    println("dAlpha: " + dAlpha)
-//    println()
-//    println("beta: " + beta)
-//    println("dBeta: " + dBeta)
-//    println()
-//    println()
+    val dAlpha = dZDelta.t * oneVector / numExamples.toDouble
+    val dBeta = (dZDelta *:* zNorm).t * oneVector / numExamples.toDouble
 
-    //todo This formula is wrong. To be changed later.
-//    val dvar = (dZNorm *:* (z - oneVector * currentMeanZ.t) * -0.5 *:* (oneVector * pow((currentStddevZ + 1E-9), -1.5).t)).t * oneVector
-//    val dx_ = 1.0 / breeze.numerics.sqrt(currentStddevZ + 1E-9)
-//    val dvar_ = 2.0 * (z - oneVector * currentMeanZ.t) / numExamples.toDouble
-//
-//    val di = dZNorm *:* (oneVector * dx_.t) + dvar * dvar_
-////    val dmean = -1 * np.sum(di, axis=0)
-//    val dmean = -1.0 * (di.t * oneVector)
-////    val dmean_ = np.ones_like(x) / N
-//    val dmean_ = DenseMatrix.ones[Double](z.rows, z.cols) / numExamples.toDouble
-////
-////    val dZ = di + dmean * dmean_
-//    val dZ = di + (oneVector * dmean.t) *:* dmean_
-
-    val dStddevZ = (-oneVector * currentMeanZ.t + z) /:/ (oneVector * currentStddevZ.t + 1E-9)
-    val dZ = ((1.0 - 1.0/numExamples.toDouble) * (oneVector * currentStddevZ.t) + (dStddevZ) *:* (z - oneVector * currentMeanZ.t)) /:/ (oneVector * pow(currentStddevZ, 2.0).t + 1E-9)
+    val dZ = DenseMatrix.zeros[Double](z.rows, z.cols)
+    for (j <- 0 until z.cols) {
+      val dZNormJ = dZNorm(::, j)
+      val dZJ = (DenseMatrix.eye[Double](dZNormJ.length) / currentStddevZ(j) - DenseMatrix.ones[Double](dZNormJ.length, dZNormJ.length) / (numExamples.toDouble * currentStddevZ(j)) - (z(::, j) - currentMeanZ(j)) * (z(::, j) - currentMeanZ(j)).t / (numExamples.toDouble * pow(currentStddevZ(j), 3.0))) * dZNormJ
+      dZ(::, j) := dZJ
+    }
 
     val dWCurrent = yPrevious.t * dZ / numExamples.toDouble
     val dYPrevious = dZ * w.t

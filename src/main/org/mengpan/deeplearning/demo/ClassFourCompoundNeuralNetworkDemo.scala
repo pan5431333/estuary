@@ -1,9 +1,9 @@
 package org.mengpan.deeplearning.demo
 
 import breeze.stats.{mean, stddev}
-import org.mengpan.deeplearning.components.initializer.HeInitializer
+import org.mengpan.deeplearning.components.initializer.{HeInitializer, NormalInitializer}
 import org.mengpan.deeplearning.components.layers
-import org.mengpan.deeplearning.components.layers.{DropoutLayer, ReluLayer, SigmoidLayer, SoftmaxLayer}
+import org.mengpan.deeplearning.components.layers._
 import org.mengpan.deeplearning.components.optimizer.{AdamOptimizer, GDOptimizer, SGDOptimizer}
 import org.mengpan.deeplearning.components.regularizer.{L1Regularizer, L2Regularizer, VoidRegularizer}
 import org.mengpan.deeplearning.data.GasCensor
@@ -38,14 +38,14 @@ object ClassFourCompoundNeuralNetworkDemo extends App{
   val nnModel: Model = new NeuralNetworkModel()
     .setWeightsInitializer(HeInitializer)
     .setRegularizer(VoidRegularizer)
-    .setOptimizer(AdamOptimizer(miniBatchSize = 64))
+    .setOptimizer(AdamOptimizer(miniBatchSize = 128))
     .setHiddenLayerStructure(
-      ReluLayer(400, batchNorm = true),
-      ReluLayer(200, batchNorm = true)
+      ReluLayer(200, batchNorm = true),
+      ReluLayer(100, batchNorm = true)
     )
-    .setOutputLayerStructure(SoftmaxLayer())
-    .setLearningRate(0.001)
-    .setIterationTime(10)
+    .setOutputLayerStructure(SoftmaxLayer(true))
+    .setLearningRate(0.01)
+    .setIterationTime(30)
 
   //API 2nd version
 //  val nnModel = NeuralNetworkModel(List(ReluLayer(200), ReluLayer(100)), SigmoidLayer(1))
