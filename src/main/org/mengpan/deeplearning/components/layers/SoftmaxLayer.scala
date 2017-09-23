@@ -45,12 +45,8 @@ class SoftmaxLayer extends Layer{
     val dAlpha = dZDelta.t * oneVector / numExamples.toDouble
     val dBeta = (dZDelta *:* zNorm).t * oneVector / numExamples.toDouble
 
-    val dZ = DenseMatrix.zeros[Double](z.rows, z.cols)
-    for (j <- 0 until z.cols) {
-      val dZNormJ = dZNorm(::, j)
-      val dZJ = (DenseMatrix.eye[Double](dZNormJ.length) / currentStddevZ(j) - DenseMatrix.ones[Double](dZNormJ.length, dZNormJ.length) / (numExamples.toDouble * currentStddevZ(j)) - (z(::, j) - currentMeanZ(j)) * (z(::, j) - currentMeanZ(j)).t / (numExamples.toDouble * pow(currentStddevZ(j), 3.0))) * dZNormJ
-      dZ(::, j) := dZJ
-    }
+    val dZ = normalizeGrad(dZNorm, z, currentMeanZ, currentStddevZ)
+//    val dZ = normalizeGradVec(dZNorm, z, currentMeanZ, currentStddevZ)
 
     val dWCurrent = yPrevious.t * dZ / numExamples.toDouble
     val dYPrevious = dZ * w.t

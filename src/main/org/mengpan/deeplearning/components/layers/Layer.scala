@@ -176,8 +176,8 @@ trait Layer{
     val (znorm, meanVec, stddevVec) = normalize(z)
 
     zNorm = znorm
-    meanZ = if (meanZ == null) meanVec else 0.9 * meanZ + 0.1 * meanVec
-    stddevZ = if (stddevZ == null) stddevVec else 0.9 * stddevZ + 0.1 * stddevVec
+    meanZ = if (meanZ == null) meanVec else 0.99 * meanZ + 0.01 * meanVec
+    stddevZ = if (stddevZ == null) stddevVec else 0.99 * stddevZ + 0.01 * stddevVec
     currentMeanZ = meanVec
     currentStddevZ = stddevVec
 
@@ -248,12 +248,11 @@ trait Layer{
     val dAlpha = dZDelta.t * oneVector / numExamples.toDouble
     val dBeta = (dZDelta *:* zNorm).t * oneVector / numExamples.toDouble
 
-    val dZ = DenseMatrix.zeros[Double](z.rows, z.cols)
-    for (j <- 0 until z.cols) {
-      val dZNormJ = dZNorm(::, j)
-      val dZJ = (DenseMatrix.eye[Double](dZNormJ.length) / currentStddevZ(j) - DenseMatrix.ones[Double](dZNormJ.length, dZNormJ.length) / (numExamples.toDouble * currentStddevZ(j)) - (z(::, j) - currentMeanZ(j)) * (z(::, j) - currentMeanZ(j)).t / (numExamples.toDouble * pow(currentStddevZ(j), 3.0))) * dZNormJ
-      dZ(::, j) := dZJ
-    }
+    //Vector version
+//    val dZ = normalizeGradVec(dZNorm, z, currentMeanZ, currentStddevZ)
+
+    //Matrix version (preffered, bug worse results than normalizeGradVec, why?)
+    val dZ = normalizeGrad(dZNorm, z, currentMeanZ, currentStddevZ)
 
     val dWCurrent = yPrevious.t * dZ / numExamples.toDouble
     val dYPrevious = dZ * w.t
@@ -261,6 +260,27 @@ trait Layer{
     val grads = DenseMatrix.vertcat(dWCurrent, dAlpha.toDenseMatrix, dBeta.toDenseMatrix)
 
     (dYPrevious, grads)
+  }
+
+  protected def normalizeGrad(dZNorm: DenseMatrix[Double], z: DenseMatrix[Double], meanZ: DenseVector[Double], stddevZ: DenseVector[Double]): DenseMatrix[Double] = {
+    val oneVector = DenseVector.ones[Double](dZNorm.rows)
+    val oneMat = DenseMatrix.ones[Double](dZNorm.rows, dZNorm.rows)
+    val n = dZNorm.rows.toDouble
+
+    (oneVector * pow(stddevZ + 1E-9, -1.0).t) / n *:* (dZNorm * n + (oneMat * dZNorm) - (z - oneVector * meanZ.t) *:* (oneVector * pow(stddevZ + 1E-9, -2.0).t) *:* (oneMat * (dZNorm *:* (z - oneVector * meanZ.t))) )
+  }
+
+  protected def normalizeGradVec(dZNorm: DenseMatrix[Double], z: DenseMatrix[Double], meanZ: DenseVector[Double], stddevZ: DenseVector[Double]): DenseMatrix[Double] = {
+    val n = z.rows.toDouble
+
+    //Vectorized version
+    val dZ = DenseMatrix.zeros[Double](z.rows, z.cols)
+    for (j <- 0 until z.cols) {
+      val dZNormJ = dZNorm(::, j)
+      val dZJ = (DenseMatrix.eye[Double](dZNormJ.length) / stddevZ(j) - DenseMatrix.ones[Double](dZNormJ.length, dZNormJ.length) / (n * stddevZ(j)) - (z(::, j) - meanZ(j)) * (z(::, j) - meanZ(j)).t / (n * pow(stddevZ(j), 3.0))) * dZNormJ
+      dZ(::, j) := dZJ
+    }
+    dZ
   }
 
   override def toString: String =

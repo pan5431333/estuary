@@ -44,8 +44,8 @@ object ClassFourCompoundNeuralNetworkDemo extends App{
       ReluLayer(100, batchNorm = true)
     )
     .setOutputLayerStructure(SoftmaxLayer(true))
-    .setLearningRate(0.01)
-    .setIterationTime(30)
+    .setLearningRate(0.0001)
+    .setIterationTime(15)
 
   //API 2nd version
 //  val nnModel = NeuralNetworkModel(List(ReluLayer(200), ReluLayer(100)), SigmoidLayer(1))
