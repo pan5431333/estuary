@@ -35,8 +35,8 @@ trait Layer{
   protected var zDelta: DenseMatrix[Double] = _
   protected var y: DenseMatrix[Double] = _
 
-  /**Record iteration time of this layer*/
-  protected var currentIterTime: Int = 0
+  /**Record if this layer has been trained*/
+  var isTrained: Boolean = false
 
   /**Layer hyperparameters and their setters*/
   var numHiddenUnits: Int = 0
@@ -104,10 +104,12 @@ trait Layer{
     *         without batchNorm, parameters are w and b, for layers with batchNorm,
     *         parameters are w, alpha and beta.
     */
-  def backward(dYCurrent: DenseMatrix[Double]): (DenseMatrix[Double], DenseMatrix[Double]) = {
+  def backward(dYCurrent: DenseMatrix[Double], regularizer: Option[Regularizer]): (DenseMatrix[Double], DenseMatrix[Double]) = {
+    this.isTrained = true
+
     this.batchNorm match {
-      case true => backWithBatchNorm(dYCurrent, yPrevious)
-      case _ => backWithoutBatchNorm(dYCurrent, yPrevious)
+      case true => backWithBatchNorm(dYCurrent, yPrevious, regularizer)
+      case _ => backWithoutBatchNorm(dYCurrent, yPrevious, regularizer)
     }
   }
 
@@ -181,12 +183,6 @@ trait Layer{
     currentMeanZ = meanVec
     currentStddevZ = stddevVec
 
-    if (this.currentIterTime == 0) {
-      alpha = meanVec
-      beta = stddevVec
-    }
-    this.currentIterTime += 1
-
     zDelta = zNorm *:* (oneVector * beta.t) + oneVector * alpha.t
     this.activationFuncEval(zDelta)
   }
@@ -225,28 +221,33 @@ trait Layer{
     (res, meanVec, stddevVec)
   }
 
-  private def backWithoutBatchNorm(dYCurrent: DenseMatrix[Double], yPrevious: DenseMatrix[Double]): (DenseMatrix[Double], DenseMatrix[Double]) = {
+  private def backWithoutBatchNorm(dYCurrent: DenseMatrix[Double], yPrevious: DenseMatrix[Double], regularizer: Option[Regularizer]): (DenseMatrix[Double], DenseMatrix[Double]) = {
 
     val numExamples = dYCurrent.rows
+    val n = numExamples.toDouble
 
-    val dZCurrent = dYCurrent *:* this.activationGradEval(z)
-    val dWCurrent = yPrevious.t * dZCurrent / numExamples.toDouble
-    val dBCurrent = (DenseVector.ones[Double](numExamples).t * dZCurrent).t / numExamples.toDouble
-    val dYPrevious = dZCurrent * w.t
+    val dZ = dYCurrent *:* this.activationGradEval(z)
+    val dWCurrent = regularizer match {
+      case None => yPrevious.t * dZ / n
+      case Some(regu) => yPrevious.t * dZ / n + regu.getReguCostGrad(w)
+    }
+    val dBCurrent = (DenseVector.ones[Double](numExamples).t * dZ).t / numExamples.toDouble
+    val dYPrevious = dZ * w.t
 
     val grads = DenseMatrix.vertcat(dWCurrent, dBCurrent.toDenseMatrix)
 
     (dYPrevious, grads)
   }
 
-  private def backWithBatchNorm(dYCurrent: DenseMatrix[Double], yPrevious: DenseMatrix[Double]): (DenseMatrix[Double], DenseMatrix[Double]) = {
+  private def backWithBatchNorm(dYCurrent: DenseMatrix[Double], yPrevious: DenseMatrix[Double], regularizer: Option[Regularizer]): (DenseMatrix[Double], DenseMatrix[Double]) = {
     val numExamples = dYCurrent.rows
+    val n = numExamples.toDouble
     val oneVector = DenseVector.ones[Double](numExamples)
 
     val dZDelta = dYCurrent *:* this.activationFuncEval(zDelta)
     val dZNorm = dZDelta *:* (oneVector * beta.t)
-    val dAlpha = dZDelta.t * oneVector / numExamples.toDouble
-    val dBeta = (dZDelta *:* zNorm).t * oneVector / numExamples.toDouble
+    val dAlpha = dZDelta.t * oneVector / n
+    val dBeta = (dZDelta *:* zNorm).t * oneVector / n
 
     //Vector version
 //    val dZ = normalizeGradVec(dZNorm, z, currentMeanZ, currentStddevZ)
@@ -254,7 +255,11 @@ trait Layer{
     //Matrix version (preffered, bug worse results than normalizeGradVec, why?)
     val dZ = normalizeGrad(dZNorm, z, currentMeanZ, currentStddevZ)
 
-    val dWCurrent = yPrevious.t * dZ / numExamples.toDouble
+    val dWCurrent = regularizer match {
+      case None => yPrevious.t * dZ / n
+      case Some(regu) => yPrevious.t * dZ / n + regu.getReguCostGrad(w)
+    }
+
     val dYPrevious = dZ * w.t
 
     val grads = DenseMatrix.vertcat(dWCurrent, dAlpha.toDenseMatrix, dBeta.toDenseMatrix)

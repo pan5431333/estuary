@@ -20,10 +20,8 @@ class NeuralNetworkModel extends Model{
   protected var hiddenLayers: List[Layer] = null
   protected var outputLayer: Layer = null
   protected var weightsInitializer: WeightsInitializer = HeInitializer //initialization methods, see also HeInitializer, XaiverInitializer
-  protected var regularizer: Regularizer = VoidRegularizer //VoidRegularizer: No regularization. see also L1Regularizer, L2Regularizer
+  protected var regularizer: Regularizer = _ //VoidRegularizer: No regularization. see also L1Regularizer, L2Regularizer
   protected var optimizer: Optimizer = AdamOptimizer() //AdamOptimizer, see also GDOptimizer: Batch Gradient Descent, SGDOptimizer,
-
-  lazy val allLayers = hiddenLayers ::: outputLayer :: Nil //concat hidden layers and output layer
 
   private var labelsMapping: List[Double] = _
 
@@ -46,6 +44,14 @@ class NeuralNetworkModel extends Model{
   }
 
   def setOutputLayerStructure(outputLayer: Layer): this.type = {
+    if (this.hiddenLayers == null) {
+      throw new IllegalArgumentException("Hidden layers should be set before output layer!")
+    }
+
+    if (this.outputLayer != null) {
+      throw new IllegalArgumentException("Output layer has already been set... Output Layer: " + outputLayer)
+    }
+
     this.outputLayer = outputLayer
     this.outputLayer.setPreviousHiddenUnits(this.hiddenLayers.last.numHiddenUnits)
     this
@@ -67,6 +73,27 @@ class NeuralNetworkModel extends Model{
   }
 
 
+  private var feature: DenseMatrix[Double] = _
+  private var label: DenseVector[Double] = _
+
+  def adddata(feature: DenseMatrix[Double], label: DenseVector[Double]): this.type = {
+    this.feature = feature
+    this.label = label
+    this
+  }
+
+  private var initParams: List[DenseMatrix[Double]] = _
+
+  def init(initializer: WeightsInitializer): this.type = {
+    val allLayers = hiddenLayers ::: outputLayer :: Nil //concat hidden layers and output layer
+    val labelMatrix = convertVectorToMatrix(label)
+    allLayers.head.setPreviousHiddenUnits(feature.cols)
+    allLayers.last.setNumHiddenUnits(this.labelsMapping.length)
+    val initParams = allLayers.map(_.init(weightsInitializer))
+    this.initParams = initParams
+    this
+  }
+
   /**
     * Train the model.
     * If the optimizer chosen is AdamOptimizer, then use method trainByAdam.
@@ -77,32 +104,43 @@ class NeuralNetworkModel extends Model{
     * @return A trained model whose model parameters have been updated
     */
   override def train(feature: DenseMatrix[Double], label: DenseVector[Double]): this.type = {
-    this.allLayers.head.setPreviousHiddenUnits(feature.cols)
+
+    val allLayers = hiddenLayers ::: outputLayer :: Nil //concat hidden layers and output layer
     this.optimizer.setIteration(iterationTime).setLearningRate(learningRate)
     val labelMatrix = convertVectorToMatrix(label)
-    this.allLayers.last.setNumHiddenUnits(this.labelsMapping.length)
-    val initParams = this.allLayers.map(_.init(weightsInitializer))
+
+    val initParams = if (this.initParams != null) this.initParams else {
+      allLayers.head.setPreviousHiddenUnits(feature.cols)
+      allLayers.last.setNumHiddenUnits(this.labelsMapping.length)
+      allLayers.map(_.init(weightsInitializer))
+    }
+
+    val regularizer: Option[Regularizer] = this.regularizer match {
+      case null => None
+      case VoidRegularizer => None
+      case _ => Some(this.regularizer)
+    }
 
     val trainedParams = this.optimizer.optimize(feature, labelMatrix)(initParams){
       case (feature, label, params) =>
 
-        this.allLayers.zip(params).foreach{
+        allLayers.zip(params).foreach{
           case (layer, param) =>
             layer.setParam(param)
         }
 
-        val yHat = forward(this.allLayers, feature)
-        calCost(label, yHat, this.allLayers, this.regularizer)
+        val yHat = forward(allLayers, feature)
+        calCost(label, yHat, allLayers, this.regularizer)
 
-    }{backward}
+    }{backward(allLayers, regularizer)}
 
-    this.allLayers.zip(trainedParams).foreach{
+    allLayers.zip(trainedParams).foreach{
       case (layer, param) =>
         layer.setParam(param)
     }
 
-    val yHat = forward(this.allLayers, feature)
-    val cost = calCost(labelMatrix, yHat, this.allLayers, this.regularizer)
+    val yHat = forward(allLayers, feature)
+    val cost = calCost(labelMatrix, yHat, allLayers, this.regularizer)
 
     logger.info("Cost on the entire training set: " + cost)
 
@@ -116,8 +154,9 @@ class NeuralNetworkModel extends Model{
     * @return Predicted labels
     */
   override def predict(feature: DenseMatrix[Double]): DenseVector[Double] = {
+    val allLayers = hiddenLayers ::: outputLayer :: Nil //concat hidden layers and output layer
 
-    val nonDropoutLayers = this.allLayers.filter(!_.isInstanceOf[DropoutLayer])
+    val nonDropoutLayers = allLayers.filter(!_.isInstanceOf[DropoutLayer])
     val predicted =  nonDropoutLayers.foldLeft(feature){
       case (yPrevious, layer) =>
         layer.forwardForPrediction(yPrevious)
@@ -176,25 +215,11 @@ class NeuralNetworkModel extends Model{
     originalCost + regularizer.lambda * reguCost / label.rows.toDouble
   }
 
-  /**
-    * Backward propagation of all layers.
-    * @param label True label vector of length numExamples.
-    * @param forwardResList List of ForwardRes, consisting of yPrevious, zCurrent, yCurrent.
-    * @param paramsList List of model paramaters of the form List((w, b)).
-    * @param regularizer Used for updating the gradients.
-    * @return List of BackwardRes, consisting of (dWCurrent, dBCurrent, dYPrevious),
-    *         where zCurrent = yPrevious * wCurrent + OneColumnVector * bCurrent.t,
-    *         yCurrent = g(zCurrent), where g is the activation function of the current layer.
-    *         So, dZCurrent = dYCurrent *:* g'(zCurrent), where *:* is element-wise multiplication,
-    *         dWCurrent = yPrevious.t * dZCurrent / numExamples + lambda * wCurrent / numExamples (due to regulation),
-    *         dBCurrent = dZCurrent.t * OneColumnVector / numExamples,
-    *         dYPrevious = dZCurrent * wCurrent.t
-    */
-  private def backward(label: DenseMatrix[Double], params: List[DenseMatrix[Double]]): List[DenseMatrix[Double]] = {
+  private def backward(allLayers: List[Layer], regularizer: Option[Regularizer])(label: DenseMatrix[Double], params: List[DenseMatrix[Double]]): List[DenseMatrix[Double]] = {
 
-    this.allLayers.scanRight((label, DenseMatrix.zeros[Double](1, 1))){
+    allLayers.scanRight((label, DenseMatrix.zeros[Double](1, 1))){
       case (layer, (dYCurrent, _)) =>
-        layer.backward(dYCurrent)
+        layer.backward(dYCurrent, regularizer)
     }.init.map(_._2)
   }
 

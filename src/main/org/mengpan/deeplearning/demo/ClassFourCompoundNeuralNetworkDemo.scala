@@ -44,15 +44,16 @@ object ClassFourCompoundNeuralNetworkDemo extends App{
       ReluLayer(100, batchNorm = true)
     )
     .setOutputLayerStructure(SoftmaxLayer(true))
-    .setLearningRate(0.0001)
-    .setIterationTime(15)
+    .setLearningRate(0.001)
+    .setIterationTime(30)
 
   //API 2nd version
 //  val nnModel = NeuralNetworkModel(List(ReluLayer(200), ReluLayer(100)), SigmoidLayer(1))
 
   //用训练集的数据训练算法
-  val trainedModel: Model = nnModel.train(trainingFeature, trainingLabel)
+  val trainedModel = nnModel.train(trainingFeature, trainingLabel)
 
+//  trainedModel.asInstanceOf[NeuralNetworkModel].setOutputLayerStructure(SoftmaxLayer(false))
   //测试算法获得算法优劣指标
   val yPredicted = trainedModel.predict(testFeature)
   val trainYPredicted = trainedModel.predict(trainingFeature)
