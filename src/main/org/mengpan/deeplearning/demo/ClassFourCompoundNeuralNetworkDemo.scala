@@ -40,12 +40,14 @@ object ClassFourCompoundNeuralNetworkDemo extends App{
     .setRegularizer(VoidRegularizer)
     .setOptimizer(AdamOptimizer(miniBatchSize = 128))
     .setHiddenLayerStructure(
-      ReluLayer(200, batchNorm = true),
-      ReluLayer(100, batchNorm = true)
+      ReluLayer(numHiddenUnits = 200, batchNorm = false),
+      DropoutLayer(dropoutRate = 0.1),
+      ReluLayer(numHiddenUnits = 100, batchNorm = false),
+      DropoutLayer(dropoutRate = 0.1)
     )
-    .setOutputLayerStructure(SoftmaxLayer(true))
+    .setOutputLayerStructure(SoftmaxLayer(batchNorm = false))
     .setLearningRate(0.001)
-    .setIterationTime(30)
+    .setIterationTime(20)
 
   //API 2nd version
 //  val nnModel = NeuralNetworkModel(List(ReluLayer(200), ReluLayer(100)), SigmoidLayer(1))

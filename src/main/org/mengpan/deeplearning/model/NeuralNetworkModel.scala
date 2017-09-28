@@ -20,7 +20,7 @@ class NeuralNetworkModel extends Model{
   protected var hiddenLayers: List[Layer] = null
   protected var outputLayer: Layer = null
   protected var weightsInitializer: WeightsInitializer = HeInitializer //initialization methods, see also HeInitializer, XaiverInitializer
-  protected var regularizer: Regularizer = _ //VoidRegularizer: No regularization. see also L1Regularizer, L2Regularizer
+  protected var regularizer: Regularizer = VoidRegularizer //VoidRegularizer: No regularization. see also L1Regularizer, L2Regularizer
   protected var optimizer: Optimizer = AdamOptimizer() //AdamOptimizer, see also GDOptimizer: Batch Gradient Descent, SGDOptimizer,
 
   private var labelsMapping: List[Double] = _
@@ -46,10 +46,6 @@ class NeuralNetworkModel extends Model{
   def setOutputLayerStructure(outputLayer: Layer): this.type = {
     if (this.hiddenLayers == null) {
       throw new IllegalArgumentException("Hidden layers should be set before output layer!")
-    }
-
-    if (this.outputLayer != null) {
-      throw new IllegalArgumentException("Output layer has already been set... Output Layer: " + outputLayer)
     }
 
     this.outputLayer = outputLayer

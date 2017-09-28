@@ -1,6 +1,7 @@
 package org.mengpan.deeplearning.components.layers
 import breeze.linalg.{DenseMatrix, DenseVector, min, softmax, sum}
 import breeze.numerics.{exp, pow}
+import org.mengpan.deeplearning.components.regularizer.Regularizer
 
 /**
   * Created by mengpan on 2017/9/14.
@@ -8,33 +9,37 @@ import breeze.numerics.{exp, pow}
 class SoftmaxLayer extends Layer{
 
 
-  override def backward(dYCurrent: DenseMatrix[Double]): (DenseMatrix[Double], DenseMatrix[Double]) = {
+  override def backward(dYCurrent: DenseMatrix[Double], regularizer: Option[Regularizer]): (DenseMatrix[Double], DenseMatrix[Double]) = {
+    this.isTrained = true
+
     this.batchNorm match {
-      case true => backwardWithBatchNorm(dYCurrent)
-      case _ => backwardWithoutBatchNorm(dYCurrent)
+      case true => backwardWithBatchNorm(dYCurrent, yPrevious, regularizer)
+      case _ => backwardWithoutBatchNorm(dYCurrent, yPrevious, regularizer)
     }
-
-
   }
 
-  private def backwardWithoutBatchNorm(dYCurrent: DenseMatrix[Double]): (DenseMatrix[Double], DenseMatrix[Double]) = {
+  private def backwardWithoutBatchNorm(dYCurrent: DenseMatrix[Double], yPrevious: DenseMatrix[Double], regularizer: Option[Regularizer]): (DenseMatrix[Double], DenseMatrix[Double]) = {
     val numExamples = dYCurrent.rows
+    val n = numExamples.toDouble
 
     //HACK!
     val label = dYCurrent
 
-    val dZCurrent = y - label
+    val dZ = y - label
 
-    val dWCurrent = yPrevious.t * dZCurrent / numExamples.toDouble
-    val dBCurrent = (DenseVector.ones[Double](numExamples).t * dZCurrent).t /
-      numExamples.toDouble
+    val dWCurrent = regularizer match {
+      case None => yPrevious.t * dZ / n
+      case Some(regu) => yPrevious.t * dZ / n + regu.getReguCostGrad(w)
+    }
+    val dBCurrent = (DenseVector.ones[Double](numExamples).t * dZ).t / n
 
     val grads = DenseMatrix.vertcat(dWCurrent, dBCurrent.toDenseMatrix)
-    (dZCurrent * w.t, grads)
+    (dZ * w.t, grads)
   }
 
-  private def backwardWithBatchNorm(dYCurrent: DenseMatrix[Double]): (DenseMatrix[Double], DenseMatrix[Double]) = {
+  private def backwardWithBatchNorm(dYCurrent: DenseMatrix[Double], yPrevious: DenseMatrix[Double], regularizer: Option[Regularizer]): (DenseMatrix[Double], DenseMatrix[Double]) = {
     val numExamples = dYCurrent.rows
+    val n = numExamples.toDouble
     val oneVector = DenseVector.ones[Double](numExamples)
 
     //HACK!
@@ -48,7 +53,10 @@ class SoftmaxLayer extends Layer{
     val dZ = normalizeGrad(dZNorm, z, currentMeanZ, currentStddevZ)
 //    val dZ = normalizeGradVec(dZNorm, z, currentMeanZ, currentStddevZ)
 
-    val dWCurrent = yPrevious.t * dZ / numExamples.toDouble
+    val dWCurrent = regularizer match {
+      case None => yPrevious.t * dZ / n
+      case Some(regu) => yPrevious.t * dZ / n + regu.getReguCostGrad(w)
+    }
     val dYPrevious = dZ * w.t
 
     val grads = DenseMatrix.vertcat(dWCurrent, dAlpha.toDenseMatrix, dBeta.toDenseMatrix)

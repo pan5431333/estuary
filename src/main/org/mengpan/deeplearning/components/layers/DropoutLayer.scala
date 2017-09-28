@@ -1,6 +1,7 @@
 package org.mengpan.deeplearning.components.layers
 
 import breeze.linalg.{DenseMatrix, DenseVector}
+import org.mengpan.deeplearning.components.regularizer.Regularizer
 
 /**
   * Created by mengpan on 2017/9/7.
@@ -49,7 +50,7 @@ class DropoutLayer extends Layer{
     activationFuncEval(yPrevious)
   }
 
-  override def backward(dYCurrent: DenseMatrix[Double]): (DenseMatrix[Double], DenseMatrix[Double]) = {
+  override def backward(dYCurrent: DenseMatrix[Double], regularizer: Option[Regularizer]): (DenseMatrix[Double], DenseMatrix[Double]) = {
     val filterMat = activationGradEval(yPrevious)
 
     (dYCurrent *:* filterMat, DenseMatrix.zeros[Double](previousHiddenUnits+1, numHiddenUnits))

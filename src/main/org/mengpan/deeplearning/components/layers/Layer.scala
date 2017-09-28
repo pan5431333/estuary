@@ -42,6 +42,7 @@ trait Layer{
   var numHiddenUnits: Int = 0
   var batchNorm: Boolean = false
   var previousHiddenUnits: Int = _
+
   def setNumHiddenUnits(numHiddenUnits: Int): this.type = {
     assert(numHiddenUnits > 0, "Number of hidden units must be positive.")
 
