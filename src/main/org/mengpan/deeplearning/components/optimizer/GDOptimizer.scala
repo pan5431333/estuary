@@ -30,11 +30,10 @@ object GDOptimizer extends Optimizer with NonHeuristic {
                           (initParams: T)
                           (forwardFunc: (DenseMatrix[Double], DenseMatrix[Double], T) => Double)
                           (backwardFunc: (DenseMatrix[Double], T) => T): T = {
-    (0 until this.iteration).foldLeft[T](initParams){
-      case (preParams, iterTime) =>
-        val cost = forwardFunc(feature, label, preParams)
-        val grads = backwardFunc(label, preParams)
-        updateFunc(preParams, grads)
+    (0 until this.iteration).foldLeft[T](initParams){case (preParams, iterTime) =>
+      val cost = forwardFunc(feature, label, preParams)
+      val grads = backwardFunc(label, preParams)
+      updateFunc(preParams, grads)
     }
   }
 

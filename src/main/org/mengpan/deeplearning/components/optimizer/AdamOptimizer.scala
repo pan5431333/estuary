@@ -48,20 +48,18 @@ class AdamOptimizer extends Optimizer with MiniBatchable with Heuristic{
     val numExamples = feature.rows
     val printMiniBatchUnit = ((numExamples / this.miniBatchSize).toInt / 5).toInt //for each iteration, only print minibatch cost FIVE times.
 
-    (0 until this.iteration).toIterator.foldLeft[AdamParam[T]](initAdamParam){
-      case (preParam, iterTime) =>
-        val minibatches = getMiniBatches(feature, label)
-        minibatches.zipWithIndex.foldLeft[AdamParam[T]](preParam){
-          case (preBatchParams, ((batchFeature, batchLabel), miniBatchTime)) =>
-            val cost = forwardFunc(batchFeature, batchLabel, preBatchParams.modelParam)
-            val grads = backwardFunc(batchLabel, preBatchParams.modelParam)
+    (0 to this.iteration).par.foldLeft[AdamParam[T]](initAdamParam){case (preParam, iterTime) =>
+      val minibatches = getMiniBatches(feature, label)
+      minibatches.zipWithIndex.foldLeft[AdamParam[T]](preParam){case (preBatchParams, ((batchFeature, batchLabel), miniBatchTime)) =>
+        val cost = forwardFunc(batchFeature, batchLabel, preBatchParams.modelParam)
+        val grads = backwardFunc(batchLabel, preBatchParams.modelParam)
 
-            if (miniBatchTime % printMiniBatchUnit == 0)
-              logger.info("Iteration: " + iterTime + "|=" + "=" * (miniBatchTime / 10) + ">> Cost: " + cost)
-            costHistory.+=(cost)
+        if (miniBatchTime % printMiniBatchUnit == 0)
+          logger.info("Iteration: " + iterTime + "|=" + "=" * (miniBatchTime / 10) + ">> Cost: " + cost)
+        costHistory.+=(cost)
 
-            updateFunc(preBatchParams, grads, iterTime * miniBatchSize + miniBatchTime)
-        }
+        updateFunc(preBatchParams, grads, iterTime * miniBatchSize + miniBatchTime)
+      }
     }.modelParam
   }
 
@@ -72,9 +70,7 @@ class AdamOptimizer extends Optimizer with MiniBatchable with Heuristic{
     * @return
     */
   private def getInitAdam[T <: Seq[DenseMatrix[Double]]](modelParams: T): T = {
-    modelParams.map{m =>
-      DenseMatrix.zeros[Double](m.rows, m.cols)
-    }.asInstanceOf[T]
+    modelParams.par.map{m => DenseMatrix.zeros[Double](m.rows, m.cols)}.seq.asInstanceOf[T]
   }
 
   /**
@@ -87,24 +83,20 @@ class AdamOptimizer extends Optimizer with MiniBatchable with Heuristic{
     * @return Updated model parameters, momentum parameters and RMSProp parameters.
     */
   private def updateFunc[T <: Seq[DenseMatrix[Double]]](params: AdamParam[T], grads: T, miniBatchTime: Int): AdamParam[T] = {
-    val (ps, vs, ws) = params match {
-      case AdamParam(a, b, c) => (a, b, c)
-    }
+    val (ps, vs, ws) = params match {case AdamParam(a, b, c) => (a, b, c)}
 
-    val updatedParams = ps.zip(vs).zip(ws).zip(grads).map{
-      case (((p, v), a), grad) =>
-        val vN = (this.momentumRate * v + (1.0 - this.momentumRate) * grad)
-        val vNCorrected = vN / (1 - pow(this.momentumRate, miniBatchTime.toInt + 1))
+    val updatedParams = ps.zip(vs).zip(ws).zip(grads).par.map{case (((p, v), a), grad) =>
+      val vN = (this.momentumRate * v + (1.0 - this.momentumRate) * grad)
+      val vNCorrected = vN / (1 - pow(this.momentumRate, miniBatchTime.toInt + 1))
 
-        val aN = (this.adamRate * a + (1.0 - this.adamRate) * pow(grad, 2))
-        val aNCorrected = aN / (1 - pow(this.adamRate, miniBatchTime.toInt + 1))
+      val aN = (this.adamRate * a + (1.0 - this.adamRate) * pow(grad, 2))
+      val aNCorrected = aN / (1 - pow(this.adamRate, miniBatchTime.toInt + 1))
 
-        val pN = p - learningRate * vNCorrected /:/ (sqrt(aNCorrected) + 1E-8)
-        (pN, vN, aN)
-    }
+      val pN = p - learningRate * vNCorrected /:/ (sqrt(aNCorrected) + 1E-8)
+      (pN, vN, aN)
+    }.seq.toList
 
-    val (modelParams, momentumAndAdam) = updatedParams
-      .unzip(f => (f._1, (f._2, f._3)))
+    val (modelParams, momentumAndAdam) = updatedParams.unzip(f => (f._1, (f._2, f._3)))
 
     val (momentum, adam) = momentumAndAdam.unzip(f => (f._1, f._2))
 

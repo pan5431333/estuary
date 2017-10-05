@@ -15,7 +15,13 @@ class L1Regularizer extends Regularizer{
   override def getReguCostGrad(w: DenseMatrix[Double]): DenseMatrix[Double] = this.lambda * sign(w)
 
   private def sign(w: DenseMatrix[Double]): DenseMatrix[Double] = {
-    w.map(e => if (e > 0) 1.0 else if (e < 0) -1.0 else 0.0)
+    val res = DenseMatrix.zeros[Double](w.rows, w.cols)
+    for (i <- (0 until w.rows).par) {
+      for (j <- (0 until w.cols).par) {
+        res(i, j) = if (w(i, j) > 0) 1.0 else if (w(i, j) < 0) -1.0 else 0.0
+      }
+    }
+    res
   }
 }
 

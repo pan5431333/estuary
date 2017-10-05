@@ -18,8 +18,7 @@ class DropoutLayer extends Layer{
 
   protected var dropoutVector: DenseVector[Double] = _
 
-  protected override def activationFuncEval(zCurrent: DenseMatrix[Double]):
-  DenseMatrix[Double] = {
+  protected override def activationFuncEval(zCurrent: DenseMatrix[Double]): DenseMatrix[Double] = {
     dropoutVector = generateDropoutVector(numHiddenUnits, dropoutRate)
 
     val numExamples = zCurrent.rows
@@ -28,20 +27,21 @@ class DropoutLayer extends Layer{
     zCurrent *:* (oneVector * dropoutVector.t) / (1.0 - this.dropoutRate)
   }
 
-  protected override def activationGradEval(zCurrent: DenseMatrix[Double]):
-  DenseMatrix[Double] = {
+  protected override def activationGradEval(zCurrent: DenseMatrix[Double]): DenseMatrix[Double] = {
     val numExamples = zCurrent.rows
     val oneVector = DenseVector.ones[Double](numExamples)
 
     (oneVector * dropoutVector.t) / (1.0 - this.dropoutRate)
   }
 
-  private def generateDropoutVector(numHiddenUnits: Int, dropoutRate: Double):
-  DenseVector[Double] = {
-    DenseVector.rand[Double](this.numHiddenUnits)
-      .map{i =>
-        if (i <= this.dropoutRate) 0.0 else 1.0
-      }
+  private def generateDropoutVector(numHiddenUnits: Int, dropoutRate: Double): DenseVector[Double] = {
+    val randVec = DenseVector.rand[Double](this.numHiddenUnits)
+
+    val res = DenseVector.zeros[Double](randVec.length)
+    for (i <- (0 until randVec.length).par) {
+      res(i) = if (randVec(i) <= this.dropoutRate) 0.0 else 1.0
+    }
+    res
   }
 
 

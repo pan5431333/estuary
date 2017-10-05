@@ -15,12 +15,11 @@ object CatDataHelper {
 
 
   def getAllCatData: DlCollection[Cat] = {
-
     val labels = getLabels()
-
     val catNonCatLabels = getBalancedCatNonCatLabels(labels)
 
-    val catList = catNonCatLabels.map{indexedLabel =>
+    logger.info("Reading files cocurrently...")
+    val catList = catNonCatLabels.par.map{indexedLabel =>
 
       val fileNumber = indexedLabel._1
       val label = indexedLabel._2

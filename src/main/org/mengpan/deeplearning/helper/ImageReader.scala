@@ -13,18 +13,14 @@ object ImageReader {
   val logger = Logger.getLogger(this.getClass)
 
   def readImageToRGBVector(fileName: String): Option[DenseVector[Double]] = {
-    logger.info("Reading file: " + fileName)
-
     try {
       val image = ImageIO.read(new File(fileName))
 
-      val (red, greenAndBlue) = (image.getMinX() until image.getWidth).map{
-        width =>
-          (image.getMinY() until image.getHeight).map{
-            height =>
-              val pixel = image.getRGB(width, height)
-              (((pixel & 0xff0000) >> 16).toDouble, ((pixel & 0xff00) >> 8).toDouble, (pixel & 0xff).toDouble)
-          }
+      val (red, greenAndBlue) = (image.getMinX() until image.getWidth).par.map{width =>
+        (image.getMinY() until image.getHeight).par.map{height =>
+          val pixel = image.getRGB(width, height)
+          (((pixel & 0xff0000) >> 16).toDouble, ((pixel & 0xff00) >> 8).toDouble, (pixel & 0xff).toDouble)
+        }
       }
         .flatten
         .toList

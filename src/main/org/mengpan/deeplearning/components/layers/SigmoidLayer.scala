@@ -8,13 +8,11 @@ import org.mengpan.deeplearning.utils.MyDict
   */
 class SigmoidLayer extends Layer{
 
-  protected override def activationFuncEval(zCurrent: DenseMatrix[Double]):
-  DenseMatrix[Double] = {
+  protected override def activationFuncEval(zCurrent: DenseMatrix[Double]): DenseMatrix[Double] = {
     sigmoid(zCurrent)
   }
 
-  protected override def activationGradEval(zCurrent: DenseMatrix[Double]):
-  DenseMatrix[Double] = {
+  protected override def activationGradEval(zCurrent: DenseMatrix[Double]): DenseMatrix[Double] = {
     val sigmoided = sigmoid(zCurrent)
     sigmoided *:* (1.0 - sigmoided)
   }

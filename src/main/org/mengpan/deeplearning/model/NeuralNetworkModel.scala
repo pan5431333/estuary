@@ -31,12 +31,11 @@ class NeuralNetworkModel extends Model{
     }
 
     //if a layer is Dropout Layer，then set its number of hidden units to be same as its previous layer
-    val theHiddenLayer: List[Layer] = hiddenLayers
-      .scanLeft[Layer, Seq[Layer]](EmptyLayer){
+    val theHiddenLayer: List[Layer] = hiddenLayers.scanLeft[Layer, Seq[Layer]](EmptyLayer){
       (previousLayer, currentLayer) =>
-      if (currentLayer.isInstanceOf[DropoutLayer])
-        currentLayer.setNumHiddenUnits(previousLayer.numHiddenUnits).setPreviousHiddenUnits(previousLayer.numHiddenUnits)
-      else currentLayer.setPreviousHiddenUnits(previousLayer.numHiddenUnits)
+        if (currentLayer.isInstanceOf[DropoutLayer])
+          currentLayer.setNumHiddenUnits(previousLayer.numHiddenUnits).setPreviousHiddenUnits(previousLayer.numHiddenUnits)
+        else currentLayer.setPreviousHiddenUnits(previousLayer.numHiddenUnits)
     }.toList
 
     this.hiddenLayers = theHiddenLayer.tail //drop the first EmptyLayer in the list
@@ -85,8 +84,8 @@ class NeuralNetworkModel extends Model{
     val labelMatrix = convertVectorToMatrix(label)
     allLayers.head.setPreviousHiddenUnits(feature.cols)
     allLayers.last.setNumHiddenUnits(this.labelsMapping.length)
-    val initParams = allLayers.map(_.init(weightsInitializer))
-    this.initParams = initParams
+    val initParams = allLayers.par.map(_.init(weightsInitializer))
+    this.initParams = initParams.toList
     this
   }
 
@@ -108,7 +107,7 @@ class NeuralNetworkModel extends Model{
     val initParams = if (this.initParams != null) this.initParams else {
       allLayers.head.setPreviousHiddenUnits(feature.cols)
       allLayers.last.setNumHiddenUnits(this.labelsMapping.length)
-      allLayers.map(_.init(weightsInitializer))
+      allLayers.par.map(_.init(weightsInitializer)).toList
     }
 
     val regularizer: Option[Regularizer] = this.regularizer match {
@@ -117,20 +116,18 @@ class NeuralNetworkModel extends Model{
       case _ => Some(this.regularizer)
     }
 
-    val trainedParams = this.optimizer.optimize(feature, labelMatrix)(initParams){
-      case (feature, label, params) =>
+    val forwardAction = (feature: DenseMatrix[Double], label: DenseMatrix[Double], params: List[DenseMatrix[Double]]) => {
+      allLayers.zip(params).par.foreach{
+        case (layer, param) =>
+          layer.setParam(param)
+      }
+      val yHat = forward(allLayers, feature)
+      calCost(label, yHat, allLayers, this.regularizer)
+    }
 
-        allLayers.zip(params).foreach{
-          case (layer, param) =>
-            layer.setParam(param)
-        }
+    val trainedParams = this.optimizer.optimize(feature, labelMatrix)(initParams){forwardAction}{backward(allLayers, regularizer)}
 
-        val yHat = forward(allLayers, feature)
-        calCost(label, yHat, allLayers, this.regularizer)
-
-    }{backward(allLayers, regularizer)}
-
-    allLayers.zip(trainedParams).foreach{
+    allLayers.zip(trainedParams).par.foreach{
       case (layer, param) =>
         layer.setParam(param)
     }
@@ -152,14 +149,14 @@ class NeuralNetworkModel extends Model{
   override def predict(feature: DenseMatrix[Double]): DenseVector[Double] = {
     val allLayers = hiddenLayers ::: outputLayer :: Nil //concat hidden layers and output layer
 
-    val nonDropoutLayers = allLayers.filter(!_.isInstanceOf[DropoutLayer])
+    val nonDropoutLayers = allLayers.par.filter(!_.isInstanceOf[DropoutLayer])
     val predicted =  nonDropoutLayers.foldLeft(feature){
       case (yPrevious, layer) =>
         layer.forwardForPrediction(yPrevious)
     }
 
     val predictedMatrix = DenseMatrix.zeros[Double](feature.rows, predicted.cols)
-    for (i <- 0 until predicted.rows) {
+    for (i <- (0 until predicted.rows).par) {
       val sliced = predicted(i, ::)
       val maxRow = max(sliced)
       predictedMatrix(i, ::) := sliced.t.map(d => if (d == maxRow) 1.0 else 0.0).t
@@ -181,9 +178,7 @@ class NeuralNetworkModel extends Model{
     *         yCurrent = g(zCurrent) where g is the activation function in Lth layer.
     */
   private def forward(layers: Seq[Layer], feature: DenseMatrix[Double]): DenseMatrix[Double] = {
-
-    layers.foldLeft[DenseMatrix[Double]](feature){
-      case (yPrevious, layer) =>
+    layers.foldLeft[DenseMatrix[Double]](feature){case (yPrevious, layer) =>
         layer.forward(yPrevious)
     }
   }
@@ -203,8 +198,7 @@ class NeuralNetworkModel extends Model{
                       layers: Seq[Layer],
                       regularizer: Regularizer): Double = {
     val originalCost = - sum(label *:* log(predicted + 1E-9)) / label.rows.toDouble
-    val reguCost = layers.foldLeft[Double](0.0){
-      case (totalReguCost, layer) =>
+    val reguCost = layers.foldLeft[Double](0.0){case (totalReguCost, layer) =>
         totalReguCost + layer.getReguCost(regularizer)
     }
 
@@ -212,11 +206,9 @@ class NeuralNetworkModel extends Model{
   }
 
   private def backward(allLayers: List[Layer], regularizer: Option[Regularizer])(label: DenseMatrix[Double], params: List[DenseMatrix[Double]]): List[DenseMatrix[Double]] = {
-
-    allLayers.scanRight((label, DenseMatrix.zeros[Double](1, 1))){
-      case (layer, (dYCurrent, _)) =>
+    allLayers.scanRight((label, DenseMatrix.zeros[Double](1, 1))){case (layer, (dYCurrent, _)) =>
         layer.backward(dYCurrent, regularizer)
-    }.init.map(_._2)
+    }.init.map(_._2).seq.toList
   }
 
   /**
@@ -233,7 +225,7 @@ class NeuralNetworkModel extends Model{
     val numLabels = labels.size
     val res = DenseMatrix.zeros[Double](labelVector.length, numLabels)
 
-    for ((label, i) <- labels.zipWithIndex) {
+    for ((label, i) <- labels.zipWithIndex.par) {
       val helperVector = DenseVector.ones[Double](labelVector.length) * label
       res(::, i) := elementWiseEqualCompare(labelVector, helperVector)
     }
@@ -260,9 +252,9 @@ class NeuralNetworkModel extends Model{
     */
   private def elementWiseEqualCompare(a: DenseVector[Double], b: DenseVector[Double]): DenseVector[Double] = {
     assert(a.length == b.length, "a.length != b.length")
-    val compareArr = a.toArray.zip(b.toArray).map{case (i, j) =>
+    val compareArr = a.toArray.zip(b.toArray).par.map{case (i, j) =>
       if (i == j) 1.0 else 0.0
-    }
+    }.toArray
     DenseVector(compareArr)
   }
 
