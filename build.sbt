@@ -1,4 +1,4 @@
-name := "coursera-deeplearning-practice-in-scala"
+name := "org/mengpan/deeplearning"
 
 version := "1.0"
 
