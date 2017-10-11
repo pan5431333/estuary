@@ -15,8 +15,8 @@ import estuary.utils.{NormalizeUtils, PlotUtils}
 object ClassFourCompoundNeuralNetworkDemo extends App {
   // Dataset Download Website: http://archive.ics.uci.edu/ml/machine-learning-databases/00224/
   //加载Gas Censor的数据集
-    val data = GasCensorDataHelper.getAllData("D:\\Users\\m_pan\\Downloads\\Dataset\\Dataset\\")
-//  val data = CatDataHelper.getAllCatData
+  val data = GasCensorDataHelper.getAllData("D:\\Users\\m_pan\\Downloads\\Dataset\\Dataset\\")
+  //  val data = CatDataHelper.getAllCatData
 
   //归一化数据特征矩阵
   val normalizedCatData = NormalizeUtils.normalizeBy(data) { col =>
@@ -38,13 +38,13 @@ object ClassFourCompoundNeuralNetworkDemo extends App {
     .setRegularizer(VoidRegularizer)
     .setOptimizer(AdamOptimizer(miniBatchSize = 128))
     .setHiddenLayerStructure(
-      ReluLayer(numHiddenUnits = 200, batchNorm = true),
-            DropoutLayer(dropoutRate = 0.1),
-      ReluLayer(numHiddenUnits = 100, batchNorm = true),
-            DropoutLayer(dropoutRate = 0.1)
+      ReluLayer(numHiddenUnits = 200, batchNorm = false),
+      DropoutLayer(dropoutRate = 0.1),
+      ReluLayer(numHiddenUnits = 100, batchNorm = false),
+      DropoutLayer(dropoutRate = 0.1)
     )
-    .setOutputLayerStructure(SoftmaxLayer(batchNorm = true))
-    .setLearningRate(0.01)
+    .setOutputLayerStructure(SoftmaxLayer(batchNorm = false))
+    .setLearningRate(0.0001)
     .setIterationTime(20)
 
   //API 2nd version
@@ -64,5 +64,5 @@ object ClassFourCompoundNeuralNetworkDemo extends App {
   println("\n The test accuracy of this model is: " + testAccuracy)
 
   //对算法的训练过程中cost与迭代次数变化关系进行画图
-  trainedModel.plotCostHistory
+  trainedModel.plotCostHistory()
 }

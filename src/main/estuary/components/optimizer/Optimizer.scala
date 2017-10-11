@@ -35,8 +35,7 @@ trait Optimizer {
   val costHistory: mutable.MutableList[Double] = new mutable.MutableList[Double]()
 
   /**
-    * Optimizing Machine Learning-like models' parameters on a training
-    * dataset (feature, label).
+    * Optimizing Machine Learning-like models' parameters on a training dataset (feature, label).
     *
     * @param feature      DenseMatrix of shape (n, p) where n: the number of
     *                     training examples, p: the dimension of input feature.
@@ -44,8 +43,7 @@ trait Optimizer {
     *                     training examples, q: number of distinct labels.
     * @param initParams   Initialized parameters.
     * @param forwardFunc  The cost function.
-    *                     inputs: (feature, label, params) of type
-    *                     (DenseMatrix[Double], DenseMatrix[Double], T)
+    *                     inputs: (feature, label, params) of type (DenseMatrix[Double], DenseMatrix[Double], T)
     *                     output: cost of type Double.
     * @param backwardFunc A function calculating gradients of all parameters.
     *                     input: (label, params) of type (DenseMatrix[Double], T)

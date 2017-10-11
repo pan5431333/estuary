@@ -33,7 +33,7 @@ trait MiniBatchable {
 
     this.miniBatchSize match {
       case a if a > feature.rows => throw new IllegalArgumentException(
-        "mini batch size(" + this.miniBatchSize + ")must be less than the number of examples(" + feature.rows + ")!")
+        "mini batch size(" + this.miniBatchSize + ")must be less than number of examples(" + feature.rows + ")!")
       case a if a == feature.rows => Iterator((feature, label))
       case a if a > 0 => getPositiveNumMiniBatches(feature, label, a)
       case _ => throw new IllegalArgumentException("mini-batch size: " + this.miniBatchSize + " number of exmaples: " + feature.rows)
@@ -53,8 +53,6 @@ trait MiniBatchable {
     */
   private def getPositiveNumMiniBatches(feature: DenseMatrix[Double], label: DenseMatrix[Double], miniBatchSize: Int): Iterator[(DenseMatrix[Double], DenseMatrix[Double])] = {
     val numExamples = feature.rows
-    val inputDim = feature.cols
-    val outputDim = label.cols
     val shuffledIndex = Random.shuffle[Int, Vector]((0 until numExamples).toVector)
     val numMiniBatchesFloor = numExamples / miniBatchSize
     val isDivided = numExamples % miniBatchSize == 0

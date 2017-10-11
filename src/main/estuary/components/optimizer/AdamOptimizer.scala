@@ -49,9 +49,9 @@ class AdamOptimizer extends Optimizer with MiniBatchable with Heuristic {
     val initAdam = getInitAdam(initParams)
     val initAdamParam = AdamParam[T](initParams, initMomentum, initAdam)
     val numExamples = feature.rows
-    val printMiniBatchUnit = numExamples / this.miniBatchSize / 5//for each iteration, only print minibatch cost FIVE times.
+    val printMiniBatchUnit = numExamples / this.miniBatchSize / 5 //for each iteration, only print minibatch cost FIVE times.
 
-    (0 to this.iteration).par.foldLeft[AdamParam[T]](initAdamParam) { case (preParam, iterTime) =>
+    (0 to this.iteration).foldLeft[AdamParam[T]](initAdamParam) { case (preParam, iterTime) =>
       val minibatches = getMiniBatches(feature, label)
       minibatches.zipWithIndex.foldLeft[AdamParam[T]](preParam) { case (preBatchParams, ((batchFeature, batchLabel), miniBatchTime)) =>
         val cost = forwardFunc(batchFeature, batchLabel, preBatchParams.modelParam)
