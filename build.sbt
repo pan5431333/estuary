@@ -12,6 +12,8 @@ libraryDependencies  ++= Seq(
   "org.scalanlp" %% "breeze-viz" % "0.13.2"
 )
 
+libraryDependencies += "com.github.fommil.netlib" % "all" % "1.1.2"
+
 libraryDependencies += "org.springframework" % "spring-context" % "4.3.1.RELEASE"
 
 libraryDependencies += "log4j" % "log4j" % "1.2.16"

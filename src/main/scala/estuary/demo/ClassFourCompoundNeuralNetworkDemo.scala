@@ -38,13 +38,13 @@ object ClassFourCompoundNeuralNetworkDemo extends App {
     .setRegularizer(VoidRegularizer)
     .setOptimizer(AdamOptimizer(miniBatchSize = 128))
     .setHiddenLayerStructure(
-      ReluLayer(numHiddenUnits = 200, batchNorm = false),
+      ReluLayer(numHiddenUnits = 200, batchNorm = true),
       DropoutLayer(dropoutRate = 0.1),
-      ReluLayer(numHiddenUnits = 100, batchNorm = false),
+      ReluLayer(numHiddenUnits = 100, batchNorm = true),
       DropoutLayer(dropoutRate = 0.1)
     )
-    .setOutputLayerStructure(SoftmaxLayer(batchNorm = false))
-    .setLearningRate(0.0001)
+    .setOutputLayerStructure(SoftmaxLayer(batchNorm = true))
+    .setLearningRate(0.01)
     .setIterationTime(20)
 
   //API 2nd version

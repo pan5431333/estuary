@@ -51,8 +51,8 @@ trait Optimizer {
     * @tparam T The type of model parameters.
     * @return Trained parameters.
     */
-  def optimize[T <: Seq[DenseMatrix[Double]]](feature: DenseMatrix[Double], label: DenseMatrix[Double])
-                                             (initParams: T)
-                                             (forwardFunc: (DenseMatrix[Double], DenseMatrix[Double], T) => Double)
-                                             (backwardFunc: (DenseMatrix[Double], T) => T): T
+  def optimize[T <: DenseMatrix[Double]](feature: DenseMatrix[Double], label: DenseMatrix[Double])
+                                             (initParams: Seq[T])
+                                             (forwardFunc: (DenseMatrix[Double], DenseMatrix[Double], Seq[T]) => Double)
+                                             (backwardFunc: (DenseMatrix[Double], Seq[T]) => Seq[T]): Seq[T]
 }

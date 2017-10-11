@@ -49,7 +49,7 @@ class SoftmaxLayer extends Layer {
     val dAlpha = dZDelta.t * oneVector / numExamples.toDouble
     val dBeta = (dZDelta *:* zNorm).t * oneVector / numExamples.toDouble
 
-    //    val dZ = normalizeGrad(dZNorm, z, currentMeanZ, currentStddevZ)
+    //  val dZ = normalizeGrad(dZNorm, z, currentMeanZ, currentStddevZ)
     val dZ = normalizeGradVec(dZNorm, z, currentMeanZ, currentStddevZ)
 
     val dWCurrent = regularizer match {

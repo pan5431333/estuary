@@ -91,12 +91,12 @@ class NeuralNetworkModel extends Model {
       case _ => Some(this.regularizer)
     }
 
-    def setLayerParams = (params: List[DenseMatrix[Double]]) => allLayers.zip(params).par.foreach {
+    def setLayerParams = (params: Seq[DenseMatrix[Double]]) => allLayers.zip(params).par.foreach {
       case (layer, param) =>
         layer.setParam(param)
     }
 
-    val forwardAction = (feature: DenseMatrix[Double], label: DenseMatrix[Double], params: List[DenseMatrix[Double]]) => {
+    val forwardAction = (feature: DenseMatrix[Double], label: DenseMatrix[Double], params: Seq[DenseMatrix[Double]]) => {
       setLayerParams(params)
       val yHat = forward(allLayers, feature)
       calCost(label, yHat, allLayers, this.regularizer)
@@ -200,7 +200,7 @@ class NeuralNetworkModel extends Model {
     originalCost + regularizer.lambda * reguCost / label.rows.toDouble
   }
 
-  private def backward(allLayers: List[Layer], regularizer: Option[Regularizer])(label: DenseMatrix[Double], params: List[DenseMatrix[Double]]): List[DenseMatrix[Double]] = {
+  private def backward(allLayers: Seq[Layer], regularizer: Option[Regularizer])(label: DenseMatrix[Double], params: Seq[DenseMatrix[Double]]): Seq[DenseMatrix[Double]] = {
     allLayers.scanRight((label, DenseMatrix.zeros[Double](1, 1))) { case (layer, (dYCurrent, _)) =>
       layer.backward(dYCurrent, regularizer)
     }.init.map(_._2).seq.toList

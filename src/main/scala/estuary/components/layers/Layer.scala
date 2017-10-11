@@ -253,7 +253,7 @@ trait Layer {
     val dZ = normalizeGradVec(dZNorm, z, currentMeanZ, currentStddevZ)
 
     //Matrix version (preffered, bug worse results than normalizeGradVec, why?)
-    //    val dZ = normalizeGrad(dZNorm, z, currentMeanZ, currentStddevZ)
+//        val dZ = normalizeGrad(dZNorm, z, currentMeanZ, currentStddevZ)
 
     val dWCurrent = regularizer match {
       case None => yPrevious.t * dZ / n

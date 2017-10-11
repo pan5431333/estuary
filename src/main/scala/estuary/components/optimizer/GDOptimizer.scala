@@ -27,20 +27,20 @@ object GDOptimizer extends Optimizer with NonHeuristic {
     * @tparam T The type of model parameters.
     * @return Trained parameters.
     */
-  override def optimize[T <: Seq[DenseMatrix[Double]]](feature: DenseMatrix[Double], label: DenseMatrix[Double])
-                                                      (initParams: T)
-                                                      (forwardFunc: (DenseMatrix[Double], DenseMatrix[Double], T) => Double)
-                                                      (backwardFunc: (DenseMatrix[Double], T) => T): T = {
-    (0 until this.iteration).foldLeft[T](initParams) { case (preParams, iterTime) =>
+  override def optimize[T <: DenseMatrix[Double]](feature: DenseMatrix[Double], label: DenseMatrix[Double])
+                                                      (initParams: Seq[T])
+                                                      (forwardFunc: (DenseMatrix[Double], DenseMatrix[Double], Seq[T]) => Double)
+                                                      (backwardFunc: (DenseMatrix[Double], Seq[T]) => Seq[T]): Seq[T] = {
+    (0 until this.iteration).foldLeft[Seq[T]](initParams) { case (preParams, iterTime) =>
       val cost = forwardFunc(feature, label, preParams)
       val grads = backwardFunc(label, preParams)
       updateFunc(preParams, grads)
     }
   }
 
-  private def updateFunc[T <: Seq[DenseMatrix[Double]]](params: T, grads: T): T = {
-    val res = for {(param, grad) <- params.zip(grads)} yield param - learningRate * grad
-    res.asInstanceOf[T]
+  private def updateFunc[T <: DenseMatrix[Double]](params: Seq[T], grads: Seq[T]): Seq[T] = {
+    val res = for {(param, grad) <- params.zip(grads)} yield param - grad * learningRate
+    res.asInstanceOf[Seq[T]]
   }
 }
 
