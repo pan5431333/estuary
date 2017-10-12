@@ -36,7 +36,7 @@ trait MiniBatchable {
         "mini batch size(" + this.miniBatchSize + ")must be less than number of examples(" + feature.rows + ")!")
       case a if a == feature.rows => Iterator((feature, label))
       case a if a > 0 => getPositiveNumMiniBatches(feature, label, a)
-      case _ => throw new IllegalArgumentException("mini-batch size: " + this.miniBatchSize + " number of exmaples: " + feature.rows)
+      case _ => throw new IllegalArgumentException("mini-batch size: " + this.miniBatchSize + " |number of exmaples: " + feature.rows)
     }
   }
 

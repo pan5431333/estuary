@@ -2,6 +2,7 @@ package estuary.helper
 
 
 import estuary.data.Cat
+import estuary.utils.ImageReader
 import org.apache.log4j.Logger
 
 import scala.io.Source

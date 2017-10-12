@@ -20,6 +20,8 @@ class ReluLayer extends Layer {
       if (i >= 0) 1.0 else 0.0
     }
   }
+
+  override def copy: ReluLayer = new ReluLayer().setPreviousHiddenUnits(previousHiddenUnits).setNumHiddenUnits(numHiddenUnits).setBatchNorm(batchNorm)
 }
 
 object ReluLayer {

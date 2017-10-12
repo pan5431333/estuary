@@ -16,6 +16,8 @@ class SigmoidLayer extends Layer {
     val sigmoided = sigmoid(zCurrent)
     sigmoided *:* (1.0 - sigmoided)
   }
+
+  override def copy = new SigmoidLayer().setBatchNorm(batchNorm).setNumHiddenUnits(numHiddenUnits).setPreviousHiddenUnits(previousHiddenUnits)
 }
 
 object SigmoidLayer {

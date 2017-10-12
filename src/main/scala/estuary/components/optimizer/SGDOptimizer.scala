@@ -23,18 +23,17 @@ class SGDOptimizer extends Optimizer with MiniBatchable with NonHeuristic {
     * @param backwardFunc A function calculating gradients of all parameters.
     *                     input: (label, params) of type (DenseMatrix[Double], T)
     *                     output: gradients of params of type T.
-    * @tparam T The type of model parameters.
     * @return Trained parameters.
     */
-  override def optimize[T <: DenseMatrix[Double]](feature: DenseMatrix[Double], label: DenseMatrix[Double])
-                                                      (initParams: Seq[T])
-                                                      (forwardFunc: (DenseMatrix[Double], DenseMatrix[Double], Seq[T]) => Double)
-                                                      (backwardFunc: (DenseMatrix[Double], Seq[T]) => Seq[T]): Seq[T] = {
+  override def optimize(feature: DenseMatrix[Double], label: DenseMatrix[Double])
+                       (initParams: Seq[DenseMatrix[Double]])
+                       (forwardFunc: (DenseMatrix[Double], DenseMatrix[Double], Seq[DenseMatrix[Double]]) => Double)
+                       (backwardFunc: (DenseMatrix[Double], Seq[DenseMatrix[Double]]) => Seq[DenseMatrix[Double]]): Seq[DenseMatrix[Double]] = {
     val printMiniBatchUnit = feature.rows / this.miniBatchSize / 5 //for each iteration, only print minibatch cost FIVE times.
 
-    (0 until this.iteration).toIterator.foldLeft[Seq[T]](initParams) { case (preParams, iterTime) =>
+    (0 until this.iteration).toIterator.foldLeft[Seq[DenseMatrix[Double]]](initParams) { case (preParams, iterTime) =>
       val minibatches = getMiniBatches(feature, label)
-      minibatches.zipWithIndex.foldLeft[Seq[T]](preParams) { case (preBatchParams, ((batchFeature, batchLabel), miniBatchTime)) =>
+      minibatches.zipWithIndex.foldLeft[Seq[DenseMatrix[Double]]](preParams) { case (preBatchParams, ((batchFeature, batchLabel), miniBatchTime)) =>
         val cost = forwardFunc(batchFeature, batchLabel, preBatchParams)
         val grads = backwardFunc(batchLabel, preBatchParams)
 
@@ -52,12 +51,11 @@ class SGDOptimizer extends Optimizer with MiniBatchable with NonHeuristic {
     *
     * @param params Model parameters' values on current iteration.
     * @param grads  Gradients of model parameters on current iteration.
-    * @tparam T the type of model parameters
     * @return Updated model parameters.
     */
-  private def updateFunc[T <: DenseMatrix[Double]](params: Seq[T], grads: Seq[T]): Seq[T] = {
+  protected def updateFunc(params: Seq[DenseMatrix[Double]], grads: Seq[DenseMatrix[Double]]): Seq[DenseMatrix[Double]] = {
     val res = for {(param, grad) <- params.zip(grads)} yield param - grad * learningRate
-      res.asInstanceOf[Seq[T]]
+    res.asInstanceOf[Seq[DenseMatrix[Double]]]
   }
 }
 

@@ -1,4 +1,4 @@
-package estuary.helper
+package estuary.utils
 
 import java.io.File
 import javax.imageio.ImageIO

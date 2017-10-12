@@ -15,6 +15,8 @@ class TanhLayer extends Layer {
   protected override def activationGradEval(zCurrent: DenseMatrix[Double]): DenseMatrix[Double] = {
     1.0 - pow(zCurrent, 2)
   }
+
+  override def copy = new TanhLayer().setBatchNorm(batchNorm).setNumHiddenUnits(numHiddenUnits).setPreviousHiddenUnits(previousHiddenUnits)
 }
 
 object TanhLayer {

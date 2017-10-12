@@ -1,13 +1,11 @@
 package estuary.demo
 
 import breeze.stats.{mean, stddev}
-import estuary.components.initializer.HeInitializer
-import estuary.components.layers.{DropoutLayer, ReluLayer, SoftmaxLayer}
-import estuary.components.optimizer.AdamOptimizer
-import estuary.components.regularizer.VoidRegularizer
-import estuary.helper.{CatDataHelper, GasCensorDataHelper}
-import estuary.model.{Model, NeuralNetworkModel}
-import estuary.utils.{NormalizeUtils, PlotUtils}
+import estuary.components.layers.{ReluLayer, SoftmaxLayer}
+import estuary.components.optimizer.DistributedSGDOptimizer
+import estuary.helper.GasCensorDataHelper
+import estuary.model.{FullyConnectedNNModel, Model}
+import estuary.utils.NormalizeUtils
 
 /**
   * Created by mengpan on 2017/8/15.
@@ -28,32 +26,21 @@ object ClassFourCompoundNeuralNetworkDemo extends App {
 
   //分别获取训练集和测试集的feature和label
   val trainingFeature = training.getFeatureAsMatrix
-  val trainingLabel = training.getLabelAsVector
+  val trainingLabel = training.getLabelAsVector.map(_.toInt)
   val testFeature = test.getFeatureAsMatrix
-  val testLabel = test.getLabelAsVector
+  val testLabel = test.getLabelAsVector.map(_.toInt)
 
-  //初始化算法模型
-  val nnModel: Model = new NeuralNetworkModel()
-    .setWeightsInitializer(HeInitializer)
-    .setRegularizer(VoidRegularizer)
-    .setOptimizer(AdamOptimizer(miniBatchSize = 128))
-    .setHiddenLayerStructure(
-      ReluLayer(numHiddenUnits = 200, batchNorm = true),
-      DropoutLayer(dropoutRate = 0.1),
-      ReluLayer(numHiddenUnits = 100, batchNorm = true),
-      DropoutLayer(dropoutRate = 0.1)
-    )
-    .setOutputLayerStructure(SoftmaxLayer(batchNorm = true))
-    .setLearningRate(0.01)
-    .setIterationTime(20)
-
-  //API 2nd version
-  //  val nnModel = NeuralNetworkModel(List(ReluLayer(200), ReluLayer(100)), SigmoidLayer(1))
+  val hiddenLayers = List(
+        ReluLayer(numHiddenUnits = 200, batchNorm = false),
+//        DropoutLayer(dropoutRate = 0.1),
+        ReluLayer(numHiddenUnits = 100, batchNorm = false))
+  val outputLayer = SoftmaxLayer(batchNorm = false)
+  val nnModel = new FullyConnectedNNModel(hiddenLayers, outputLayer, 0.001, 50, None)
 
   //用训练集的数据训练算法
-  val trainedModel = nnModel.train(trainingFeature, trainingLabel)
+  nnModel.init(trainingFeature.cols, trainingLabel.toArray.toSet.size)
+  val trainedModel = nnModel.train(trainingFeature, trainingLabel, DistributedSGDOptimizer(64, 5))
 
-  //  trainedModel.asInstanceOf[NeuralNetworkModel].setOutputLayerStructure(SoftmaxLayer(false))
   //测试算法获得算法优劣指标
   val yPredicted = trainedModel.predict(testFeature)
   val trainYPredicted = trainedModel.predict(trainingFeature)

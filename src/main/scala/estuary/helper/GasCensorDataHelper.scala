@@ -51,29 +51,22 @@ object GasCensorDataHelper {
 
     val featureMatrix = new DenseMatrix[Double](128, numExamples, featuresArr).t
 
-    val gasCensorList = (0 until numExamples).map { i =>
-      GasCensor(featureMatrix(i, ::).t, labels(i))
+    val gasCensorList = (0 until numExamples).par.map { i => GasCensor(featureMatrix(i, ::).t, labels(i))}.toList
+
+//    val gasCensorList = (0 until numExamples).map { i =>
+//      GasCensor(featureMatrix(i, ::).t, labels(i))
+//    }.filter { each =>
+//      each.label == 1.0 || each.label == 2.0
+//    }.map { each =>
+//      GasCensor(each.feature, if (each.label == 1) 1.0 else 0.0)
+//    }.toList
+
+    val labelCount = gasCensorList.groupBy(_.label).map{ case (label, labelGroup) =>
+      (label, labelGroup.count(_ => true))
     }
-      .filter { each =>
-        each.label == 1.0 || each.label == 2.0
-      }
-      .map { each =>
-        GasCensor(each.feature, if (each.label == 1) 1.0 else 0.0)
-      }
-      .toList
 
-
-    val numPositives = gasCensorList
-      .count {
-        _.label == 1.0
-      }
-
-    val numNegatives = gasCensorList
-      .count {
-        _.label == 0.0
-      }
-
-    logger.info("数据读取完毕，正样本数量：" + numPositives + "|负样本数量：" + numNegatives)
+    logger.info("数据读取完毕: ")
+    labelCount.foreach( a => logger.info(a._1 + ": " + a._2))
 
     new DlCollection[GasCensor](gasCensorList)
   }

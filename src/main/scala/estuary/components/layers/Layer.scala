@@ -59,6 +59,8 @@ trait Layer {
     this
   }
 
+  def copy: Layer
+
   /**
     * Forward propagation of current layer.
     *
@@ -138,7 +140,10 @@ trait Layer {
     * @param regularizer Could be L1Regularizer, or L2Regularizer.
     * @return Regularization cost of type Double.
     */
-  def getReguCost(regularizer: Regularizer): Double = regularizer.getReguCost(w)
+  def getReguCost(regularizer: Option[Regularizer]): Double = regularizer match {
+    case Some(rg) => rg.getReguCost(w)
+    case None => 0.0
+  }
 
 
   /**

@@ -48,11 +48,11 @@ trait Optimizer {
     * @param backwardFunc A function calculating gradients of all parameters.
     *                     input: (label, params) of type (DenseMatrix[Double], T)
     *                     output: gradients of params of type T.
-    * @tparam T The type of model parameters.
     * @return Trained parameters.
     */
-  def optimize[T <: DenseMatrix[Double]](feature: DenseMatrix[Double], label: DenseMatrix[Double])
-                                             (initParams: Seq[T])
-                                             (forwardFunc: (DenseMatrix[Double], DenseMatrix[Double], Seq[T]) => Double)
-                                             (backwardFunc: (DenseMatrix[Double], Seq[T]) => Seq[T]): Seq[T]
+  def optimize(feature: DenseMatrix[Double], label: DenseMatrix[Double])
+              (initParams: Seq[DenseMatrix[Double]])
+              (forwardFunc: (DenseMatrix[Double], DenseMatrix[Double], Seq[DenseMatrix[Double]]) => Double)
+              (backwardFunc: (DenseMatrix[Double], Seq[DenseMatrix[Double]]) => Seq[DenseMatrix[Double]]): Seq[DenseMatrix[Double]]
+
 }

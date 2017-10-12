@@ -36,6 +36,8 @@ class SoftmaxLayer extends Layer {
     (dZ * w.t, grads)
   }
 
+  override def copy = new SoftmaxLayer().setPreviousHiddenUnits(previousHiddenUnits).setNumHiddenUnits(numHiddenUnits).setBatchNorm(batchNorm)
+
   private def backwardWithBatchNorm(dYCurrent: DenseMatrix[Double], yPrevious: DenseMatrix[Double], regularizer: Option[Regularizer]): (DenseMatrix[Double], DenseMatrix[Double]) = {
     val numExamples = dYCurrent.rows
     val n = numExamples.toDouble

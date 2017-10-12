@@ -56,6 +56,14 @@ class DropoutLayer extends Layer {
 
     (dYCurrent *:* filterMat, DenseMatrix.zeros[Double](previousHiddenUnits + 1, numHiddenUnits))
   }
+
+  override def copy: DropoutLayer = {
+    new DropoutLayer()
+      .setDropoutRate(dropoutRate)
+      .setBatchNorm(batchNorm)
+      .setNumHiddenUnits(numHiddenUnits)
+      .setPreviousHiddenUnits(previousHiddenUnits)
+  }
 }
 
 object DropoutLayer {

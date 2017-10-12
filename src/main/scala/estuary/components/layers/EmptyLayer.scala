@@ -13,4 +13,5 @@ object EmptyLayer extends Layer {
   override protected def activationGradEval(zCurrent: DenseMatrix[Double]): DenseMatrix[Double] =
     throw new Error("EmptyLayer.activationGradEval")
 
+  override def copy = this
 }
