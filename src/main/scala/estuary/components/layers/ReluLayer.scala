@@ -32,7 +32,7 @@ class ReluLayer extends Layer {
 }
 
 object ReluLayer {
-  def apply(numHiddenUnits: Int, batchNorm: Boolean = true): ReluLayer = {
+  def apply(numHiddenUnits: Int, batchNorm: Boolean = false): ReluLayer = {
     new ReluLayer()
       .setNumHiddenUnits(numHiddenUnits)
       .setBatchNorm(batchNorm)

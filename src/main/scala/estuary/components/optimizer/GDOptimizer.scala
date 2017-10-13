@@ -1,11 +1,14 @@
 package estuary.components.optimizer
 
 import breeze.linalg.DenseMatrix
+import estuary.components.optimizer.AdamOptimizer.AdamParam
+import org.apache.log4j.Logger
 
 /**
   * Gradient Descent optimizer.
   */
 object GDOptimizer extends Optimizer with NonHeuristic {
+  override protected val logger: Logger = Logger.getLogger(this.getClass)
 
   /**
     * Implementation of Optimizer.optimize().
@@ -26,7 +29,7 @@ object GDOptimizer extends Optimizer with NonHeuristic {
     *                     output: gradients of params of type T.
     * @return Trained parameters.
     */
-  override def optimize(feature: DenseMatrix[Double], label: DenseMatrix[Double])
+  def optimize(feature: DenseMatrix[Double], label: DenseMatrix[Double])
                        (initParams: Seq[DenseMatrix[Double]])
                        (forwardFunc: (DenseMatrix[Double], DenseMatrix[Double], Seq[DenseMatrix[Double]]) => Double)
                        (backwardFunc: (DenseMatrix[Double], Seq[DenseMatrix[Double]]) => Seq[DenseMatrix[Double]]): Seq[DenseMatrix[Double]] = {
@@ -35,6 +38,10 @@ object GDOptimizer extends Optimizer with NonHeuristic {
       val grads = backwardFunc(label, preParams)
       updateFunc(preParams, grads)
     }
+  }
+
+  protected def handleGradientExplosionException(params: Any, paramSavePath: String): Unit = {
+    saveDenseMatricesToDisk(params.asInstanceOf[AdamParam].modelParam, paramSavePath)
   }
 
   private def updateFunc(params: Seq[DenseMatrix[Double]], grads: Seq[DenseMatrix[Double]]): Seq[DenseMatrix[Double]] = {

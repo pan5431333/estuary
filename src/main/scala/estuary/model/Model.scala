@@ -1,6 +1,8 @@
 package estuary.model
 
-import java.util.Date
+import java.io.{File, FileWriter, PrintWriter}
+import java.text.SimpleDateFormat
+import java.util.Calendar
 
 import breeze.linalg.{DenseMatrix, DenseVector, max, sum}
 import breeze.numerics.log
@@ -12,7 +14,7 @@ import estuary.model.Model.OptimizationConfig
 import estuary.utils.PlotUtils
 import org.apache.log4j.Logger
 
-import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
 
 trait Model extends Serializable{
   val logger: Logger = Logger.getLogger(Model.getClass)
@@ -23,7 +25,7 @@ trait Model extends Serializable{
   val iterationTime: Int
   val regularizer: Option[Regularizer]
 
-  var costHistory: mutable.MutableList[Double]
+  var costHistory: ArrayBuffer[Double]
   var params: Seq[DenseMatrix[Double]]
   var labelsMapping: Vector[Int]
 
@@ -75,8 +77,6 @@ trait Model extends Serializable{
   }
 
   def plotCostHistory(): Unit = PlotUtils.plotCostHistory(costHistory)
-
-
 }
 
 
@@ -84,6 +84,23 @@ trait Model extends Serializable{
 object Model {
 
   case class OptimizationConfig(initParams: Seq[DenseMatrix[Double]], learningRate: Double, iterationTime: Int)
+
+  def saveDenseMatricesToDisk(dms: Seq[DenseMatrix[_]], path: String): Unit = {
+    val matrixSB = new StringBuilder()
+    for (dm <- dms) {
+      matrixSB.append(s"nRows: ${dm.rows}\n")
+      matrixSB append s"nCols: ${dm.cols}\n"
+      matrixSB append s"data: \n"
+      for (d <- dm.data) {
+        matrixSB append (d.toString + ",")
+      }
+      matrixSB append "\n\n"
+    }
+    val res = matrixSB.toString()
+    val writer = new FileWriter(path)
+    writer.write(res)
+    writer.close()
+  }
 
   def accuracy(label: DenseVector[Int], labelPredicted: DenseVector[Int]): Double = {
     val numCorrect = (0 until label.length).map { index =>

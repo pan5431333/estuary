@@ -1,6 +1,7 @@
 package estuary.components.optimizer
 
 import breeze.linalg.DenseMatrix
+import estuary.components.Exception.GradientExplosionException
 import estuary.components.optimizer.AdamOptimizer.AdamParam
 import estuary.model.Model
 import org.apache.log4j.Logger
@@ -10,8 +11,9 @@ class DistributedAdamOptimizer extends AdamOptimizer with AbstractDistributed[Ad
 
   protected var parameterServer: AdamParam = _
 
-  protected def updateParameterServer(grads: AdamParam, miniBatchTime: Int): Unit = this.synchronized {
-    parameterServer = updateFunc(parameterServer, grads.modelParam, miniBatchTime)
+  protected def updateParameterServer(grads: AdamParam, miniBatchTime: Int): Unit = {
+    val newParams = updateFunc(parameterServer, grads.modelParam, miniBatchTime)
+    this.synchronized(parameterServer = newParams)
   }
 
   protected def fetchParameterServer(): AdamParam = parameterServer
@@ -32,7 +34,18 @@ class DistributedAdamOptimizer extends AdamOptimizer with AbstractDistributed[Ad
 
         if (miniBatchTime % printMiniBatchUnit == 0) {
           logger.info("Iteration: " + i + "|Thread: " + Thread.currentThread().getName + "|=" + "=" * (miniBatchTime / printMiniBatchUnit) + ">> Cost: " + cost)
+        }
+
+        //save cost and check for gradient explosion every 10 iterations
+        if (miniBatchTime % 10 == 0) {
           addCostHistory(cost)
+          try {
+            checkGradientsExplosion(cost, minCost)
+          } catch {
+            case e: GradientExplosionException =>
+              handleGradientExplosionException(params, paramSavePath)
+              if (exceptionCount > 10) throw e
+          }
         }
 
         val grads = model.backward(label, params.modelParam)

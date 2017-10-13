@@ -49,6 +49,7 @@ trait Distributed extends Optimizer with MiniBatchable {
     */
   protected def addCostHistory(cost: Double): Unit = this.synchronized {
     costHistory.+=(cost)
+    minCost = if (cost < minCost) cost else minCost
   }
 
   /**

@@ -7,7 +7,7 @@ import estuary.components.optimizer.{Distributed, Optimizer}
 import estuary.components.regularizer.Regularizer
 import org.apache.log4j.Logger
 
-import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
 
 class FullyConnectedNNModel(override val hiddenLayers: Seq[Layer],
                             override val outputLayer: Layer,
@@ -17,7 +17,7 @@ class FullyConnectedNNModel(override val hiddenLayers: Seq[Layer],
   override val logger: Logger = Logger.getLogger(this.getClass)
 
   var params: Seq[DenseMatrix[Double]] = _
-  var costHistory: mutable.MutableList[Double] = _
+  var costHistory: ArrayBuffer[Double] = _
   override var labelsMapping: Vector[Int] = _
 
   def init(inputDim: Int, outputDim: Int, initializer: WeightsInitializer): Seq[DenseMatrix[Double]] = {

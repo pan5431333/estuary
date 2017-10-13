@@ -12,7 +12,7 @@ import scala.collection.mutable
   * Created by mengpan on 2017/8/17.
   */
 object PlotUtils {
-  def plotCostHistory(costHistory: mutable.MutableList[Double]): Unit = {
+  def plotCostHistory(costHistory: Seq[Double]): Unit = {
 
     val x = costHistory.indices.map(_.toDouble).toArray
     val y = costHistory.toArray[Double]

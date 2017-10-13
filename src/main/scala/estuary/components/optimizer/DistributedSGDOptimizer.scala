@@ -1,6 +1,7 @@
 package estuary.components.optimizer
 
 import breeze.linalg.DenseMatrix
+import estuary.components.optimizer.AdamOptimizer.AdamParam
 import estuary.model.Model
 import org.apache.log4j.Logger
 

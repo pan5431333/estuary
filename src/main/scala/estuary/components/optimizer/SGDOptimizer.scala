@@ -1,11 +1,14 @@
 package estuary.components.optimizer
 
 import breeze.linalg.DenseMatrix
+import estuary.components.optimizer.AdamOptimizer.AdamParam
+import org.apache.log4j.Logger
 
 /**
   * Stochastic Gradient Descent, i.e. Mini-batch Gradient Descent.
   */
 class SGDOptimizer extends Optimizer with MiniBatchable with NonHeuristic {
+  override protected val logger: Logger = Logger.getLogger(this.getClass)
 
   /**
     * Implementation of Optimizer.optimize(). Optimizing Machine Learning-like models'
@@ -25,7 +28,7 @@ class SGDOptimizer extends Optimizer with MiniBatchable with NonHeuristic {
     *                     output: gradients of params of type T.
     * @return Trained parameters.
     */
-  override def optimize(feature: DenseMatrix[Double], label: DenseMatrix[Double])
+  def optimize(feature: DenseMatrix[Double], label: DenseMatrix[Double])
                        (initParams: Seq[DenseMatrix[Double]])
                        (forwardFunc: (DenseMatrix[Double], DenseMatrix[Double], Seq[DenseMatrix[Double]]) => Double)
                        (backwardFunc: (DenseMatrix[Double], Seq[DenseMatrix[Double]]) => Seq[DenseMatrix[Double]]): Seq[DenseMatrix[Double]] = {
@@ -44,6 +47,10 @@ class SGDOptimizer extends Optimizer with MiniBatchable with NonHeuristic {
         updateFunc(preBatchParams, grads)
       }
     }
+  }
+
+  protected def handleGradientExplosionException(params: Any, paramSavePath: String): Unit = {
+    saveDenseMatricesToDisk(params.asInstanceOf[AdamParam].modelParam, paramSavePath)
   }
 
   /**

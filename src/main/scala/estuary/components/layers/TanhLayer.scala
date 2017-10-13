@@ -20,7 +20,7 @@ class TanhLayer extends Layer {
 }
 
 object TanhLayer {
-  def apply(numHiddenUnits: Int, batchNorm: Boolean = true): TanhLayer = {
+  def apply(numHiddenUnits: Int, batchNorm: Boolean = false): TanhLayer = {
     new TanhLayer()
       .setNumHiddenUnits(numHiddenUnits)
       .setBatchNorm(batchNorm)

@@ -3,45 +3,14 @@ package estuary.components.optimizer
 import breeze.linalg.DenseMatrix
 import breeze.numerics.{pow, sqrt}
 import estuary.components.optimizer.AdamOptimizer.AdamParam
+import org.apache.log4j.Logger
 
 /**
   * Adam Optimizer, a very efficient and recommended optimizer for Deep Neural Network.
   */
 class AdamOptimizer extends Optimizer with MiniBatchable with Heuristic {
-  protected var momentumRate: Double = 0.9
-  protected var adamRate: Double = 0.999
+  protected val logger: Logger = Logger.getLogger(this.getClass)
 
-  def setMomentumRate(momentum: Double): this.type = {
-    this.momentumRate = momentum
-    this
-  }
-
-  def setAdamRate(adamRate: Double): this.type = {
-    this.adamRate = adamRate
-    this
-  }
-
-
-
-
-  /**
-    * Implementation of Optimizer.optimize(). Optimizing Machine Learning-like models'
-    * parameters on a training dataset (feature, label).
-    *
-    * @param feature      DenseMatrix of shape (n, p) where n: the number of training
-    *                     examples, p: the dimension of input feature.
-    * @param label        DenseMatrix of shape (n, q) where n: the number of training examples,
-    *                     q: number of distinct labels.
-    * @param initParams   Initialized parameters.
-    * @param forwardFunc  The cost function.
-    *                     inputs: (feature, label, params) of type
-    *                     (DenseMatrix[Double], DenseMatrix[Double], T)
-    *                     output: cost of type Double.
-    * @param backwardFunc A function calculating gradients of all parameters.
-    *                     input: (label, params) of type (DenseMatrix[Double], T)
-    *                     output: gradients of params of type T.
-    * @return Trained parameters.
-    */
   override def optimize(feature: DenseMatrix[Double], label: DenseMatrix[Double])
                        (initParams: Seq[DenseMatrix[Double]])
                        (forwardFunc: (DenseMatrix[Double], DenseMatrix[Double], Seq[DenseMatrix[Double]]) => Double)
@@ -65,6 +34,24 @@ class AdamOptimizer extends Optimizer with MiniBatchable with Heuristic {
         updateFunc(preBatchParams, grads, iterTime * miniBatchSize + miniBatchTime)
       }
     }.modelParam
+  }
+
+  protected def handleGradientExplosionException(params: Any, paramSavePath: String): Unit = {
+    exceptionCount += 1
+    saveDenseMatricesToDisk(params.asInstanceOf[AdamParam].modelParam, paramSavePath)
+  }
+
+  protected var momentumRate: Double = 0.9
+  protected var adamRate: Double = 0.999
+
+  def setMomentumRate(momentum: Double): this.type = {
+    this.momentumRate = momentum
+    this
+  }
+
+  def setAdamRate(adamRate: Double): this.type = {
+    this.adamRate = adamRate
+    this
   }
 
   /**
