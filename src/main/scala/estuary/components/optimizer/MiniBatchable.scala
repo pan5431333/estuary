@@ -1,11 +1,11 @@
 package estuary.components.optimizer
 
-import breeze.linalg.{DenseMatrix, DenseVector, min}
+import breeze.linalg.{DenseMatrix, min}
 
 import scala.util.Random
 
 /**
-  * Optimizer using mini-batch optimization algprithm.
+  * Optimizer using mini-batch optimization algorithm.
   * Its implementations has the ability of "getMiniBatches()"
   */
 trait MiniBatchable {
@@ -21,14 +21,11 @@ trait MiniBatchable {
   /**
     * Split the whole training set (feature, label) to an iterator of multiple mini-batches.
     *
-    * @param feature DenseMatrix of shape (n, p) where n: number of training examples,
-    *                p: dimension of input feature.
-    * @param label   DenseMatrix of shape (n, q) where n: number of training examples,
-    *                q: number of distinct labels.
+    * @param feature Feature matrix
+    * @param label   Label matrix in one-hot representation
     * @return An iterator of multiple minibatches.
     */
-  def getMiniBatches(feature: DenseMatrix[Double],
-                     label: DenseMatrix[Double]): Iterator[(DenseMatrix[Double], DenseMatrix[Double])] = {
+  protected def getMiniBatches(feature: DenseMatrix[Double], label: DenseMatrix[Double]): Iterator[(DenseMatrix[Double], DenseMatrix[Double])] = {
     assert(feature.rows == label.rows, "feature.rows != label.rows")
 
     this.miniBatchSize match {
@@ -41,14 +38,11 @@ trait MiniBatchable {
   }
 
   /**
-    * Split up a training set into an iterator of multiple mini-batches. Each mini-batch
-    * has miniBatchSize# of examples.
+    * Split up a training set into an iterator of multiple mini-batches. Each mini-batch has miniBatchSize# of examples.
     *
-    * @param feature DenseMatrix of shape (n, p) where n: number of training examples,
-    *                p: dimension of input feature.
-    * @param label   DenseMatrix of shape (n, q) where n: number of training examples,
-    *                q: number of distinct labels.
-    * @param miniBatchSize
+    * @param feature       Feature matrix
+    * @param label         Label matrix in one-hot representation
+    * @param miniBatchSize generally 64, 128, 256, 512, etc.
     * @return An iterator of multiple minibatches.
     */
   private def getPositiveNumMiniBatches(feature: DenseMatrix[Double], label: DenseMatrix[Double], miniBatchSize: Int): Iterator[(DenseMatrix[Double], DenseMatrix[Double])] = {

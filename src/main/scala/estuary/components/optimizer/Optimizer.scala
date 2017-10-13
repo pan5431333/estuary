@@ -7,18 +7,17 @@ import scala.collection.mutable
 
 
 /**
-  * Optimizer Interface, all of whose implementations
-  * MUST implement abstract method: "optimize"
+  * Optimizer Interface, all of whose implementations MUST implement abstract method: "optimize"
   *
   * @note This optimizer can be ONLY used for optimizing Machine Learning-like
   *       problems, which means that input-output (i.e. feature-label) data are needed.
   *       NOT for general optimization or mathematical planning problem.
   */
 trait Optimizer {
-  val logger: Logger = Logger.getLogger(this.getClass)
+  protected val logger: Logger = Logger.getLogger(this.getClass)
 
-  var iteration: Int = _
-  var learningRate: Double = _
+  protected var iteration: Int = _
+  protected var learningRate: Double = _
 
   def setIteration(iteration: Int): this.type = {
     this.iteration = iteration
@@ -35,12 +34,10 @@ trait Optimizer {
   val costHistory: mutable.MutableList[Double] = new mutable.MutableList[Double]()
 
   /**
-    * Optimizing Machine Learning-like models' parameters on a training dataset (feature, label).
+    * Optimizing Machine Learning-like models' parameters on a training data set (feature, label).
     *
-    * @param feature      DenseMatrix of shape (n, p) where n: the number of
-    *                     training examples, p: the dimension of input feature.
-    * @param label        DenseMatrix of shape (n, q) where n: the number of
-    *                     training examples, q: number of distinct labels.
+    * @param feature      feature matrix
+    * @param label        label matrix in one-hot representation
     * @param initParams   Initialized parameters.
     * @param forwardFunc  The cost function.
     *                     inputs: (feature, label, params) of type (DenseMatrix[Double], DenseMatrix[Double], T)

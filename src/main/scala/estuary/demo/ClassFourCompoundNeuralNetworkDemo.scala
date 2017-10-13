@@ -1,8 +1,8 @@
 package estuary.demo
 
 import breeze.stats.{mean, stddev}
-import estuary.components.layers.{ReluLayer, SoftmaxLayer}
-import estuary.components.optimizer.DistributedSGDOptimizer
+import estuary.components.layers.{DropoutLayer, ReluLayer, SoftmaxLayer}
+import estuary.components.optimizer.{DistributedAdamOptimizer, DistributedSGDOptimizer}
 import estuary.helper.GasCensorDataHelper
 import estuary.model.{FullyConnectedNNModel, Model}
 import estuary.utils.NormalizeUtils
@@ -31,15 +31,19 @@ object ClassFourCompoundNeuralNetworkDemo extends App {
   val testLabel = test.getLabelAsVector.map(_.toInt)
 
   val hiddenLayers = List(
-        ReluLayer(numHiddenUnits = 200, batchNorm = false),
-//        DropoutLayer(dropoutRate = 0.1),
-        ReluLayer(numHiddenUnits = 100, batchNorm = false))
+    ReluLayer(numHiddenUnits = 200, batchNorm = false),
+    DropoutLayer(0.3),
+    ReluLayer(numHiddenUnits = 200, batchNorm = false),
+    DropoutLayer(0.3),
+    ReluLayer(numHiddenUnits = 200, batchNorm = false),
+    DropoutLayer(0.3),
+    ReluLayer(numHiddenUnits = 100, batchNorm = false))
   val outputLayer = SoftmaxLayer(batchNorm = false)
-  val nnModel = new FullyConnectedNNModel(hiddenLayers, outputLayer, 0.001, 50, None)
+  val nnModel = new FullyConnectedNNModel(hiddenLayers, outputLayer, 0.001, 30, None)
 
   //用训练集的数据训练算法
-  nnModel.init(trainingFeature.cols, trainingLabel.toArray.toSet.size)
-  val trainedModel = nnModel.train(trainingFeature, trainingLabel, DistributedSGDOptimizer(64, 5))
+//  val trainedModel = nnModel.train(trainingFeature, trainingLabel, DistributedSGDOptimizer(64, 5))
+  val trainedModel = nnModel.train(trainingFeature, trainingLabel, DistributedAdamOptimizer(64, 5))
 
   //测试算法获得算法优劣指标
   val yPredicted = trainedModel.predict(testFeature)

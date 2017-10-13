@@ -70,7 +70,7 @@ class AdamOptimizer extends Optimizer with MiniBatchable with Heuristic {
   /**
     * Initialize momentum or RMSProp parameters to all zeros.
     */
-  private def getInitAdam(modelParams: Seq[DenseMatrix[Double]]): Seq[DenseMatrix[Double]] = {
+  protected def getInitAdam(modelParams: Seq[DenseMatrix[Double]]): Seq[DenseMatrix[Double]] = {
     modelParams.par.map { m => DenseMatrix.zeros[Double](m.rows, m.cols) }.seq
   }
 

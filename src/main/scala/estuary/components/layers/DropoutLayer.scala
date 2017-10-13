@@ -2,6 +2,7 @@ package estuary.components.layers
 
 import breeze.linalg.{DenseMatrix, DenseVector}
 import estuary.components.regularizer.Regularizer
+import estuary.utils.DebugUtils
 
 /**
   * Created by mengpan on 2017/9/7.
@@ -9,6 +10,12 @@ import estuary.components.regularizer.Regularizer
 class DropoutLayer extends Layer {
 
   protected var dropoutRate: Double = _
+
+  override def setPreviousHiddenUnits(numHiddenUnits: Int): this.type = {
+    super.setPreviousHiddenUnits(numHiddenUnits)
+    this.numHiddenUnits = previousHiddenUnits
+    this
+  }
 
   def setDropoutRate(dropoutRate: Double): this.type = {
     assert(dropoutRate <= 1 && dropoutRate >= 0, "dropout rate must be between 0 and 1")
@@ -24,7 +31,6 @@ class DropoutLayer extends Layer {
 
     val numExamples = zCurrent.rows
     val oneVector = DenseVector.ones[Double](numExamples)
-
     zCurrent *:* (oneVector * dropoutVector.t) / (1.0 - this.dropoutRate)
   }
 
@@ -36,7 +42,7 @@ class DropoutLayer extends Layer {
   }
 
   private def generateDropoutVector(numHiddenUnits: Int, dropoutRate: Double): DenseVector[Double] = {
-    val randVec = DenseVector.rand[Double](this.numHiddenUnits)
+    val randVec = DenseVector.rand[Double](numHiddenUnits)
 
     val res = DenseVector.zeros[Double](randVec.length)
     for (i <- (0 until randVec.length).par) {
