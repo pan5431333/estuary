@@ -55,5 +55,5 @@ class FullyConnectedNNModel(override val hiddenLayers: Seq[Layer],
     }.init.map(_._2).toList
   }
 
-  def copyStructure = new FullyConnectedNNModel(hiddenLayers.map(_.copy), outputLayer.copy, learningRate, iterationTime, regularizer)
+  def copyStructure = new FullyConnectedNNModel(hiddenLayers.map(_.copyStructure), outputLayer.copyStructure, learningRate, iterationTime, regularizer)
 }

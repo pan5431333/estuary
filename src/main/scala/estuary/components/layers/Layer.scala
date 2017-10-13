@@ -34,9 +34,6 @@ trait Layer {
   protected var zDelta: DenseMatrix[Double] = _
   protected var y: DenseMatrix[Double] = _
 
-  /** Record if this layer has been trained */
-  var isTrained: Boolean = false
-
   /** Layer hyperparameters and their setters */
   var numHiddenUnits: Int = 0
   var batchNorm: Boolean = false
@@ -59,7 +56,7 @@ trait Layer {
     this
   }
 
-  def copy: Layer
+  def copyStructure: Layer
 
   /**
     * Forward propagation of current layer.
@@ -73,7 +70,7 @@ trait Layer {
     */
   def forward(yPrevious: DenseMatrix[Double]): DenseMatrix[Double] = {
     this.yPrevious = yPrevious
-    y = if (this.batchNorm) forwardWithBatchNorm(yPrevious) else  forwardWithoutBatchNorm(yPrevious)
+    y = if (this.batchNorm) forwardWithBatchNorm(yPrevious) else forwardWithoutBatchNorm(yPrevious)
     y
   }
 
@@ -107,7 +104,6 @@ trait Layer {
     *         parameters are w, alpha and beta.
     */
   def backward(dYCurrent: DenseMatrix[Double], regularizer: Option[Regularizer]): (DenseMatrix[Double], DenseMatrix[Double]) = {
-    this.isTrained = true
 
     if (this.batchNorm) backWithBatchNorm(dYCurrent, yPrevious, regularizer)
     else backWithoutBatchNorm(dYCurrent, yPrevious, regularizer)
@@ -122,16 +118,17 @@ trait Layer {
     *         For batchNorm is false, return's shape is (d(l-1) + 1, d(l))
     */
   def init(initializer: WeightsInitializer): DenseMatrix[Double] = {
-    if(this.batchNorm) {
-        this.w = initializer.init(previousHiddenUnits, numHiddenUnits)
-        this.alpha = DenseVector.zeros[Double](numHiddenUnits)
-        this.beta = DenseVector.ones[Double](numHiddenUnits)
-        DenseMatrix.vertcat(this.w, this.alpha.toDenseMatrix, this.beta.toDenseMatrix)}
-    else{
-        this.w = initializer.init(previousHiddenUnits, numHiddenUnits)
-        this.b = DenseVector.zeros[Double](numHiddenUnits)
-        DenseMatrix.vertcat(this.w, this.b.toDenseMatrix)
-      }
+    if (this.batchNorm) {
+      this.w = initializer.init(previousHiddenUnits, numHiddenUnits)
+      this.alpha = DenseVector.zeros[Double](numHiddenUnits)
+      this.beta = DenseVector.ones[Double](numHiddenUnits)
+      DenseMatrix.vertcat(this.w, this.alpha.toDenseMatrix, this.beta.toDenseMatrix)
+    }
+    else {
+      this.w = initializer.init(previousHiddenUnits, numHiddenUnits)
+      this.b = DenseVector.zeros[Double](numHiddenUnits)
+      DenseMatrix.vertcat(this.w, this.b.toDenseMatrix)
+    }
   }
 
   /**
@@ -258,7 +255,7 @@ trait Layer {
     val dZ = normalizeGradVec(dZNorm, z, currentMeanZ, currentStddevZ)
 
     //Matrix version (preffered, bug worse results than normalizeGradVec, why?)
-//        val dZ = normalizeGrad(dZNorm, z, currentMeanZ, currentStddevZ)
+    //        val dZ = normalizeGrad(dZNorm, z, currentMeanZ, currentStddevZ)
 
     val dWCurrent = regularizer match {
       case None => yPrevious.t * dZ / n

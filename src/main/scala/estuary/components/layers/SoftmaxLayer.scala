@@ -11,7 +11,6 @@ class SoftmaxLayer extends Layer {
 
 
   override def backward(dYCurrent: DenseMatrix[Double], regularizer: Option[Regularizer]): (DenseMatrix[Double], DenseMatrix[Double]) = {
-    this.isTrained = true
 
     if (this.batchNorm) backwardWithBatchNorm(dYCurrent, yPrevious, regularizer)
     else backwardWithoutBatchNorm(dYCurrent, yPrevious, regularizer)
@@ -36,7 +35,7 @@ class SoftmaxLayer extends Layer {
     (dZ * w.t, grads)
   }
 
-  override def copy = new SoftmaxLayer().setPreviousHiddenUnits(previousHiddenUnits).setNumHiddenUnits(numHiddenUnits).setBatchNorm(batchNorm)
+  def copyStructure: SoftmaxLayer = new SoftmaxLayer().setPreviousHiddenUnits(previousHiddenUnits).setNumHiddenUnits(numHiddenUnits).setBatchNorm(batchNorm)
 
   private def backwardWithBatchNorm(dYCurrent: DenseMatrix[Double], yPrevious: DenseMatrix[Double], regularizer: Option[Regularizer]): (DenseMatrix[Double], DenseMatrix[Double]) = {
     val numExamples = dYCurrent.rows
@@ -72,7 +71,7 @@ class SoftmaxLayer extends Layer {
     * @param zCurrent of shape (numExamples, numHiddenUnitsOutputLayer)
     * @return of shape (numExamples, output)
     */
-  override protected def activationFuncEval(zCurrent: DenseMatrix[Double]):
+  protected def activationFuncEval(zCurrent: DenseMatrix[Double]):
   DenseMatrix[Double] = {
 
     val res = DenseMatrix.zeros[Double](zCurrent.rows, zCurrent.cols)
@@ -88,7 +87,7 @@ class SoftmaxLayer extends Layer {
     * @param zCurrent
     * @return
     */
-  override protected def activationGradEval(zCurrent: DenseMatrix[Double]):
+  protected def activationGradEval(zCurrent: DenseMatrix[Double]):
   DenseMatrix[Double] = ???
 
   private def softMaxScale(_x: DenseVector[Double]): DenseVector[Double] = {

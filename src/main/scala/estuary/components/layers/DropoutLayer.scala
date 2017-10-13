@@ -2,7 +2,6 @@ package estuary.components.layers
 
 import breeze.linalg.{DenseMatrix, DenseVector}
 import estuary.components.regularizer.Regularizer
-import estuary.utils.DebugUtils
 
 /**
   * Created by mengpan on 2017/9/7.
@@ -26,7 +25,7 @@ class DropoutLayer extends Layer {
 
   protected var dropoutVector: DenseVector[Double] = _
 
-  protected override def activationFuncEval(zCurrent: DenseMatrix[Double]): DenseMatrix[Double] = {
+  protected def activationFuncEval(zCurrent: DenseMatrix[Double]): DenseMatrix[Double] = {
     dropoutVector = generateDropoutVector(numHiddenUnits, dropoutRate)
 
     val numExamples = zCurrent.rows
@@ -34,7 +33,7 @@ class DropoutLayer extends Layer {
     zCurrent *:* (oneVector * dropoutVector.t) / (1.0 - this.dropoutRate)
   }
 
-  protected override def activationGradEval(zCurrent: DenseMatrix[Double]): DenseMatrix[Double] = {
+  protected def activationGradEval(zCurrent: DenseMatrix[Double]): DenseMatrix[Double] = {
     val numExamples = zCurrent.rows
     val oneVector = DenseVector.ones[Double](numExamples)
 
@@ -63,7 +62,7 @@ class DropoutLayer extends Layer {
     (dYCurrent *:* filterMat, DenseMatrix.zeros[Double](previousHiddenUnits + 1, numHiddenUnits))
   }
 
-  override def copy: DropoutLayer = {
+  def copyStructure: DropoutLayer = {
     new DropoutLayer()
       .setDropoutRate(dropoutRate)
       .setBatchNorm(batchNorm)

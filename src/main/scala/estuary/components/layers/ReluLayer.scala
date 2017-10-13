@@ -7,21 +7,28 @@ import breeze.linalg.DenseMatrix
   */
 class ReluLayer extends Layer {
 
-  protected override def activationFuncEval(zCurrent: DenseMatrix[Double]):
-  DenseMatrix[Double] = {
-    zCurrent.map { i =>
-      if (i >= 0) i else 0.0
+  protected def activationFuncEval(zCurrent: DenseMatrix[Double]): DenseMatrix[Double] = {
+    val res = DenseMatrix.zeros[Double](zCurrent.rows, zCurrent.cols)
+    for {i <- (0 until zCurrent.rows).par
+         j <- (0 until zCurrent.cols).par
+    } {
+      res(i, j) = if (zCurrent(i, j) >= 0) zCurrent(i, j) else 0.0
     }
+    res
   }
 
-  protected override def activationGradEval(zCurrent: DenseMatrix[Double]):
-  DenseMatrix[Double] = {
-    zCurrent.map { i =>
-      if (i >= 0) 1.0 else 0.0
+  protected def activationGradEval(zCurrent: DenseMatrix[Double]): DenseMatrix[Double] = {
+    val res = DenseMatrix.zeros[Double](zCurrent.rows, zCurrent.cols)
+
+    for {i <- (0 until zCurrent.rows).par
+         j <- (0 until zCurrent.cols).par
+    } {
+      res(i, j) = if (zCurrent(i, j) >= 0) 1.0 else 0.0
     }
+    res
   }
 
-  override def copy: ReluLayer = new ReluLayer().setPreviousHiddenUnits(previousHiddenUnits).setNumHiddenUnits(numHiddenUnits).setBatchNorm(batchNorm)
+  def copyStructure: ReluLayer = new ReluLayer().setPreviousHiddenUnits(previousHiddenUnits).setNumHiddenUnits(numHiddenUnits).setBatchNorm(batchNorm)
 }
 
 object ReluLayer {

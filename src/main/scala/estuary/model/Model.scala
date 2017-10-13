@@ -1,5 +1,7 @@
 package estuary.model
 
+import java.util.Date
+
 import breeze.linalg.{DenseMatrix, DenseVector, max, sum}
 import breeze.numerics.log
 import estuary.components.initializer.{HeInitializer, WeightsInitializer}
@@ -88,6 +90,13 @@ object Model {
         if (label(index) == labelPredicted(index)) 1 else 0
       }.count(_ == 1)
     numCorrect.toDouble / label.length.toDouble
+  }
+
+  def evaluationTime[T](task: => T): Long = {
+    val startTime = System.currentTimeMillis()
+    task
+    val endTime = System.currentTimeMillis()
+    endTime - startTime
   }
 
   def deOneHot(yHat: DenseMatrix[Double]): DenseMatrix[Int] = {

@@ -8,16 +8,16 @@ import breeze.numerics.sigmoid
   */
 class SigmoidLayer extends Layer {
 
-  protected override def activationFuncEval(zCurrent: DenseMatrix[Double]): DenseMatrix[Double] = {
+  override def activationFuncEval(zCurrent: DenseMatrix[Double]): DenseMatrix[Double] = {
     sigmoid(zCurrent)
   }
 
-  protected override def activationGradEval(zCurrent: DenseMatrix[Double]): DenseMatrix[Double] = {
+  override def activationGradEval(zCurrent: DenseMatrix[Double]): DenseMatrix[Double] = {
     val sigmoided = sigmoid(zCurrent)
     sigmoided *:* (1.0 - sigmoided)
   }
 
-  override def copy = new SigmoidLayer().setBatchNorm(batchNorm).setNumHiddenUnits(numHiddenUnits).setPreviousHiddenUnits(previousHiddenUnits)
+  def copyStructure: SigmoidLayer = new SigmoidLayer().setBatchNorm(batchNorm).setNumHiddenUnits(numHiddenUnits).setPreviousHiddenUnits(previousHiddenUnits)
 }
 
 object SigmoidLayer {
