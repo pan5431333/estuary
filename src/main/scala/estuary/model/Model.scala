@@ -17,7 +17,7 @@ import org.apache.log4j.Logger
 import scala.collection.mutable.ArrayBuffer
 
 trait Model extends Serializable{
-  val logger: Logger = Logger.getLogger(Model.getClass)
+  val logger: Logger
 
   val hiddenLayers: Seq[Layer]
   val outputLayer: Layer
