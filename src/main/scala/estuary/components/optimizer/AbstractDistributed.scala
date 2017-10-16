@@ -10,6 +10,8 @@ trait AbstractDistributed[A, B] extends Distributed[B] {
 
   protected def updateParameterServer(grads: A, miniBatchTime: Int): Unit
 
-  protected def fetchParameterServer(): A
+  protected def updateParameterServer(newParam: A): Unit = this.synchronized(parameterServer = newParam)
+
+  protected def fetchParameterServer(): A = parameterServer
 
 }

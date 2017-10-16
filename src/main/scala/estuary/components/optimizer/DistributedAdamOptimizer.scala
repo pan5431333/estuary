@@ -20,14 +20,13 @@ class DistributedAdamOptimizer(override val iteration: Int,
   protected var parameterServer: AdamParam = _
 
   protected def updateParameterServer(grads: AdamParam, miniBatchTime: Int): Unit = {
-    val newParams = updateFunc(parameterServer, grads.modelParam, miniBatchTime)
-    this.synchronized(parameterServer = newParams)
+    val nowParams = fetchParameterServer()
+    val newParams = updateFunc(nowParams, grads.modelParam, miniBatchTime)
+    updateParameterServer(newParams)
   }
 
-  protected def fetchParameterServer(): AdamParam = parameterServer
-
   def parOptimize(feature: DenseMatrix[Double], label: DenseMatrix[Double], model: Model[Seq[DenseMatrix[Double]]], initParams: Seq[DenseMatrix[Double]]): Seq[DenseMatrix[Double]] = {
-    parameterServer = AdamParam(initParams, getInitAdam(initParams), getInitAdam(initParams))
+    updateParameterServer(AdamParam(initParams, getInitAdam(initParams), getInitAdam(initParams)))
 
     for (i <- (0 until iteration).toIterator) {
       val parBatches = genParBatches(feature, label)

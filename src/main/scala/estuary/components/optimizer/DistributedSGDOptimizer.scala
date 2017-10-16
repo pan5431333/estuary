@@ -42,14 +42,12 @@ class DistributedSGDOptimizer(override val iteration: Int,
     parameterServer
   }
 
-  protected def updateParameterServer(grads: Seq[DenseMatrix[Double]], miniBatchTime: Int): Unit = this.synchronized {
-    parameterServer = parameterServer.zip(grads).par.map { case (param, grad) =>
+  protected def updateParameterServer(grads: Seq[DenseMatrix[Double]], miniBatchTime: Int): Unit = {
+    val nowParams = fetchParameterServer()
+    val newParams = nowParams.zip(grads).par.map { case (param, grad) =>
       updateFunc(param, grad, miniBatchTime)
     }.seq
-  }
-
-  protected def fetchParameterServer(): Seq[DenseMatrix[Double]] = {
-    parameterServer
+    updateParameterServer(newParams)
   }
 
   protected def updateFunc(params: DenseMatrix[Double], grads: DenseMatrix[Double], miniBatchTime: Int): DenseMatrix[Double] =
