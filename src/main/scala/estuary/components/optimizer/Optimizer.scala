@@ -52,6 +52,7 @@ trait Optimizer {
 
   protected def addCostHistory(cost: Double): Unit = {
     costHistory.+=(cost)
+    minCost = if (cost < minCost) cost else minCost
   }
 
   protected var exceptionCount: Int = 0
