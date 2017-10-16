@@ -28,37 +28,35 @@ class DistributedAdamOptimizer(override val iteration: Int,
   def parOptimize(feature: DenseMatrix[Double], label: DenseMatrix[Double], model: Model[Seq[DenseMatrix[Double]]], initParams: Seq[DenseMatrix[Double]]): Seq[DenseMatrix[Double]] = {
     updateParameterServer(AdamParam(initParams, getInitAdam(initParams), getInitAdam(initParams)))
 
-    for (i <- (0 until iteration).toIterator) {
-      val parBatches = genParBatches(feature, label)
-      val modelInstances = parBatches.map(_ => model.copyStructure)
+    val parBatches = genParBatches(feature, label)
+    val modelInstances = parBatches.map(_ => model.copyStructure)
 
-      for {(batch, model) <- parBatches.zip(modelInstances)
-           ((feature, label), miniBatchTime) <- batch.zipWithIndex
-      } {
-        val printMiniBatchUnit = math.max(feature.rows / this.miniBatchSize / 5, 10)
-        val params = fetchParameterServer()
-        val cost = model.forward(feature, label, params.modelParam)
+    for {(batch, model) <- parBatches.zip(modelInstances)
+         i <- (0 until iteration).toIterator
+         ((feature, label), miniBatchTime) <- getMiniBatches(batch._1, batch._2).zipWithIndex
+    } {
+      val printMiniBatchUnit = math.max(feature.rows / this.miniBatchSize / 5, 10)
+      val params = fetchParameterServer()
+      val cost = model.forward(feature, label, params.modelParam)
 
-        if (miniBatchTime % printMiniBatchUnit == 0) {
-          logger.info("Iteration: " + i + "|Thread: " + Thread.currentThread().getName + "|=" + "=" * (miniBatchTime / printMiniBatchUnit) + ">> Cost: " + cost)
+      printCostInfo(cost, i, miniBatchTime, printMiniBatchUnit)
+
+      //save cost and check for gradient explosion every 10 iterations
+      if (miniBatchTime % 10 == 0) {
+        addCostHistory(cost)
+        try {
+          checkGradientsExplosion(cost, minCost)
+        } catch {
+          case e: GradientExplosionException =>
+            handleGradientExplosionException(params, paramSavePath)
+            if (exceptionCount > 10) throw e
         }
-
-        //save cost and check for gradient explosion every 10 iterations
-        if (miniBatchTime % 10 == 0) {
-          addCostHistory(cost)
-          try {
-            checkGradientsExplosion(cost, minCost)
-          } catch {
-            case e: GradientExplosionException =>
-              handleGradientExplosionException(params, paramSavePath)
-              if (exceptionCount > 10) throw e
-          }
-        }
-
-        val grads = model.backward(label, params.modelParam)
-        updateParameterServer(AdamParam(grads, null, null), miniBatchTime)
       }
+
+      val grads = model.backward(label, params.modelParam)
+      updateParameterServer(AdamParam(grads, null, null), miniBatchTime)
     }
+
 
     parameterServer.modelParam
   }

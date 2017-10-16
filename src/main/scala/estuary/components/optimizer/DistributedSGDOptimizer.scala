@@ -19,17 +19,18 @@ class DistributedSGDOptimizer(override val iteration: Int,
   override def parOptimize(feature: DenseMatrix[Double], label: DenseMatrix[Double], model: Model[Seq[DenseMatrix[Double]]], initParams: Seq[DenseMatrix[Double]]): Seq[DenseMatrix[Double]] = {
     parameterServer = initParams
 
-    for (i <- (0 until iteration).toIterator) {
-      val parBatches = genParBatches(feature, label)
-      val modelInstances = parBatches.map(_ => model.copyStructure)
-      for ((batch, model) <- parBatches.zip(modelInstances)) {
-        for (((feature, label), miniBatchTime) <- batch.zipWithIndex) {
+    val parBatches = genParBatches(feature, label)
+    val modelInstances = parBatches.map(_ => model.copyStructure)
+
+    for ((batch, model) <- parBatches.zip(modelInstances)) {
+      for (i <- (0 until iteration).toIterator) {
+        for (((feature, label), miniBatchTime) <- getMiniBatches(batch._1, batch._2).zipWithIndex) {
           val printMiniBatchUnit = math.max(feature.rows / this.miniBatchSize / 5, 10)
           val params = fetchParameterServer()
           val cost = model.forward(feature, label, params)
 
           if (miniBatchTime % printMiniBatchUnit == 0) {
-            logger.info("Iteration: " + i + "|Thread: " + Thread.currentThread().getName + "|=" + "=" * (miniBatchTime / printMiniBatchUnit) + ">> Cost: " + cost)
+            printCostInfo(cost, i, miniBatchTime, printMiniBatchUnit)
             addCostHistory(cost)
           }
 

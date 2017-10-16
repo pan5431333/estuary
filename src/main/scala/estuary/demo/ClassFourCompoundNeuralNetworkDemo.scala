@@ -2,7 +2,7 @@ package estuary.demo
 
 import breeze.stats.{mean, stddev}
 import estuary.components.layers.{DropoutLayer, ReluLayer, SoftmaxLayer}
-import estuary.components.optimizer.DistributedAdamOptimizer
+import estuary.components.optimizer.{AdamOptimizer, DistributedAdamOptimizer, DistributedSGDOptimizer, SGDOptimizer}
 import estuary.helper.GasCensorDataHelper
 import estuary.model.{FullyConnectedNNModel, Model}
 import estuary.utils.NormalizeUtils
@@ -31,33 +31,33 @@ object ClassFourCompoundNeuralNetworkDemo extends App {
   val testLabel = test.getLabelAsVector.map(_.toInt)
 
   val hiddenLayers = List(
+    ReluLayer(numHiddenUnits = 400),
+    DropoutLayer(0.2),
     ReluLayer(numHiddenUnits = 200),
-    DropoutLayer(0.5),
+    DropoutLayer(0.2),
     ReluLayer(numHiddenUnits = 200),
-    DropoutLayer(0.5),
-    ReluLayer(numHiddenUnits = 200),
-    DropoutLayer(0.5),
+    DropoutLayer(0.2),
     ReluLayer(numHiddenUnits = 100))
   val outputLayer = SoftmaxLayer()
   val nnModel = new FullyConnectedNNModel(hiddenLayers, outputLayer, None)
 
-  //  //Test for performance improved by distributed algorithms
-  //  val adamTime = Model.evaluationTime(nnModel.train(trainingFeature, trainingLabel, AdamOptimizer(64)))
-  //  val distributedAdamTime = Model.evaluationTime(nnModel.train(trainingFeature, trainingLabel, DistributedAdamOptimizer(64, 4)))
-  //  println("adamTime: " + adamTime + "ms")
-  //  println("distributedAdamTime: " + distributedAdamTime + "ms")
+  //Test for performance improved by distributed algorithms
+  val adamTime = Model.evaluationTime(nnModel.train(trainingFeature, trainingLabel, SGDOptimizer(iteration = 30, learningRate = 0.0001)))
+  val distributedAdamTime = Model.evaluationTime(nnModel.train(trainingFeature, trainingLabel, DistributedSGDOptimizer(iteration = 30)))
+  println("adamTime: " + adamTime + "ms")
+  println("distributedAdamTime: " + distributedAdamTime + "ms")
 
-  //用训练集的数据训练算法
-  val trainedModel = nnModel.train(trainingFeature, trainingLabel, DistributedAdamOptimizer())
-  //测试算法获得算法优劣指标
-  val yPredicted = trainedModel.predict(testFeature)
-  val trainYPredicted = trainedModel.predict(trainingFeature)
-
-  val testAccuracy = Model.accuracy(testLabel, yPredicted)
-  val trainAccuracy = Model.accuracy(trainingLabel, trainYPredicted)
-  println("\n The train accuracy of this model is: " + trainAccuracy)
-  println("\n The test accuracy of this model is: " + testAccuracy)
-
-  //对算法的训练过程中cost与迭代次数变化关系进行画图
-  trainedModel.plotCostHistory()
+//  //用训练集的数据训练算法
+//  val trainedModel = nnModel.train(trainingFeature, trainingLabel, DistributedAdamOptimizer(iteration = 50, nTasks = 4))
+//  //测试算法获得算法优劣指标
+//  val yPredicted = trainedModel.predict(testFeature)
+//  val trainYPredicted = trainedModel.predict(trainingFeature)
+//
+//  val testAccuracy = Model.accuracy(testLabel, yPredicted)
+//  val trainAccuracy = Model.accuracy(trainingLabel, trainYPredicted)
+//  println("\n The train accuracy of this model is: " + trainAccuracy)
+//  println("\n The test accuracy of this model is: " + testAccuracy)
+//
+//  //对算法的训练过程中cost与迭代次数变化关系进行画图
+//  trainedModel.plotCostHistory()
 }

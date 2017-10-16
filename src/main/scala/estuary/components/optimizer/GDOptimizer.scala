@@ -35,6 +35,10 @@ class GDOptimizer(val iteration: Int, val learningRate: Double, val paramSavePat
                        (backwardFunc: (DenseMatrix[Double], Seq[DenseMatrix[Double]]) => Seq[DenseMatrix[Double]]): Seq[DenseMatrix[Double]] = {
     (0 until this.iteration).foldLeft[Seq[DenseMatrix[Double]]](initParams) { case (preParams, iterTime) =>
       val cost = forwardFunc(feature, label, preParams)
+
+      printCostInfo(cost, iterTime)
+      addCostHistory(cost)
+
       val grads = backwardFunc(label, preParams)
       updateFunc(preParams, grads)
     }

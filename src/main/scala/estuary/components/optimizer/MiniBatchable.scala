@@ -8,8 +8,13 @@ import scala.util.Random
   * Optimizer using mini-batch optimization algorithm.
   * Its implementations has the ability of "getMiniBatches()"
   */
-trait MiniBatchable {
+trait MiniBatchable extends Optimizer{
   protected val miniBatchSize: Int
+
+  protected def printCostInfo(cost: Double, iterTime: Int, miniBatchTime: Int, printCostUnit: Int): Unit = {
+    if (miniBatchTime % printCostUnit == 0)
+      logger.info("Iteration: " + iterTime + "|=" + "=" * (miniBatchTime / printCostUnit) + ">> Cost: " + cost)
+  }
 
   /**
     * Split the whole training set (feature, label) to an iterator of multiple mini-batches.

@@ -11,6 +11,15 @@ import scala.collection.parallel.immutable.ParSeq
   * all be public.
   * 2. All concrete methods are functionality provided to its implementations, which means only implementations are able
   * to use these concrete methods, hence concrete methods should all be protected.
+  *
+  * @note Some lessons learned from building large scala distributed neural network:
+  *       1. The right way to slice parallel data sets from training set:
+  *         1) Split up training set into a ParSeq of multiple parallel data sets (without shuffle) first
+  *         2) For each parallel data set, do sequential optimization (with sharing of parameter server)
+  *      2. The right way to update parameter server:
+  *         After calculating gradients, before updating parameter server, remember to fetch current parameters from
+  *         parameter server again, since parameter server might be updated by other threads during the process of
+  *         calculating gradients in current thread.
   */
 trait Distributed[T] extends Optimizer with MiniBatchable {
 
@@ -36,9 +45,15 @@ trait Distributed[T] extends Optimizer with MiniBatchable {
     *
     * @param cost cost value.
     */
-  protected def addCostHistory(cost: Double): Unit = this.synchronized {
+  override protected def addCostHistory(cost: Double): Unit = this.synchronized {
     costHistory.+=(cost)
     minCost = if (cost < minCost) cost else minCost
+  }
+
+  override protected def printCostInfo(cost: Double, iterTime: Int, miniBatchTime: Int, printCostUnit: Int): Unit = {
+    if (miniBatchTime % printCostUnit == 0) {
+      logger.info("Iteration: " + iterTime + "|Thread: " + Thread.currentThread().getName + "|=" + "=" * (miniBatchTime / printCostUnit) + ">> Cost: " + cost)
+    }
   }
 
   /**
@@ -48,14 +63,14 @@ trait Distributed[T] extends Optimizer with MiniBatchable {
     * @param label   label matrix in one-hot representation
     * @return parallel iterators, each containing several minibatches data set.
     */
-  protected def genParBatches(feature: DenseMatrix[Double], label: DenseMatrix[Double]): ParSeq[Iterator[(DenseMatrix[Double], DenseMatrix[Double])]] = {
+  protected def genParBatches(feature: DenseMatrix[Double], label: DenseMatrix[Double]): ParSeq[(DenseMatrix[Double], DenseMatrix[Double])] = {
     val n = feature.rows
     val eachSize = n / nTasks
 
     for (i <- (0 until nTasks).par) yield {
       val startIndex = i * eachSize
       val endIndex = math.min((i + 1) * eachSize, n)
-      getMiniBatches(feature(startIndex until endIndex, ::), label(startIndex until endIndex, ::))
+      (feature(startIndex until endIndex, ::), label(startIndex until endIndex, ::))
     }
   }
 

@@ -46,6 +46,13 @@ trait Optimizer {
 
   protected def handleGradientExplosionException(params: Any, paramSavePath: String): Unit
 
+  protected def printCostInfo(cost: Double, iterTime: Int): Unit = {
+    logger.info("Iteration: " + iterTime + "| Cost: " + cost)
+  }
+
+  protected def addCostHistory(cost: Double): Unit = {
+    costHistory.+=(cost)
+  }
 
   protected var exceptionCount: Int = 0
   protected var minCost: Double = 0.0
