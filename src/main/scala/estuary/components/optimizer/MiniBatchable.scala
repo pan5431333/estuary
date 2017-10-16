@@ -9,14 +9,7 @@ import scala.util.Random
   * Its implementations has the ability of "getMiniBatches()"
   */
 trait MiniBatchable {
-  protected var miniBatchSize: Int = _
-
-  def setMiniBatchSize(miniBatchSize: Int): this.type = {
-    assert(miniBatchSize > 0, "Minibatch size must be positive. ")
-
-    this.miniBatchSize = miniBatchSize
-    this
-  }
+  protected val miniBatchSize: Int
 
   /**
     * Split the whole training set (feature, label) to an iterator of multiple mini-batches.

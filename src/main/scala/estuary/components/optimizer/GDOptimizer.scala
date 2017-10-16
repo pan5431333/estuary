@@ -7,7 +7,7 @@ import org.apache.log4j.Logger
 /**
   * Gradient Descent optimizer.
   */
-object GDOptimizer extends Optimizer with NonHeuristic {
+class GDOptimizer(val iteration: Int, val learningRate: Double, val paramSavePath: String) extends Optimizer with NonHeuristic {
   override protected val logger: Logger = Logger.getLogger(this.getClass)
 
   /**
@@ -47,6 +47,12 @@ object GDOptimizer extends Optimizer with NonHeuristic {
   private def updateFunc(params: Seq[DenseMatrix[Double]], grads: Seq[DenseMatrix[Double]]): Seq[DenseMatrix[Double]] = {
     val res = for {(param, grad) <- params.zip(grads)} yield param - grad * learningRate
     res.asInstanceOf[Seq[DenseMatrix[Double]]]
+  }
+}
+
+object GDOptimizer {
+  def apply(iteration: Int = 100, learningRate: Double = 0.001, paramSavePath: String = System.getProperty("user.dir")): GDOptimizer = {
+    new GDOptimizer(iteration, learningRate, paramSavePath)
   }
 }
 

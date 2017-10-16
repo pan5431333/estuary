@@ -39,7 +39,7 @@ object ClassFourCompoundNeuralNetworkDemo extends App {
     DropoutLayer(0.5),
     ReluLayer(numHiddenUnits = 100))
   val outputLayer = SoftmaxLayer()
-  val nnModel = new FullyConnectedNNModel(hiddenLayers, outputLayer, 0.01, 50, None)
+  val nnModel = new FullyConnectedNNModel(hiddenLayers, outputLayer, None)
 
   //  //Test for performance improved by distributed algorithms
   //  val adamTime = Model.evaluationTime(nnModel.train(trainingFeature, trainingLabel, AdamOptimizer(64)))

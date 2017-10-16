@@ -21,6 +21,10 @@ import scala.collection.mutable.ArrayBuffer
 trait Optimizer {
   protected val logger: Logger
 
+  protected val iteration: Int
+  protected val learningRate: Double
+  protected val paramSavePath: String
+
   /**
     * Optimizing Machine Learning-like models' parameters on a training data set (feature, label).
     *
@@ -42,27 +46,9 @@ trait Optimizer {
 
   protected def handleGradientExplosionException(params: Any, paramSavePath: String): Unit
 
-  protected var iteration: Int = _
-  protected var learningRate: Double = _
-  protected var paramSavePath: String = System.getProperty("user.dir")
+
   protected var exceptionCount: Int = 0
   protected var minCost: Double = 0.0
-
-  def setIteration(iteration: Int): this.type = {
-    this.iteration = iteration
-    this
-  }
-
-  def setLearningRate(learningRate: Double): this.type = {
-    assert(learningRate > 0, "Nonpositive learning rate: " + learningRate)
-    this.learningRate = learningRate
-    this
-  }
-
-  def setParamSavePath(path: String): this.type = {
-    this.paramSavePath = paramSavePath
-    this
-  }
 
   /** Storing cost history after every iteration. */
   val costHistory: ArrayBuffer[Double] = new ArrayBuffer[Double]()

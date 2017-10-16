@@ -7,7 +7,10 @@ import org.apache.log4j.Logger
 /**
   * Stochastic Gradient Descent, i.e. Mini-batch Gradient Descent.
   */
-class SGDOptimizer extends Optimizer with MiniBatchable with NonHeuristic {
+class SGDOptimizer(val iteration: Int,
+                   val learningRate: Double,
+                   val paramSavePath: String,
+                   val miniBatchSize: Int) extends Optimizer with MiniBatchable with NonHeuristic {
   override protected val logger: Logger = Logger.getLogger(this.getClass)
 
   /**
@@ -67,8 +70,7 @@ class SGDOptimizer extends Optimizer with MiniBatchable with NonHeuristic {
 }
 
 object SGDOptimizer {
-  def apply(miniBatchSize: Int): SGDOptimizer = {
-    new SGDOptimizer()
-      .setMiniBatchSize(miniBatchSize)
+  def apply(iteration: Int = 100, learningRate: Double = 0.001, paramSavePath: String = System.getProperty("user.dir"), miniBatchSize: Int = 64): SGDOptimizer = {
+    new SGDOptimizer(iteration, learningRate, paramSavePath, miniBatchSize)
   }
 }

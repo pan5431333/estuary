@@ -8,7 +8,12 @@ import org.apache.log4j.Logger
 /**
   * Adam Optimizer, a very efficient and recommended optimizer for Deep Neural Network.
   */
-class AdamOptimizer extends Optimizer with MiniBatchable with Heuristic {
+class AdamOptimizer(val iteration: Int,
+                    val learningRate: Double,
+                    val paramSavePath: String,
+                    val miniBatchSize: Int,
+                    val momentumRate: Double,
+                    val adamRate: Double) extends Optimizer with MiniBatchable with Heuristic {
   protected val logger: Logger = Logger.getLogger(this.getClass)
 
   override def optimize(feature: DenseMatrix[Double], label: DenseMatrix[Double])
@@ -39,19 +44,6 @@ class AdamOptimizer extends Optimizer with MiniBatchable with Heuristic {
   protected def handleGradientExplosionException(params: Any, paramSavePath: String): Unit = {
     exceptionCount += 1
     saveDenseMatricesToDisk(params.asInstanceOf[AdamParam].modelParam, paramSavePath)
-  }
-
-  protected var momentumRate: Double = 0.9
-  protected var adamRate: Double = 0.999
-
-  def setMomentumRate(momentum: Double): this.type = {
-    this.momentumRate = momentum
-    this
-  }
-
-  def setAdamRate(adamRate: Double): this.type = {
-    this.adamRate = adamRate
-    this
   }
 
   /**
@@ -97,10 +89,7 @@ object AdamOptimizer {
 
   case class AdamParam(modelParam: Seq[DenseMatrix[Double]], momentumParam: Seq[DenseMatrix[Double]], adamParam: Seq[DenseMatrix[Double]])
 
-  def apply(miniBatchSize: Int = 64, momentumRate: Double = 0.9, adamRate: Double = 0.999): AdamOptimizer = {
-    new AdamOptimizer()
-      .setMiniBatchSize(miniBatchSize)
-      .setAdamRate(adamRate)
-      .setMomentumRate(momentumRate)
+  def apply(iteration: Int = 100, learningRate: Double = 0.001, paramSavePath: String = System.getProperty("user.dir"), miniBatchSize: Int = 64, momentumRate: Double = 0.9, adamRate: Double = 0.999): AdamOptimizer = {
+    new AdamOptimizer(iteration, learningRate, paramSavePath, miniBatchSize, momentumRate, adamRate)
   }
 }

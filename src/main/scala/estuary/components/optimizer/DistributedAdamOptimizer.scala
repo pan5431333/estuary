@@ -6,7 +6,15 @@ import estuary.components.optimizer.AdamOptimizer.AdamParam
 import estuary.model.Model
 import org.apache.log4j.Logger
 
-class DistributedAdamOptimizer extends AdamOptimizer with AbstractDistributed[AdamParam] {
+class DistributedAdamOptimizer(override val iteration: Int,
+                               override val learningRate: Double,
+                               override val paramSavePath: String,
+                               override val miniBatchSize: Int,
+                               override val momentumRate: Double,
+                               override val adamRate: Double,
+                               val nTasks: Int)
+  extends AdamOptimizer(iteration, learningRate, paramSavePath, miniBatchSize, momentumRate, adamRate)
+    with AbstractDistributed[AdamParam, Seq[DenseMatrix[Double]]] {
   override val logger: Logger = Logger.getLogger(this.getClass)
 
   protected var parameterServer: AdamParam = _
@@ -18,7 +26,7 @@ class DistributedAdamOptimizer extends AdamOptimizer with AbstractDistributed[Ad
 
   protected def fetchParameterServer(): AdamParam = parameterServer
 
-  def parOptimize(feature: DenseMatrix[Double], label: DenseMatrix[Double], model: Model, initParams: Seq[DenseMatrix[Double]]): Seq[DenseMatrix[Double]] = {
+  def parOptimize(feature: DenseMatrix[Double], label: DenseMatrix[Double], model: Model[Seq[DenseMatrix[Double]]], initParams: Seq[DenseMatrix[Double]]): Seq[DenseMatrix[Double]] = {
     parameterServer = AdamParam(initParams, getInitAdam(initParams), getInitAdam(initParams))
 
     for (i <- (0 until iteration).toIterator) {
@@ -58,10 +66,8 @@ class DistributedAdamOptimizer extends AdamOptimizer with AbstractDistributed[Ad
 }
 
 object DistributedAdamOptimizer {
-  def apply(miniBatchSize: Int = 64, nTasks: Int = 4): DistributedAdamOptimizer = {
-    new DistributedAdamOptimizer()
-      .setMiniBatchSize(miniBatchSize)
-      .setNTasks(nTasks)
+  def apply(iteration: Int = 100, learningRate: Double = 0.001, paramSavePath: String = System.getProperty("user.dir"), miniBatchSize: Int = 64, momentumRate: Double = 0.9, adamRate: Double = 0.999, nTasks: Int = 4): DistributedAdamOptimizer = {
+    new DistributedAdamOptimizer(iteration, learningRate, paramSavePath, miniBatchSize, momentumRate, adamRate, nTasks)
   }
 }
 

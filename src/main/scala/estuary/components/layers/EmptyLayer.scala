@@ -1,17 +1,27 @@
 package estuary.components.layers
 
 import breeze.linalg.DenseMatrix
+import org.apache.log4j.Logger
 
 /**
   * Created by mengpan on 2017/9/7.
   */
 object EmptyLayer extends Layer {
 
-  override protected def activationFuncEval(zCurrent: DenseMatrix[Double]): DenseMatrix[Double] =
+  protected val logger: Logger = Logger.getLogger(this.getClass)
+  /** Layer hyperparameters */
+  protected val numHiddenUnits = 0
+  protected val batchNorm = false
+
+  protected def activationFuncEval(zCurrent: DenseMatrix[Double]): DenseMatrix[Double] =
     throw new Error("EmptyLayer.activationFuncEval")
 
-  override protected def activationGradEval(zCurrent: DenseMatrix[Double]): DenseMatrix[Double] =
+  protected def activationGradEval(zCurrent: DenseMatrix[Double]): DenseMatrix[Double] =
     throw new Error("EmptyLayer.activationGradEval")
 
-  override def copyStructure = this
+  def copyStructure: Layer = this
+
+  override def setPreviousHiddenUnits(numHiddenUnits: Int): EmptyLayer.type = EmptyLayer
+
+  override def updateNumHiddenUnits(numHiddenUnits: Int) = EmptyLayer
 }

@@ -10,12 +10,26 @@ import org.apache.log4j.Logger
   * Interface for neural network's layer.
   */
 trait Layer {
-  private val logger = Logger.getLogger("Layer")
+
+  protected val logger: Logger
+
+  /** Layer hyperparameters */
+  protected val numHiddenUnits: Int
+  protected val batchNorm: Boolean
 
   /** Abstract Methods to be implemented */
   protected def activationFuncEval(zCurrent: DenseMatrix[Double]): DenseMatrix[Double]
 
   protected def activationGradEval(zCurrent: DenseMatrix[Double]): DenseMatrix[Double]
+
+  def copyStructure: Layer
+
+  def setPreviousHiddenUnits(numHiddenUnits: Int): this.type = {
+    this.previousHiddenUnits = numHiddenUnits
+    this
+  }
+
+  def updateNumHiddenUnits(numHiddenUnits: Int): Layer
 
   /** Layer parameters to be learned during training */
   protected var w: DenseMatrix[Double] = _
@@ -34,29 +48,11 @@ trait Layer {
   protected var zDelta: DenseMatrix[Double] = _
   protected var y: DenseMatrix[Double] = _
 
-  /** Layer hyperparameters and their setters */
-  var numHiddenUnits: Int = 0
-  var batchNorm: Boolean = false
   var previousHiddenUnits: Int = _
 
-  def setNumHiddenUnits(numHiddenUnits: Int): this.type = {
-    assert(numHiddenUnits > 0, "Number of hidden units must be positive.")
+  def isBatchNormed: Boolean = batchNorm
 
-    this.numHiddenUnits = numHiddenUnits
-    this
-  }
-
-  def setBatchNorm(batchNorm: Boolean): this.type = {
-    this.batchNorm = batchNorm
-    this
-  }
-
-  def setPreviousHiddenUnits(numHiddenUnits: Int): this.type = {
-    this.previousHiddenUnits = numHiddenUnits
-    this
-  }
-
-  def copyStructure: Layer
+  def getNumHiddenUnits: Int = numHiddenUnits
 
   /**
     * Forward propagation of current layer.
@@ -294,6 +290,7 @@ trait Layer {
     s"""
        |Layer: ${getClass.getSimpleName},
        |Number of Hidden Units: $numHiddenUnits,
-       |Is Batch Normed? $batchNorm
+       |Is Batch Normed? $batchNorm,
+       |Previous Number of Hidden Units? $previousHiddenUnits
     """.stripMargin
 }

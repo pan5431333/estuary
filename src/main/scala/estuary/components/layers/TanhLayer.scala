@@ -2,12 +2,13 @@ package estuary.components.layers
 
 import breeze.linalg.DenseMatrix
 import breeze.numerics.{pow, tanh}
+import org.apache.log4j.Logger
 
 /**
   * Created by mengpan on 2017/8/26.
   */
-class TanhLayer extends Layer {
-
+class TanhLayer(val numHiddenUnits: Int, val batchNorm: Boolean) extends Layer {
+  protected val logger: Logger = Logger.getLogger(this.getClass)
   protected def activationFuncEval(zCurrent: DenseMatrix[Double]): DenseMatrix[Double] = {
     tanh(zCurrent)
   }
@@ -16,14 +17,14 @@ class TanhLayer extends Layer {
     1.0 - pow(zCurrent, 2)
   }
 
-  def copyStructure: TanhLayer = new TanhLayer().setBatchNorm(batchNorm).setNumHiddenUnits(numHiddenUnits).setPreviousHiddenUnits(previousHiddenUnits)
+  def copyStructure: TanhLayer = new TanhLayer(numHiddenUnits, batchNorm).setPreviousHiddenUnits(previousHiddenUnits).asInstanceOf[TanhLayer]
+
+  override def updateNumHiddenUnits(numHiddenUnits: Int) = new TanhLayer(numHiddenUnits, batchNorm)
 }
 
 object TanhLayer {
   def apply(numHiddenUnits: Int, batchNorm: Boolean = false): TanhLayer = {
-    new TanhLayer()
-      .setNumHiddenUnits(numHiddenUnits)
-      .setBatchNorm(batchNorm)
+    new TanhLayer(numHiddenUnits, batchNorm)
   }
 }
 

@@ -1,8 +1,6 @@
 package estuary.model
 
-import java.io.{File, FileWriter, PrintWriter}
-import java.text.SimpleDateFormat
-import java.util.Calendar
+import java.io.FileWriter
 
 import breeze.linalg.{DenseMatrix, DenseVector, max, sum}
 import breeze.numerics.log
@@ -10,29 +8,25 @@ import estuary.components.initializer.{HeInitializer, WeightsInitializer}
 import estuary.components.layers.Layer
 import estuary.components.optimizer.{AdamOptimizer, Optimizer}
 import estuary.components.regularizer.Regularizer
-import estuary.model.Model.OptimizationConfig
 import estuary.utils.PlotUtils
 import org.apache.log4j.Logger
 
 import scala.collection.mutable.ArrayBuffer
 
-trait Model extends Serializable{
+trait Model[T] extends Serializable{
   val logger: Logger
-
-  val hiddenLayers: Seq[Layer]
-  val outputLayer: Layer
-  val learningRate: Double
-  val iterationTime: Int
   val regularizer: Option[Regularizer]
 
+  var hiddenLayers: Seq[Layer]
+  var outputLayer: Layer
   var costHistory: ArrayBuffer[Double]
-  var params: Seq[DenseMatrix[Double]]
+  var params: T
   var labelsMapping: Vector[Int]
 
-  lazy val allLayers: Seq[Layer] = hiddenLayers :+ outputLayer
+  val allLayers: Seq[Layer]
 
-  def init(inputDim: Int, outputDim: Int, initializer: WeightsInitializer = HeInitializer): Seq[DenseMatrix[Double]]
-  def init(initParams: Seq[DenseMatrix[Double]]): Seq[DenseMatrix[Double]] = {
+  def init(inputDim: Int, outputDim: Int, initializer: WeightsInitializer = HeInitializer): T
+  def init(initParams: T): T = {
     params = initParams
     params
   }
@@ -40,20 +34,19 @@ trait Model extends Serializable{
   def predict(feature: DenseMatrix[Double]): DenseVector[Int]
 
   /**Fully functional method.*/
-  def trainFunc(feature: DenseMatrix[Double], label: DenseMatrix[Double], allLayers: Seq[Layer], opConfig: OptimizationConfig, optimizer: Optimizer): Seq[DenseMatrix[Double]]
+  def trainFunc(feature: DenseMatrix[Double], label: DenseMatrix[Double], allLayers: Seq[Layer], initParams: T, optimizer: Optimizer): T
 
-  def forward(feature: DenseMatrix[Double], params: Seq[DenseMatrix[Double]]): DenseMatrix[Double]
+  def forward(feature: DenseMatrix[Double], params: T): DenseMatrix[Double]
 
-  def backward(label: DenseMatrix[Double], params: Seq[DenseMatrix[Double]]): Seq[DenseMatrix[Double]]
+  def backward(label: DenseMatrix[Double], params: T): T
 
-  def copyStructure: Model
+  def copyStructure: Model[T]
 
   def train(feature: DenseMatrix[Double], label: DenseMatrix[Double]): this.type = {train(feature, label, AdamOptimizer())}
 
   def train(feature: DenseMatrix[Double], label: DenseMatrix[Double], optimizer: Optimizer): this.type = {
     init(feature.cols, label.cols)
-    val opConfig = OptimizationConfig(params, learningRate, iterationTime)
-    val trainedParams = trainFunc(feature, label, allLayers, opConfig, optimizer)
+    val trainedParams = trainFunc(feature, label, allLayers, params, optimizer)
     params = trainedParams
     costHistory = optimizer.costHistory
     this
@@ -71,7 +64,7 @@ trait Model extends Serializable{
 
   def forward(feature: DenseMatrix[Double]): DenseMatrix[Double] = forward(feature, params)
 
-  def forward(feature: DenseMatrix[Double], label: DenseMatrix[Double], params: Seq[DenseMatrix[Double]]): Double = {
+  def forward(feature: DenseMatrix[Double], label: DenseMatrix[Double], params: T): Double = {
     val yHat = forward(feature, params)
     Model.calCost(label, yHat, allLayers, regularizer)
   }
@@ -82,8 +75,6 @@ trait Model extends Serializable{
 
 /**Util method for Neural Network Models*/
 object Model {
-
-  case class OptimizationConfig(initParams: Seq[DenseMatrix[Double]], learningRate: Double, iterationTime: Int)
 
   def saveDenseMatricesToDisk(dms: Seq[DenseMatrix[_]], path: String): Unit = {
     val matrixSB = new StringBuilder()

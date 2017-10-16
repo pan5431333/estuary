@@ -12,10 +12,10 @@ import scala.collection.parallel.immutable.ParSeq
   * 2. All concrete methods are functionality provided to its implementations, which means only implementations are able
   * to use these concrete methods, hence concrete methods should all be protected.
   */
-trait Distributed extends Optimizer with MiniBatchable {
+trait Distributed[T] extends Optimizer with MiniBatchable {
 
   /** Number of models trained in parallel, with sharing the same parameter server. */
-  protected var nTasks: Int = 4
+  protected val nTasks: Int
 
   /**
     * Optimize the model in parallel, and returning the trained parameters with the same dimensions of initParams.
@@ -29,18 +29,7 @@ trait Distributed extends Optimizer with MiniBatchable {
     * @param initParams initial parameters.
     * @return trained parameters, with same dimension with the given initial parameters.
     */
-  def parOptimize(feature: DenseMatrix[Double], label: DenseMatrix[Double], model: Model, initParams: Seq[DenseMatrix[Double]]): Seq[DenseMatrix[Double]]
-
-  /**
-    * Set the number of models trained in parallel (limited by the number of cores in machine)
-    *
-    * @param nTasks number of models trained in parallel
-    * @return the same object with the given 'nTasks'.
-    */
-  def setNTasks(nTasks: Int): this.type = {
-    this.nTasks = nTasks
-    this
-  }
+  def parOptimize(feature: DenseMatrix[Double], label: DenseMatrix[Double], model: Model[T], initParams: T): T
 
   /**
     * Functionality 1: add cost to MutableList: costHistory with synchronization.

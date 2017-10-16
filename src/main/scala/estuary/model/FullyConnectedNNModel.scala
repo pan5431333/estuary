@@ -2,38 +2,40 @@ package estuary.model
 
 import breeze.linalg.{DenseMatrix, DenseVector}
 import estuary.components.initializer.WeightsInitializer
-import estuary.components.layers.Layer
+import estuary.components.layers.{DropoutLayer, Layer}
 import estuary.components.optimizer.{Distributed, Optimizer}
 import estuary.components.regularizer.Regularizer
 import org.apache.log4j.Logger
 
 import scala.collection.mutable.ArrayBuffer
 
-class FullyConnectedNNModel(override val hiddenLayers: Seq[Layer],
-                            override val outputLayer: Layer,
-                            override val learningRate: Double,
-                            override val iterationTime: Int,
-                            override val regularizer: Option[Regularizer]) extends Model {
+class FullyConnectedNNModel(override var hiddenLayers: Seq[Layer],
+                            override var outputLayer: Layer,
+                            override val regularizer: Option[Regularizer]) extends Model[Seq[DenseMatrix[Double]]] {
   override val logger: Logger = Logger.getLogger(this.getClass)
 
   var params: Seq[DenseMatrix[Double]] = _
   var costHistory: ArrayBuffer[Double] = _
   override var labelsMapping: Vector[Int] = _
 
+  lazy val allLayers: Seq[Layer] = hiddenLayers :+ outputLayer
+
   def init(inputDim: Int, outputDim: Int, initializer: WeightsInitializer): Seq[DenseMatrix[Double]] = {
-    allLayers.foldLeft(inputDim) { case (previousDim, layer) => layer.setPreviousHiddenUnits(previousDim); layer.numHiddenUnits }
-    allLayers.last.setNumHiddenUnits(outputDim)
+    outputLayer = outputLayer.updateNumHiddenUnits(outputDim)
+    hiddenLayers.foldLeft(inputDim) { case (previousDim, layer) => layer.setPreviousHiddenUnits(previousDim); layer.getNumHiddenUnits}
+    hiddenLayers = hiddenLayers.map { case l: DropoutLayer => l.updateNumHiddenUnits(l.previousHiddenUnits); case l => l}
+    hiddenLayers.foldLeft(inputDim) { case (previousDim, layer) => layer.setPreviousHiddenUnits(previousDim); layer.getNumHiddenUnits}
+    outputLayer.setPreviousHiddenUnits(hiddenLayers.last.getNumHiddenUnits)
     params = allLayers.map { layer => layer.init(initializer) }
     params
   }
 
   /** Fully functional method. */
   def trainFunc(feature: DenseMatrix[Double], label: DenseMatrix[Double], allLayers: Seq[Layer],
-                opConfig: Model.OptimizationConfig, optimizer: Optimizer): Seq[DenseMatrix[Double]] = {
-    optimizer.setIteration(opConfig.iterationTime).setLearningRate(opConfig.learningRate)
+                initParams: Seq[DenseMatrix[Double]], optimizer: Optimizer): Seq[DenseMatrix[Double]] = {
     optimizer match {
-      case op: Distributed => op.parOptimize(feature, label, this, opConfig.initParams)
-      case _ => optimizer.optimize(feature, label)(opConfig.initParams)(forward)(backward)
+      case op: Distributed[Seq[DenseMatrix[Double]]] => op.parOptimize(feature, label, this.asInstanceOf[Model[Seq[DenseMatrix[Double]]]], initParams)
+      case _ => optimizer.optimize(feature, label)(initParams)(forward)(backward)
     }
   }
 
@@ -55,5 +57,8 @@ class FullyConnectedNNModel(override val hiddenLayers: Seq[Layer],
     }.init.map(_._2).toList
   }
 
-  def copyStructure = new FullyConnectedNNModel(hiddenLayers.map(_.copyStructure), outputLayer.copyStructure, learningRate, iterationTime, regularizer)
+  def copyStructure = {
+    val newModel = new FullyConnectedNNModel(hiddenLayers.map(_.copyStructure), outputLayer.copyStructure, regularizer)
+    newModel
+  }
 }

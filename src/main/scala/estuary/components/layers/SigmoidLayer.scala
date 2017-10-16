@@ -2,11 +2,14 @@ package estuary.components.layers
 
 import breeze.linalg.DenseMatrix
 import breeze.numerics.sigmoid
+import org.apache.log4j.Logger
 
 /**
   * Created by mengpan on 2017/8/26.
   */
-class SigmoidLayer extends Layer {
+class SigmoidLayer(val numHiddenUnits: Int, val batchNorm: Boolean) extends Layer {
+
+  protected val logger: Logger = Logger.getLogger(this.getClass)
 
   override def activationFuncEval(zCurrent: DenseMatrix[Double]): DenseMatrix[Double] = {
     sigmoid(zCurrent)
@@ -17,14 +20,14 @@ class SigmoidLayer extends Layer {
     sigmoided *:* (1.0 - sigmoided)
   }
 
-  def copyStructure: SigmoidLayer = new SigmoidLayer().setBatchNorm(batchNorm).setNumHiddenUnits(numHiddenUnits).setPreviousHiddenUnits(previousHiddenUnits)
+  def copyStructure: SigmoidLayer = new SigmoidLayer(numHiddenUnits, batchNorm).setPreviousHiddenUnits(previousHiddenUnits).asInstanceOf[SigmoidLayer]
+
+  override def updateNumHiddenUnits(numHiddenUnits: Int) = new SigmoidLayer(numHiddenUnits, batchNorm)
 }
 
 object SigmoidLayer {
   def apply(numHiddenUnits: Int, batchNorm: Boolean = false): SigmoidLayer = {
-    new SigmoidLayer()
-      .setNumHiddenUnits(numHiddenUnits)
-      .setBatchNorm(batchNorm)
+    new SigmoidLayer(numHiddenUnits, batchNorm)
   }
 }
 

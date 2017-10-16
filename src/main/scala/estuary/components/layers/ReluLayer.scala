@@ -1,11 +1,14 @@
 package estuary.components.layers
 
 import breeze.linalg.DenseMatrix
+import org.apache.log4j.Logger
 
 /**
   * Created by mengpan on 2017/8/26.
   */
-class ReluLayer extends Layer {
+class ReluLayer(val numHiddenUnits: Int, val batchNorm: Boolean) extends Layer {
+
+  protected val logger: Logger = Logger.getLogger(this.getClass)
 
   protected def activationFuncEval(zCurrent: DenseMatrix[Double]): DenseMatrix[Double] = {
     val res = DenseMatrix.zeros[Double](zCurrent.rows, zCurrent.cols)
@@ -28,14 +31,14 @@ class ReluLayer extends Layer {
     res
   }
 
-  def copyStructure: ReluLayer = new ReluLayer().setPreviousHiddenUnits(previousHiddenUnits).setNumHiddenUnits(numHiddenUnits).setBatchNorm(batchNorm)
+  def copyStructure: ReluLayer = new ReluLayer(numHiddenUnits, batchNorm).setPreviousHiddenUnits(previousHiddenUnits)
+
+  override def updateNumHiddenUnits(numHiddenUnits: Int) = new ReluLayer(numHiddenUnits, batchNorm)
 }
 
 object ReluLayer {
   def apply(numHiddenUnits: Int, batchNorm: Boolean = false): ReluLayer = {
-    new ReluLayer()
-      .setNumHiddenUnits(numHiddenUnits)
-      .setBatchNorm(batchNorm)
+    new ReluLayer(numHiddenUnits, batchNorm)
   }
 }
 

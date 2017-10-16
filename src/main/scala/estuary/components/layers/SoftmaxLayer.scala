@@ -3,12 +3,18 @@ package estuary.components.layers
 import breeze.linalg.{DenseMatrix, DenseVector, sum}
 import breeze.numerics.exp
 import estuary.components.regularizer.Regularizer
+import org.apache.log4j.Logger
 
 /**
   * Created by mengpan on 2017/9/14.
   */
-class SoftmaxLayer extends Layer {
+class SoftmaxLayer(val numHiddenUnits: Int, val batchNorm: Boolean) extends Layer {
 
+  protected val logger: Logger = Logger.getLogger(this.getClass)
+
+  def copyStructure: SoftmaxLayer = new SoftmaxLayer(numHiddenUnits, batchNorm).setPreviousHiddenUnits(previousHiddenUnits).asInstanceOf[SoftmaxLayer]
+
+  def updateNumHiddenUnits(numHiddenUnits: Int): SoftmaxLayer = new SoftmaxLayer(numHiddenUnits, batchNorm)
 
   override def backward(dYCurrent: DenseMatrix[Double], regularizer: Option[Regularizer]): (DenseMatrix[Double], DenseMatrix[Double]) = {
 
@@ -35,7 +41,6 @@ class SoftmaxLayer extends Layer {
     (dZ * w.t, grads)
   }
 
-  def copyStructure: SoftmaxLayer = new SoftmaxLayer().setPreviousHiddenUnits(previousHiddenUnits).setNumHiddenUnits(numHiddenUnits).setBatchNorm(batchNorm)
 
   private def backwardWithBatchNorm(dYCurrent: DenseMatrix[Double], yPrevious: DenseMatrix[Double], regularizer: Option[Regularizer]): (DenseMatrix[Double], DenseMatrix[Double]) = {
     val numExamples = dYCurrent.rows
@@ -83,9 +88,6 @@ class SoftmaxLayer extends Layer {
 
   /**
     * Since backward has been overriden, this method will no longer be needed
-    *
-    * @param zCurrent
-    * @return
     */
   protected def activationGradEval(zCurrent: DenseMatrix[Double]):
   DenseMatrix[Double] = ???
@@ -112,8 +114,6 @@ class SoftmaxLayer extends Layer {
 
 object SoftmaxLayer {
   def apply(batchNorm: Boolean = false): SoftmaxLayer = {
-    new SoftmaxLayer()
-      .setBatchNorm(batchNorm)
-      .setNumHiddenUnits(1)
+    new SoftmaxLayer(1, batchNorm)
   }
 }

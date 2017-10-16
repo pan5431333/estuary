@@ -1,16 +1,22 @@
 package estuary.components.optimizer
 
 import breeze.linalg.DenseMatrix
-import estuary.components.optimizer.AdamOptimizer.AdamParam
 import estuary.model.Model
 import org.apache.log4j.Logger
 
-class DistributedSGDOptimizer extends SGDOptimizer with AbstractDistributed[Seq[DenseMatrix[Double]]] {
+class DistributedSGDOptimizer(override val iteration: Int,
+                              override val learningRate: Double,
+                              override val paramSavePath: String,
+                              override val miniBatchSize: Int,
+                              val nTasks: Int)
+  extends SGDOptimizer(iteration, learningRate, paramSavePath, miniBatchSize)
+    with AbstractDistributed[Seq[DenseMatrix[Double]], Seq[DenseMatrix[Double]]] {
+
   override val logger: Logger = Logger.getLogger(this.getClass)
 
   protected var parameterServer: Seq[DenseMatrix[Double]] = _
 
-  override def parOptimize(feature: DenseMatrix[Double], label: DenseMatrix[Double], model: Model, initParams: Seq[DenseMatrix[Double]]): Seq[DenseMatrix[Double]] = {
+  override def parOptimize(feature: DenseMatrix[Double], label: DenseMatrix[Double], model: Model[Seq[DenseMatrix[Double]]], initParams: Seq[DenseMatrix[Double]]): Seq[DenseMatrix[Double]] = {
     parameterServer = initParams
 
     for (i <- (0 until iteration).toIterator) {
@@ -51,10 +57,8 @@ class DistributedSGDOptimizer extends SGDOptimizer with AbstractDistributed[Seq[
 }
 
 object DistributedSGDOptimizer {
-  def apply(miniBatchSize: Int = 64, nTasks: Int = 4): DistributedSGDOptimizer = {
-    new DistributedSGDOptimizer()
-      .setMiniBatchSize(miniBatchSize)
-      .setNTasks(nTasks)
+  def apply(iteration: Int = 100, learningRate: Double = 0.001, paramSavePath: String = System.getProperty("user.dir"), miniBatchSize: Int = 64, nTasks: Int = 4): DistributedSGDOptimizer = {
+    new DistributedSGDOptimizer(iteration, learningRate, paramSavePath, miniBatchSize, nTasks)
   }
 }
 

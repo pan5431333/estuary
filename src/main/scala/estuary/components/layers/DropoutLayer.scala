@@ -2,26 +2,16 @@ package estuary.components.layers
 
 import breeze.linalg.{DenseMatrix, DenseVector}
 import estuary.components.regularizer.Regularizer
+import org.apache.log4j.Logger
 
 /**
   * Created by mengpan on 2017/9/7.
   */
-class DropoutLayer extends Layer {
+class DropoutLayer(val numHiddenUnits: Int, val batchNorm: Boolean, val dropoutRate: Double) extends Layer {
 
-  protected var dropoutRate: Double = _
+  protected val logger: Logger = Logger.getLogger(this.getClass)
 
-  override def setPreviousHiddenUnits(numHiddenUnits: Int): this.type = {
-    super.setPreviousHiddenUnits(numHiddenUnits)
-    this.numHiddenUnits = previousHiddenUnits
-    this
-  }
-
-  def setDropoutRate(dropoutRate: Double): this.type = {
-    assert(dropoutRate <= 1 && dropoutRate >= 0, "dropout rate must be between 0 and 1")
-
-    this.dropoutRate = dropoutRate
-    this
-  }
+  def updateNumHiddenUnits(numHiddenUnits: Int): DropoutLayer = new DropoutLayer(numHiddenUnits, batchNorm, dropoutRate)
 
   protected var dropoutVector: DenseVector[Double] = _
 
@@ -63,19 +53,12 @@ class DropoutLayer extends Layer {
   }
 
   def copyStructure: DropoutLayer = {
-    new DropoutLayer()
-      .setDropoutRate(dropoutRate)
-      .setBatchNorm(batchNorm)
-      .setNumHiddenUnits(numHiddenUnits)
-      .setPreviousHiddenUnits(previousHiddenUnits)
+    new DropoutLayer(numHiddenUnits, batchNorm, dropoutRate).setPreviousHiddenUnits(previousHiddenUnits)
   }
 }
 
 object DropoutLayer {
   def apply(dropoutRate: Double): DropoutLayer = {
-    new DropoutLayer()
-      .setNumHiddenUnits(100)
-      .setDropoutRate(dropoutRate)
-      .setBatchNorm(false)
+    new DropoutLayer(1, false, dropoutRate)
   }
 }

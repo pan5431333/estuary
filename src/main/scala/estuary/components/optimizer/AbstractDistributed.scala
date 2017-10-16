@@ -2,14 +2,14 @@ package estuary.components.optimizer
 
 /**
   * All distributed optimizer MUST implement this trait.
-  * @tparam T type of optimization algorithm's parameters.
+  * @tparam A type of optimization algorithm's parameters.
   */
-trait AbstractDistributed[T] extends Distributed {
+trait AbstractDistributed[A, B] extends Distributed[B] {
 
-  protected var parameterServer: T
+  protected var parameterServer: A
 
-  protected def updateParameterServer(grads: T, miniBatchTime: Int): Unit
+  protected def updateParameterServer(grads: A, miniBatchTime: Int): Unit
 
-  protected def fetchParameterServer(): T
+  protected def fetchParameterServer(): A
 
 }
