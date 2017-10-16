@@ -55,7 +55,7 @@ trait Optimizer {
   }
 
   protected var exceptionCount: Int = 0
-  protected var minCost: Double = 0.0
+  protected var minCost: Double = 100
 
   /** Storing cost history after every iteration. */
   val costHistory: ArrayBuffer[Double] = new ArrayBuffer[Double]()
