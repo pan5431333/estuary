@@ -40,12 +40,13 @@ class FullyConnectedNNModel(override var hiddenLayers: Seq[Layer],
   }
 
   def predict(feature: DenseMatrix[Double]): DenseVector[Int] = {
-    val yHat = forward(feature)
+    val filtered = allLayers.zip(params).filter(!_._1.isInstanceOf[DropoutLayer]).unzip
+    val yHat = forward(feature, filtered._2, filtered._1)
     val deOneHottedYHat = Model.deOneHot(yHat)
     Model.convertMatrixToVector(deOneHottedYHat, labelsMapping)
   }
 
-  def forward(feature: DenseMatrix[Double], params: Seq[DenseMatrix[Double]]): DenseMatrix[Double] = {
+  def forward(feature: DenseMatrix[Double], params: Seq[DenseMatrix[Double]], allLayers: Seq[Layer]): DenseMatrix[Double] = {
     allLayers.zip(params).par.foreach { case (layer, param) => layer.setParam(param) }
     allLayers.foldLeft(feature) { (yPrevious, layer) => layer.forward(yPrevious) }
   }

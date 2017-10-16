@@ -36,7 +36,7 @@ trait Model[T] extends Serializable{
   /**Fully functional method.*/
   def trainFunc(feature: DenseMatrix[Double], label: DenseMatrix[Double], allLayers: Seq[Layer], initParams: T, optimizer: Optimizer): T
 
-  def forward(feature: DenseMatrix[Double], params: T): DenseMatrix[Double]
+  def forward(feature: DenseMatrix[Double], params: T, allLayers: Seq[Layer]): DenseMatrix[Double]
 
   def backward(label: DenseMatrix[Double], params: T): T
 
@@ -63,6 +63,8 @@ trait Model[T] extends Serializable{
   }
 
   def forward(feature: DenseMatrix[Double]): DenseMatrix[Double] = forward(feature, params)
+
+  def forward(feature: DenseMatrix[Double], params: T): DenseMatrix[Double] = forward(feature, params, allLayers)
 
   def forward(feature: DenseMatrix[Double], label: DenseMatrix[Double], params: T): Double = {
     val yHat = forward(feature, params)
