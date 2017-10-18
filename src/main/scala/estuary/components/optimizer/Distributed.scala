@@ -2,6 +2,7 @@ package estuary.components.optimizer
 
 import breeze.linalg.DenseMatrix
 import estuary.model.Model
+import org.apache.log4j.Logger
 
 import scala.collection.parallel.immutable.ParSeq
 
@@ -50,11 +51,7 @@ trait Distributed[T] extends Optimizer with MiniBatchable {
     minCost = if (cost < minCost) cost else minCost
   }
 
-  override protected def printCostInfo(cost: Double, iterTime: Int, miniBatchTime: Int, printCostUnit: Int): Unit = {
-    if (miniBatchTime % printCostUnit == 0) {
-      logger.info("Iteration: " + iterTime + "|Thread: " + Thread.currentThread().getName + "|=" + "=" * (miniBatchTime / printCostUnit) + ">> Cost: " + cost)
-    }
-  }
+
 
   /**
     * Functionality 2: generate parallel minibatches, given a training set (feature, label).
@@ -75,4 +72,12 @@ trait Distributed[T] extends Optimizer with MiniBatchable {
   }
 
 
+}
+
+object Distributed {
+  def printCostInfo(cost: Double, iterTime: Int, miniBatchTime: Int, printCostUnit: Int, logger: Logger): Unit = {
+    if (miniBatchTime % printCostUnit == 0) {
+      logger.info("Iteration: " + iterTime + "|Thread: " + Thread.currentThread().getName + "|=" + "=" * (miniBatchTime / printCostUnit) + ">> Cost: " + cost)
+    }
+  }
 }

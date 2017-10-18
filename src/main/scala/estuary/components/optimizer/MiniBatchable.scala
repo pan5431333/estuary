@@ -1,6 +1,7 @@
 package estuary.components.optimizer
 
 import breeze.linalg.{DenseMatrix, min}
+import org.apache.log4j.Logger
 
 import scala.util.Random
 
@@ -10,11 +11,6 @@ import scala.util.Random
   */
 trait MiniBatchable extends Optimizer{
   protected val miniBatchSize: Int
-
-  protected def printCostInfo(cost: Double, iterTime: Int, miniBatchTime: Int, printCostUnit: Int): Unit = {
-    if (miniBatchTime % printCostUnit == 0)
-      logger.info("Iteration: " + iterTime + "|=" + "=" * (miniBatchTime / printCostUnit) + ">> Cost: " + cost)
-  }
 
   /**
     * Split the whole training set (feature, label) to an iterator of multiple mini-batches.
@@ -56,5 +52,12 @@ trait MiniBatchable extends Optimizer{
       val indexes = shuffledIndex.slice(startIndex, endIndex)
       (feature(indexes, ::).toDenseMatrix, label(indexes, ::).toDenseMatrix)
     }
+  }
+}
+
+object MiniBatchable {
+  def printCostInfo(cost: Double, iterTime: Int, miniBatchTime: Int, printCostUnit: Int, logger: Logger): Unit = {
+    if (miniBatchTime % printCostUnit == 0)
+      logger.info("Iteration: " + iterTime + "|=" + "=" * (miniBatchTime / printCostUnit) + ">> Cost: " + cost)
   }
 }

@@ -14,10 +14,8 @@ class DistributedSGDOptimizer(override val iteration: Int,
 
   override val logger: Logger = Logger.getLogger(this.getClass)
 
-  protected var parameterServer: Seq[DenseMatrix[Double]] = _
-
   override def parOptimize(feature: DenseMatrix[Double], label: DenseMatrix[Double], model: Model[Seq[DenseMatrix[Double]]], initParams: Seq[DenseMatrix[Double]]): Seq[DenseMatrix[Double]] = {
-    parameterServer = initParams
+    updateParameterServer(initParams)
 
     val parBatches = genParBatches(feature, label)
     val modelInstances = parBatches.map(_ => model.copyStructure)
@@ -30,7 +28,7 @@ class DistributedSGDOptimizer(override val iteration: Int,
           val cost = model.forward(feature, label, params)
 
           if (miniBatchTime % printMiniBatchUnit == 0) {
-            printCostInfo(cost, i, miniBatchTime, printMiniBatchUnit)
+            Distributed.printCostInfo(cost, i, miniBatchTime, printMiniBatchUnit, logger)
             addCostHistory(cost)
           }
 
@@ -40,7 +38,7 @@ class DistributedSGDOptimizer(override val iteration: Int,
       }
     }
 
-    parameterServer
+    fetchParameterServer()
   }
 
   protected def updateParameterServer(grads: Seq[DenseMatrix[Double]], miniBatchTime: Int): Unit = {

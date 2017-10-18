@@ -32,7 +32,7 @@ class AdamOptimizer(val iteration: Int,
         val cost = forwardFunc(batchFeature, batchLabel, preBatchParams.modelParam)
         val grads = backwardFunc(batchLabel, preBatchParams.modelParam)
 
-        printCostInfo(cost, iterTime, miniBatchTime, printMiniBatchUnit)
+        MiniBatchable.printCostInfo(cost, iterTime, miniBatchTime, printMiniBatchUnit, logger)
         addCostHistory(cost)
 
         updateFunc(preBatchParams, grads, iterTime * miniBatchSize + miniBatchTime)

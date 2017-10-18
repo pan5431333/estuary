@@ -17,8 +17,6 @@ class DistributedAdamOptimizer(override val iteration: Int,
     with AbstractDistributed[AdamParam, Seq[DenseMatrix[Double]]] {
   override val logger: Logger = Logger.getLogger(this.getClass)
 
-  protected var parameterServer: AdamParam = _
-
   protected def updateParameterServer(grads: AdamParam, miniBatchTime: Int): Unit = {
     val nowParams = fetchParameterServer()
     val newParams = updateFunc(nowParams, grads.modelParam, miniBatchTime)
@@ -32,14 +30,14 @@ class DistributedAdamOptimizer(override val iteration: Int,
     val modelInstances = parBatches.map(_ => model.copyStructure)
 
     for {(batch, model) <- parBatches.zip(modelInstances)
-         i <- (0 until iteration).toIterator
+         i <- 0 until iteration
          ((feature, label), miniBatchTime) <- getMiniBatches(batch._1, batch._2).zipWithIndex
     } {
       val printMiniBatchUnit = math.max(feature.rows / this.miniBatchSize / 5, 10)
       val params = fetchParameterServer()
       val cost = model.forward(feature, label, params.modelParam)
 
-      printCostInfo(cost, i, miniBatchTime, printMiniBatchUnit)
+      Distributed.printCostInfo(cost, i, miniBatchTime, printMiniBatchUnit, logger)
 
       //save cost and check for gradient explosion every 10 iterations
       if (miniBatchTime % 10 == 0) {
@@ -56,9 +54,7 @@ class DistributedAdamOptimizer(override val iteration: Int,
       val grads = model.backward(label, params.modelParam)
       updateParameterServer(AdamParam(grads, null, null), miniBatchTime)
     }
-
-
-    parameterServer.modelParam
+    fetchParameterServer().modelParam
   }
 }
 

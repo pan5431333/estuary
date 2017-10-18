@@ -46,10 +46,6 @@ trait Optimizer {
 
   protected def handleGradientExplosionException(params: Any, paramSavePath: String): Unit
 
-  protected def printCostInfo(cost: Double, iterTime: Int): Unit = {
-    logger.info("Iteration: " + iterTime + "| Cost: " + cost)
-  }
-
   protected def addCostHistory(cost: Double): Unit = {
     costHistory.+=(cost)
     minCost = if (cost < minCost) cost else minCost
@@ -74,5 +70,11 @@ trait Optimizer {
     val fileName = paramSavePath + "/" + timeFormat.format(currentTime) + ".txt"
     Model.saveDenseMatricesToDisk(modelParams, fileName)
     logger.warn(s"Something wrong happened during training, the current parameters have been save to $fileName")
+  }
+}
+
+object Optimizer {
+  def printCostInfo(cost: Double, iterTime: Int, logger: Logger): Unit = {
+    logger.info("Iteration: " + iterTime + "| Cost: " + cost)
   }
 }

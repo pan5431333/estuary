@@ -2,8 +2,7 @@ package estuary.demo
 
 import breeze.stats.{mean, stddev}
 import estuary.components.layers.{DropoutLayer, ReluLayer, SoftmaxLayer}
-import estuary.components.optimizer.{AdamOptimizer, DistributedAdamOptimizer}
-import estuary.components.regularizer.{L1Regularizer, L2Regularizer}
+import estuary.components.optimizer.AkkaAdamOptimizer
 import estuary.helper.GasCensorDataHelper
 import estuary.model.{FullyConnectedNNModel, Model}
 import estuary.utils.NormalizeUtils
@@ -33,18 +32,19 @@ object ClassFourCompoundNeuralNetworkDemo extends App {
 
   val hiddenLayers = List(
     ReluLayer(numHiddenUnits = 400),
+    DropoutLayer(0.3),
     ReluLayer(numHiddenUnits = 100))
   val outputLayer = SoftmaxLayer()
-  val nnModel = new FullyConnectedNNModel(hiddenLayers, outputLayer, Some(L2Regularizer(1.0)))
+  val nnModel = new FullyConnectedNNModel(hiddenLayers, outputLayer, None)
 
 //  //Test for performance improved by distributed algorithms
-//  val adamTime = Model.evaluationTime(nnModel.train(trainingFeature, trainingLabel, AdamOptimizer(iteration = 30, learningRate = 0.0001)))
+//  val adamTime = Model.evaluationTime(nnModel.train(trainingFeature, trainingLabel, AkkaAdamOptimizer(iteration = 30)))
 //  val distributedAdamTime = Model.evaluationTime(nnModel.train(trainingFeature, trainingLabel, DistributedAdamOptimizer(iteration = 30)))
 //  println("adamTime: " + adamTime + "ms")
 //  println("distributedAdamTime: " + distributedAdamTime + "ms")
 
   //用训练集的数据训练算法
-  val trainedModel = nnModel.train(trainingFeature, trainingLabel, DistributedAdamOptimizer(iteration = 50))
+  val trainedModel = nnModel.train(trainingFeature, trainingLabel, AkkaAdamOptimizer(iteration = 66))
   //测试算法获得算法优劣指标
   val yPredicted = trainedModel.predict(testFeature)
   val trainYPredicted = trainedModel.predict(trainingFeature)

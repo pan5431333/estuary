@@ -44,7 +44,7 @@ class SGDOptimizer(val iteration: Int,
         val grads = backwardFunc(batchLabel, preBatchParams)
 
         if (miniBatchTime % printMiniBatchUnit == 0)
-          printCostInfo(cost, iterTime, miniBatchTime, printMiniBatchUnit)
+          MiniBatchable.printCostInfo(cost, iterTime, miniBatchTime, printMiniBatchUnit, logger)
         addCostHistory(cost)
 
         updateFunc(preBatchParams, grads)

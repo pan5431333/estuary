@@ -17,6 +17,7 @@ libraryDependencies  ++= Seq(
 //libraryDependencies += "org.springframework" % "spring-context" % "4.3.1.RELEASE"
 
 libraryDependencies += "log4j" % "log4j" % "1.2.16"
+libraryDependencies += "com.typesafe.akka" % "akka-actor_2.12" % "2.5.6"
 
 //libraryDependencies += "com.sksamuel.scrimage" %% "scrimage-core" % "2.1.7"
 
