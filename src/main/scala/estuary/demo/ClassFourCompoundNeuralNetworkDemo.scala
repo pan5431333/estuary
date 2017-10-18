@@ -2,7 +2,7 @@ package estuary.demo
 
 import breeze.stats.{mean, stddev}
 import estuary.components.layers.{DropoutLayer, ReluLayer, SoftmaxLayer}
-import estuary.components.optimizer.{AkkaAdamOptimizer, DistributedAdamOptimizer}
+import estuary.components.optimizer.{AdamOptimizer, AkkaAdamOptimizer, DistributedAdamOptimizer}
 import estuary.helper.GasCensorDataHelper
 import estuary.model.{FullyConnectedNNModel, Model}
 import estuary.utils.NormalizeUtils
@@ -32,7 +32,6 @@ object ClassFourCompoundNeuralNetworkDemo extends App {
 
   val hiddenLayers = List(
     ReluLayer(numHiddenUnits = 400),
-    DropoutLayer(0.3),
     ReluLayer(numHiddenUnits = 100))
   val outputLayer = SoftmaxLayer()
   val nnModel = new FullyConnectedNNModel(hiddenLayers, outputLayer, None)
@@ -45,12 +44,12 @@ object ClassFourCompoundNeuralNetworkDemo extends App {
 
   //用训练集的数据训练算法
 
-  // The train accuracy of this model is: 0.981038820992092
-//  The test accuracy of this model is: 0.6092739036664271
-  val trainedModel = nnModel.train(trainingFeature, trainingLabel, AkkaAdamOptimizer(iteration = 66, nTasks = 4))
+//  The train accuracy of this model is: 0.994608195542775
+//  The test accuracy of this model is: 0.6409058231488138
+  val trainedModel = nnModel.train(trainingFeature, trainingLabel, AkkaAdamOptimizer(iteration = 66, nTasks = 10))
 
-//  The train accuracy of this model is: 0.9917325664989216
-//  The test accuracy of this model is: 0.6445003594536305
+//  The train accuracy of this model is: 0.9966750539180446
+//  The test accuracy of this model is: 0.6229331416247305
 //  val trainedModel = nnModel.train(trainingFeature, trainingLabel, DistributedAdamOptimizer(iteration = 66, nTasks = 4))
 
   //测试算法获得算法优劣指标

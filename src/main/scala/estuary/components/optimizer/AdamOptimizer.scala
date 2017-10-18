@@ -35,7 +35,7 @@ class AdamOptimizer(val iteration: Int,
         MiniBatchable.printCostInfo(cost, iterTime, miniBatchTime, printMiniBatchUnit, logger)
         addCostHistory(cost)
 
-        updateFunc(preBatchParams, grads, iterTime * miniBatchSize + miniBatchTime)
+        updateFunc(preBatchParams, grads, miniBatchTime)
       }
     }.modelParam
   }
