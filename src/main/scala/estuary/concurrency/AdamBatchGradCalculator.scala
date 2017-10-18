@@ -5,7 +5,7 @@ import breeze.linalg.DenseMatrix
 import estuary.components.optimizer.AkkaAdamOptimizer.CostHistory
 import estuary.components.optimizer.Distributed
 import estuary.concurrency.AdamBatchGradCalculator._
-import estuary.concurrency.ParameterServer.{CurrentParams, GetCurrentParams, UpdateParams}
+import estuary.concurrency.ParameterServer._
 import estuary.model.Model
 import org.apache.log4j.Logger
 
@@ -40,19 +40,21 @@ class AdamBatchGradCalculator[A, B](feature: DenseMatrix[Double],
 
     case CurrentParams(params) =>
       iter(params.asInstanceOf[B])
-      if (iterTime < iteration) parameterServer ! GetCurrentParams
-      else context.stop(self)
+      if (iterTime < iteration) {
+        parameterServer ! GetCurrentParamsForUpdate
+        parameterServer ! GetCurrentParams
+      } else context.stop(self)
+
+    case CurrentParamsForUpdate(params, miniBatchTime) =>
+      parameterServer ! UpdateParams(updateFunc(params.asInstanceOf[B], grads, miniBatchIndex))
   }
 
   private def iter(params: B): Unit = {
     val cost = calculateCost(convertFunc(params))
     val printCostUnit = math.max(currentFeature.rows / this.miniBatchSize / 5, 10)
     Distributed.printCostInfo(cost, iterTime, miniBatchIndex, printCostUnit, logger)
-
     if (miniBatchIndex % printCostUnit == 0) mainSender ! CostHistory(cost)
-
     grads = calculateGrads(convertFunc(params))
-    parameterServer ! UpdateParams(updateFunc(params, grads, iterTime * miniBatchSize + miniBatchIndex))
   }
 
   private def calculateCost(params: A): Double = {

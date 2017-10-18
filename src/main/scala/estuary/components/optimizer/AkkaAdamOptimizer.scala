@@ -80,7 +80,7 @@ class AkkaAdamOptimizer(override val iteration: Int,
 }
 
 object AkkaAdamOptimizer {
-  val system = ActorSystem("DistributedAdamOptimization")
+  val system = ActorSystem("AkkaAdamOptimizer")
 
   def apply(iteration: Int = 100, learningRate: Double = 0.001, paramSavePath: String = System.getProperty("user.dir"), miniBatchSize: Int = 64, momentumRate: Double = 0.9, adamRate: Double = 0.999, nTasks: Int = 4): AkkaAdamOptimizer = {
     new AkkaAdamOptimizer(iteration, learningRate, paramSavePath, miniBatchSize, momentumRate, adamRate, nTasks)
