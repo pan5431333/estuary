@@ -31,8 +31,9 @@ object ClassFourCompoundNeuralNetworkDemo extends App {
   val testLabel = test.getLabelAsVector.map(_.toInt)
 
   val hiddenLayers = List(
-    ReluLayer(numHiddenUnits = 400),
-    ReluLayer(numHiddenUnits = 100))
+    ReluLayer(numHiddenUnits = 512),
+    DropoutLayer(0.3),
+    ReluLayer(numHiddenUnits = 64))
   val outputLayer = SoftmaxLayer()
   val nnModel = new FullyConnectedNNModel(hiddenLayers, outputLayer, None)
 
@@ -46,7 +47,7 @@ object ClassFourCompoundNeuralNetworkDemo extends App {
 
 //  The train accuracy of this model is: 0.994608195542775
 //  The test accuracy of this model is: 0.6409058231488138
-  val trainedModel = nnModel.train(trainingFeature, trainingLabel, AkkaAdamOptimizer(iteration = 66, nTasks = 10))
+  val trainedModel = nnModel.train(trainingFeature, trainingLabel, AkkaAdamOptimizer(iteration = 66, nTasks = 4))
 
 //  The train accuracy of this model is: 0.9966750539180446
 //  The test accuracy of this model is: 0.6229331416247305
