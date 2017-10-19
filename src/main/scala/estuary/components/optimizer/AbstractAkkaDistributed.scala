@@ -2,8 +2,8 @@ package estuary.components.optimizer
 
 import akka.actor.{Actor, ActorSystem, Props, Terminated}
 import breeze.linalg.DenseMatrix
-import estuary.components.optimizer.AbstractAkkaDistributed.CostHistory
-import estuary.concurrency.BatchGradCalculatorActor.Start
+import estuary.components.optimizer.AbstractAkkaDistributed.{CostHistory, Start}
+import estuary.concurrency.BatchGradCalculatorActor.StartTrain
 import estuary.concurrency.ParameterServerActor.{CurrentParams, GetCurrentParams}
 import estuary.concurrency.{BatchGradCalculatorActor, ParameterServerActor}
 import estuary.model.Model
@@ -84,7 +84,7 @@ trait AbstractAkkaDistributed[O, M] extends AbstractDistributed[ParameterServerA
       override def receive: Actor.Receive = {
         case Start =>
           //Start every work actors
-          workActors foreach {_ ! Start}
+          workActors foreach {_ ! StartTrain}
           workActors foreach {a => context.watch(a)}
 
         case Terminated(_) =>
@@ -117,5 +117,6 @@ object AbstractAkkaDistributed {
   val system = ActorSystem("AbstractAkkaDistributed")
 
   sealed trait AbstractAkkaDistributedMsg
-  case class CostHistory(cost: Double) extends AbstractAkkaDistributedMsg
+  final case class CostHistory(cost: Double) extends AbstractAkkaDistributedMsg
+  final case object Start extends AbstractAkkaDistributedMsg
 }

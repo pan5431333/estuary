@@ -4,7 +4,7 @@ import akka.actor.{Actor, ActorRef}
 import breeze.linalg.DenseMatrix
 import estuary.components.optimizer.AbstractAkkaDistributed.CostHistory
 import estuary.components.optimizer.Distributed
-import estuary.concurrency.BatchGradCalculatorActor.Start
+import estuary.concurrency.BatchGradCalculatorActor.StartTrain
 import estuary.concurrency.ParameterServerActor._
 import estuary.model.Model
 import org.apache.log4j.Logger
@@ -34,7 +34,7 @@ class BatchGradCalculatorActor[M, O](feature: DenseMatrix[Double],
   private[this] var mainSender: ActorRef = _
 
   override def receive: Actor.Receive = {
-    case Start =>
+    case StartTrain =>
       parameterServer ! GetCurrentParams
       mainSender = sender()
 
@@ -83,9 +83,7 @@ object BatchGradCalculatorActor {
 
   sealed trait BatchGradCalculatorActorMsg
 
-  case object Start extends BatchGradCalculatorActorMsg
-
-
+  final case object StartTrain extends BatchGradCalculatorActorMsg
 }
 
 

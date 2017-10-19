@@ -20,10 +20,9 @@ class ParameterServerActor[B](initParams: B) extends Actor with ActorLogging{
 
 object ParameterServerActor {
   sealed trait ParameterServerActorMsg
-  case object GetCurrentParams extends ParameterServerActorMsg
-  case object GetCurrentParamsForUpdate extends ParameterServerActorMsg
-  case class UpdateParams[B](newParams: B) extends ParameterServerActorMsg
-  case class CurrentParams[B](params: B) extends ParameterServerActorMsg
-  case class CurrentParamsForUpdate[B](params: B, miniBatchTime: Int) extends ParameterServerActorMsg
-
+  final case object GetCurrentParams extends ParameterServerActorMsg
+  final case object GetCurrentParamsForUpdate extends ParameterServerActorMsg
+  final case class UpdateParams[B](newParams: B) extends ParameterServerActorMsg
+  final case class CurrentParams[B](params: B) extends ParameterServerActorMsg
+  final case class CurrentParamsForUpdate[B](params: B, miniBatchTime: Int) extends ParameterServerActorMsg
 }
