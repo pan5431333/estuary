@@ -2,7 +2,7 @@ package estuary.components.optimizer
 
 import breeze.linalg.DenseMatrix
 import estuary.model.Model
-import org.apache.log4j.Logger
+import org.slf4j.{Logger, LoggerFactory}
 
 class DistributedSGDOptimizer(override val iteration: Int,
                               override val learningRate: Double,
@@ -12,7 +12,7 @@ class DistributedSGDOptimizer(override val iteration: Int,
   extends SGDOptimizer(iteration, learningRate, paramSavePath, miniBatchSize)
     with AbstractDistributed[Seq[DenseMatrix[Double]], Seq[DenseMatrix[Double]]] {
 
-  override val logger: Logger = Logger.getLogger(this.getClass)
+  override val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
   override def parOptimize(feature: DenseMatrix[Double], label: DenseMatrix[Double], model: Model[Seq[DenseMatrix[Double]]], initParams: Seq[DenseMatrix[Double]]): Seq[DenseMatrix[Double]] = {
     updateParameterServer(initParams)

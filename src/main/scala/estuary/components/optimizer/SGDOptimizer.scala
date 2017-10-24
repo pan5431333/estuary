@@ -2,7 +2,7 @@ package estuary.components.optimizer
 
 import breeze.linalg.DenseMatrix
 import estuary.components.optimizer.AdamOptimizer.AdamParam
-import org.apache.log4j.Logger
+import org.slf4j.{Logger, LoggerFactory}
 
 /**
   * Stochastic Gradient Descent, i.e. Mini-batch Gradient Descent.
@@ -11,7 +11,7 @@ class SGDOptimizer(val iteration: Int,
                    val learningRate: Double,
                    val paramSavePath: String,
                    val miniBatchSize: Int) extends Optimizer with MiniBatchable with NonHeuristic {
-  override protected val logger: Logger = Logger.getLogger(this.getClass)
+  override protected val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
   /**
     * Implementation of Optimizer.optimize(). Optimizing Machine Learning-like models'

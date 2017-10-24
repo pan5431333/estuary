@@ -9,12 +9,10 @@ import estuary.components.layers.Layer
 import estuary.components.optimizer.{AdamOptimizer, Optimizer}
 import estuary.components.regularizer.Regularizer
 import estuary.utils.PlotUtils
-import org.apache.log4j.Logger
 
 import scala.collection.mutable.ArrayBuffer
 
 trait Model[T] extends Serializable{
-  val logger: Logger
   val regularizer: Option[Regularizer]
 
   var hiddenLayers: Seq[Layer]

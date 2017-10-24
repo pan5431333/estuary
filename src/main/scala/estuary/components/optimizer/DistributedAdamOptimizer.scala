@@ -4,7 +4,7 @@ import breeze.linalg.DenseMatrix
 import estuary.components.Exception.GradientExplosionException
 import estuary.components.optimizer.AdamOptimizer.AdamParam
 import estuary.model.Model
-import org.apache.log4j.Logger
+import org.slf4j.{Logger, LoggerFactory}
 
 class DistributedAdamOptimizer(override val iteration: Int,
                                override val learningRate: Double,
@@ -15,7 +15,7 @@ class DistributedAdamOptimizer(override val iteration: Int,
                                val nTasks: Int)
   extends AdamOptimizer(iteration, learningRate, paramSavePath, miniBatchSize, momentumRate, adamRate)
     with AbstractDistributed[AdamParam, Seq[DenseMatrix[Double]]] {
-  override val logger: Logger = Logger.getLogger(this.getClass)
+  override val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
   protected def updateParameterServer(grads: AdamParam, miniBatchTime: Int): Unit = {
     val nowParams = fetchParameterServer()

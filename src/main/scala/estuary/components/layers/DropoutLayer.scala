@@ -2,14 +2,11 @@ package estuary.components.layers
 
 import breeze.linalg.{DenseMatrix, DenseVector}
 import estuary.components.regularizer.Regularizer
-import org.apache.log4j.Logger
 
 /**
   * Created by mengpan on 2017/9/7.
   */
 class DropoutLayer(val numHiddenUnits: Int, val batchNorm: Boolean, val dropoutRate: Double) extends Layer {
-
-  protected val logger: Logger = Logger.getLogger(this.getClass)
 
   def updateNumHiddenUnits(numHiddenUnits: Int): DropoutLayer = new DropoutLayer(numHiddenUnits, batchNorm, dropoutRate)
 

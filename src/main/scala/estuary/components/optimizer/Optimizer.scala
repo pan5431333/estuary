@@ -6,7 +6,7 @@ import java.util.Calendar
 import breeze.linalg.DenseMatrix
 import estuary.components.Exception.GradientExplosionException
 import estuary.model.Model
-import org.apache.log4j.Logger
+import org.slf4j.Logger
 
 import scala.collection.mutable.ArrayBuffer
 
@@ -18,7 +18,7 @@ import scala.collection.mutable.ArrayBuffer
   *       problems, which means that input-output (i.e. feature-label) data are needed.
   *       NOT for general optimization or mathematical planning problem.
   */
-trait Optimizer {
+trait Optimizer extends Serializable{
   protected val logger: Logger
 
   protected val iteration: Int

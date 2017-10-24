@@ -4,15 +4,11 @@ import breeze.linalg.{DenseMatrix, DenseVector}
 import breeze.numerics.pow
 import estuary.components.initializer.WeightsInitializer
 import estuary.components.regularizer.Regularizer
-import org.apache.log4j.Logger
 
 /**
   * Interface for neural network's layer.
   */
-trait Layer {
-
-  protected val logger: Logger
-
+trait Layer extends Serializable{
   /** Layer hyperparameters */
   protected val numHiddenUnits: Int
   protected val batchNorm: Boolean

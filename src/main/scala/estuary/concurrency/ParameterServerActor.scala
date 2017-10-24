@@ -19,7 +19,7 @@ class ParameterServerActor[B](initParams: B) extends Actor with ActorLogging{
 }
 
 object ParameterServerActor {
-  sealed trait ParameterServerActorMsg
+  sealed trait ParameterServerActorMsg extends Serializable
   final case object GetCurrentParams extends ParameterServerActorMsg
   final case object GetCurrentParamsForUpdate extends ParameterServerActorMsg
   final case class UpdateParams[B](newParams: B) extends ParameterServerActorMsg

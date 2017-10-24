@@ -3,14 +3,11 @@ package estuary.components.layers
 import breeze.linalg.{DenseMatrix, DenseVector, sum}
 import breeze.numerics.exp
 import estuary.components.regularizer.Regularizer
-import org.apache.log4j.Logger
 
 /**
   * Created by mengpan on 2017/9/14.
   */
 class SoftmaxLayer(val numHiddenUnits: Int, val batchNorm: Boolean) extends Layer {
-
-  protected val logger: Logger = Logger.getLogger(this.getClass)
 
   def copyStructure: SoftmaxLayer = new SoftmaxLayer(numHiddenUnits, batchNorm).setPreviousHiddenUnits(previousHiddenUnits).asInstanceOf[SoftmaxLayer]
 

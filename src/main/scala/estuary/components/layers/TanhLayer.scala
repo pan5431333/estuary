@@ -2,13 +2,11 @@ package estuary.components.layers
 
 import breeze.linalg.DenseMatrix
 import breeze.numerics.{pow, tanh}
-import org.apache.log4j.Logger
 
 /**
   * Created by mengpan on 2017/8/26.
   */
 class TanhLayer(val numHiddenUnits: Int, val batchNorm: Boolean) extends Layer {
-  protected val logger: Logger = Logger.getLogger(this.getClass)
   protected def activationFuncEval(zCurrent: DenseMatrix[Double]): DenseMatrix[Double] = {
     tanh(zCurrent)
   }

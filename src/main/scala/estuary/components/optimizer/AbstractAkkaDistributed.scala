@@ -1,7 +1,11 @@
 package estuary.components.optimizer
 
-import akka.actor.{Actor, ActorSystem, Props, Terminated}
+import java.util.concurrent.TimeUnit
+
+import akka.actor.{Actor, ActorSystem, AddressFromURIString, Deploy, Props, Terminated}
+import akka.remote.RemoteScope
 import breeze.linalg.DenseMatrix
+import com.typesafe.config.ConfigFactory
 import estuary.components.optimizer.AbstractAkkaDistributed.{CostHistory, Start}
 import estuary.concurrency.BatchGradCalculatorActor.StartTrain
 import estuary.concurrency.ParameterServerActor.{CurrentParams, GetCurrentParams}
@@ -13,10 +17,9 @@ import estuary.model.Model
   * @tparam O type of optimization algorithm's parameters.
   * @tparam M type of model parameters
   */
-trait AbstractAkkaDistributed[O, M] extends AbstractDistributed[ParameterServerActor[O], M]{
+trait AbstractAkkaDistributed[O, M] extends AbstractDistributed[ParameterServerActor[O], M] with Serializable{
 
   protected var nowParams: O = _
-  protected var isLocal: Boolean = _
 
   final override protected def updateParameterServer(grads: ParameterServerActor[O], miniBatchTime: Int): Unit = {}
 
@@ -27,7 +30,7 @@ trait AbstractAkkaDistributed[O, M] extends AbstractDistributed[ParameterServerA
     * @param modelParams model parameters
     * @return optimization parameters
     */
-  protected def initOpParamsByModelParams(modelParams: M): O
+  protected def modelParamsToOpParams(modelParams: M): O
 
   protected def updateFunc(opParams: O, grads: M, miniBatchTime: Int): O
 
@@ -53,38 +56,35 @@ trait AbstractAkkaDistributed[O, M] extends AbstractDistributed[ParameterServerA
     @volatile
     var isDone2: Boolean = false
 
+    val config = ConfigFactory.load("estuary")
+
+    //Create parameter server actor
+    val parameterServerAddress = AddressFromURIString(config.getString("estuary.parameter-server"))
+    val init = modelParamsToOpParams(initParams)
+    val paramServerActor = AbstractAkkaDistributed.system.actorOf(Props(
+      new ParameterServerActor[O](init)).withDeploy(Deploy(scope = RemoteScope(parameterServerAddress))), name="parameterServerActor")
+
+    //Create work actors (for calculating cost and grads)
+    val workersAddress = config.getStringList("estuary.workers")
+    val nWorkers = workersAddress.size()
+    val nTasksPerWorker = math.ceil(nTasks / nWorkers.toDouble).toInt
+    val workActors = batches.zip(models).zipWithIndex.map { case ((batch, eModel), taskIndex) =>
+        val workerIndex = taskIndex / nTasksPerWorker
+        AbstractAkkaDistributed.system.actorOf(Props(new BatchGradCalculatorActor[M, O](
+          batch._1, batch._2, eModel, iteration, getMiniBatches, updateFunc, paramServerActor, opParamsToModelParams
+        )).withDeploy(Deploy(scope = RemoteScope(AddressFromURIString(workersAddress.get(workerIndex))))))
+      }
+
+    //Responsible for making all Workers to start, watching if training finished, getting the trained parameters from
+    //parameterServer actor after training finished, and storing cost history from each worker during training.
     val mainActor = AbstractAkkaDistributed.system.actorOf(Props(new Actor{
-      //Create parameter server actor
-      private val init = initOpParamsByModelParams(initParams)
-      private val paramServerActor =
-        if (isLocal)
-          context.actorOf(Props(new ParameterServerActor[O](init)), name="ParameterServerActor")
-        else {
-          //todo If parameterServer is on remote, then lookup actor on that remote server
-          context.actorOf(Props(new ParameterServerActor[O](init)), name="ParameterServerActor")
-        }
-
-      //Create work actors (for calculating cost and grads)
-      private val workActors =
-        if (isLocal) {
-          batches.zip(models).map { case (batch, eModel) => context.actorOf(Props(
-            new BatchGradCalculatorActor[M, O](
-              batch._1, batch._2, eModel, iteration, getMiniBatches, updateFunc, paramServerActor, opParamsToModelParams)
-          ))}
-        } else {
-          //todo If workerActors are on remote, then lookup actors on those remote servers
-          batches.zip(models).map { case (batch, eModel) => context.actorOf(Props(
-            new BatchGradCalculatorActor[M, O](
-              batch._1, batch._2, eModel, iteration, getMiniBatches, updateFunc, paramServerActor, opParamsToModelParams)
-          ))}
-        }
-
       private var nWorksDead: Int = 0
 
       override def receive: Actor.Receive = {
+
         case Start =>
           //Start every work actors
-          workActors foreach {_ ! StartTrain}
+          workActors foreach { a => a ! StartTrain; TimeUnit.SECONDS.sleep(1)}
           workActors foreach {a => context.watch(a)}
 
         case Terminated(_) =>
@@ -106,7 +106,8 @@ trait AbstractAkkaDistributed[O, M] extends AbstractDistributed[ParameterServerA
     //Waiting for training to be done.
     while (!isDone || !isDone2) {}
 
-    //Shutdown main actor, parameterServer actor and all worker actors
+    //Shutdown main actor, however, parameterServer actor and all worker actors are not under control of this actor system,
+    //hence they will not be terminated.
     AbstractAkkaDistributed.system.terminate()
 
     opParamsToModelParams(nowParams)
@@ -114,7 +115,7 @@ trait AbstractAkkaDistributed[O, M] extends AbstractDistributed[ParameterServerA
 }
 
 object AbstractAkkaDistributed {
-  val system = ActorSystem("AbstractAkkaDistributed")
+  val system = ActorSystem("AbstractAkkaDistributed", ConfigFactory.load("MainActorSystem"))
 
   sealed trait AbstractAkkaDistributedMsg
   final case class CostHistory(cost: Double) extends AbstractAkkaDistributedMsg

@@ -3,7 +3,7 @@ package estuary.components.optimizer
 import breeze.linalg.DenseMatrix
 import breeze.numerics.{pow, sqrt}
 import estuary.components.optimizer.AdamOptimizer.AdamParam
-import org.apache.log4j.Logger
+import org.slf4j.{Logger, LoggerFactory}
 
 /**
   * Adam Optimizer, a very efficient and recommended optimizer for Deep Neural Network.
@@ -14,7 +14,7 @@ class AdamOptimizer(val iteration: Int,
                     val miniBatchSize: Int,
                     val momentumRate: Double,
                     val adamRate: Double) extends Optimizer with MiniBatchable with Heuristic {
-  protected val logger: Logger = Logger.getLogger(this.getClass)
+  protected val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
   override def optimize(feature: DenseMatrix[Double], label: DenseMatrix[Double])
                        (initParams: Seq[DenseMatrix[Double]])
@@ -86,7 +86,7 @@ class AdamOptimizer(val iteration: Int,
 
 object AdamOptimizer {
 
-  case class AdamParam(modelParam: Seq[DenseMatrix[Double]], momentumParam: Seq[DenseMatrix[Double]], adamParam: Seq[DenseMatrix[Double]])
+  case class AdamParam(modelParam: Seq[DenseMatrix[Double]], momentumParam: Seq[DenseMatrix[Double]], adamParam: Seq[DenseMatrix[Double]]) extends Serializable
 
   def apply(iteration: Int = 100, learningRate: Double = 0.001, paramSavePath: String = System.getProperty("user.dir"), miniBatchSize: Int = 64, momentumRate: Double = 0.9, adamRate: Double = 0.999): AdamOptimizer = {
     new AdamOptimizer(iteration, learningRate, paramSavePath, miniBatchSize, momentumRate, adamRate)

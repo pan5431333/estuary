@@ -1,8 +1,9 @@
 package estuary.components.optimizer
 
+import akka.event.LoggingAdapter
 import breeze.linalg.DenseMatrix
 import estuary.model.Model
-import org.apache.log4j.Logger
+import org.slf4j.Logger
 
 import scala.collection.parallel.immutable.ParSeq
 
@@ -76,6 +77,12 @@ trait Distributed[T] extends Optimizer with MiniBatchable {
 
 object Distributed {
   def printCostInfo(cost: Double, iterTime: Int, miniBatchTime: Int, printCostUnit: Int, logger: Logger): Unit = {
+    if (miniBatchTime % printCostUnit == 0) {
+      logger.info("Iteration: " + iterTime + "|Thread: " + Thread.currentThread().getName + "|=" + "=" * (miniBatchTime / printCostUnit) + ">> Cost: " + cost)
+    }
+  }
+
+  def printCostInfo(cost: Double, iterTime: Int, miniBatchTime: Int, printCostUnit: Int, logger: LoggingAdapter): Unit = {
     if (miniBatchTime % printCostUnit == 0) {
       logger.info("Iteration: " + iterTime + "|Thread: " + Thread.currentThread().getName + "|=" + "=" * (miniBatchTime / printCostUnit) + ">> Cost: " + cost)
     }

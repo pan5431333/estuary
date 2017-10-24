@@ -2,14 +2,11 @@ package estuary.components.layers
 
 import breeze.linalg.DenseMatrix
 import breeze.numerics.sigmoid
-import org.apache.log4j.Logger
 
 /**
   * Created by mengpan on 2017/8/26.
   */
 class SigmoidLayer(val numHiddenUnits: Int, val batchNorm: Boolean) extends Layer {
-
-  protected val logger: Logger = Logger.getLogger(this.getClass)
 
   override def activationFuncEval(zCurrent: DenseMatrix[Double]): DenseMatrix[Double] = {
     sigmoid(zCurrent)

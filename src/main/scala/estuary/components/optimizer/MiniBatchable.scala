@@ -1,7 +1,7 @@
 package estuary.components.optimizer
 
 import breeze.linalg.{DenseMatrix, min}
-import org.apache.log4j.Logger
+import org.slf4j.Logger
 
 import scala.util.Random
 

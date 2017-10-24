@@ -1,14 +1,12 @@
 package estuary.components.layers
 
 import breeze.linalg.DenseMatrix
-import org.apache.log4j.Logger
 
 /**
   * Created by mengpan on 2017/9/7.
   */
 object EmptyLayer extends Layer {
 
-  protected val logger: Logger = Logger.getLogger(this.getClass)
   /** Layer hyperparameters */
   protected val numHiddenUnits = 0
   protected val batchNorm = false

@@ -1,13 +1,12 @@
 package estuary.concurrency
 
-import akka.actor.{Actor, ActorRef}
+import akka.actor.{Actor, ActorLogging, ActorRef}
 import breeze.linalg.DenseMatrix
 import estuary.components.optimizer.AbstractAkkaDistributed.CostHistory
 import estuary.components.optimizer.Distributed
 import estuary.concurrency.BatchGradCalculatorActor.StartTrain
 import estuary.concurrency.ParameterServerActor._
 import estuary.model.Model
-import org.apache.log4j.Logger
 
 /**
   *
@@ -22,8 +21,8 @@ class BatchGradCalculatorActor[M, O](feature: DenseMatrix[Double],
                                      updateFunc: (O, M, Int) => O,
                                      parameterServer: ActorRef,
                                      convertFunc: O => M)
-  extends Actor {
-  private[this] val logger = Logger.getLogger(this.getClass)
+  extends Actor with ActorLogging {
+
   private[this] var shuffledData: Iterator[(DenseMatrix[Double], DenseMatrix[Double])] = shuffleFunc(feature, label)
   private[this] var miniBatchIndex: Int = 0
   private[this] var iterTime: Int = 0
@@ -42,17 +41,17 @@ class BatchGradCalculatorActor[M, O](feature: DenseMatrix[Double],
       iter(params.asInstanceOf[O])
       if (iterTime < iteration) {
         parameterServer ! GetCurrentParamsForUpdate
-        parameterServer ! GetCurrentParams
       } else context.stop(self)
 
     case CurrentParamsForUpdate(params, miniBatchTime) =>
       parameterServer ! UpdateParams(updateFunc(params.asInstanceOf[O], grads, miniBatchIndex))
+      parameterServer ! GetCurrentParams
   }
 
   private def iter(params: O): Unit = {
     val cost = calculateCost(convertFunc(params))
     val printCostUnit = math.max(currentFeature.rows / this.miniBatchSize / 5, 10)
-    Distributed.printCostInfo(cost, iterTime, miniBatchIndex, printCostUnit, logger)
+    Distributed.printCostInfo(cost, iterTime, miniBatchIndex, printCostUnit, log)
     if (miniBatchIndex % printCostUnit == 0) mainSender ! CostHistory(cost)
     grads = calculateGrads(convertFunc(params))
   }
@@ -81,9 +80,10 @@ class BatchGradCalculatorActor[M, O](feature: DenseMatrix[Double],
 
 object BatchGradCalculatorActor {
 
-  sealed trait BatchGradCalculatorActorMsg
+  sealed trait BatchGradCalculatorActorMsg extends Serializable
 
   final case object StartTrain extends BatchGradCalculatorActorMsg
+
 }
 
 

@@ -5,14 +5,12 @@ import estuary.components.initializer.WeightsInitializer
 import estuary.components.layers.{DropoutLayer, Layer}
 import estuary.components.optimizer.{Distributed, Optimizer}
 import estuary.components.regularizer.Regularizer
-import org.apache.log4j.Logger
 
 import scala.collection.mutable.ArrayBuffer
 
 class FullyConnectedNNModel(override var hiddenLayers: Seq[Layer],
                             override var outputLayer: Layer,
                             override val regularizer: Option[Regularizer]) extends Model[Seq[DenseMatrix[Double]]] {
-  override val logger: Logger = Logger.getLogger(this.getClass)
 
   var params: Seq[DenseMatrix[Double]] = _
   var costHistory: ArrayBuffer[Double] = _
