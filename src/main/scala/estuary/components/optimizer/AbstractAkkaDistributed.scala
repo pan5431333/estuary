@@ -115,7 +115,7 @@ trait AbstractAkkaDistributed[O, M] extends AbstractDistributed[ParameterServerA
 }
 
 object AbstractAkkaDistributed {
-  val system = ActorSystem("AbstractAkkaDistributed", ConfigFactory.load("MainActorSystem"))
+  val system = ActorSystem("MainSystem", ConfigFactory.load("MainActorSystem"))
 
   sealed trait AbstractAkkaDistributedMsg
   final case class CostHistory(cost: Double) extends AbstractAkkaDistributedMsg
