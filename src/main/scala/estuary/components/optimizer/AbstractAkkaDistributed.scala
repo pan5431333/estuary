@@ -1,5 +1,7 @@
 package estuary.components.optimizer
 
+import java.io.FileNotFoundException
+
 import akka.actor.{ActorSystem, AddressFromURIString, Deploy, Props}
 import akka.remote.RemoteScope
 import akka.util.Timeout
@@ -7,7 +9,7 @@ import breeze.linalg.DenseMatrix
 import com.typesafe.config.ConfigFactory
 import estuary.concurrency.BatchGradCalculatorActor.StartTrain
 import estuary.concurrency.ParameterServerActor.{CurrentParams, GetCostHistory, GetTrainedParams, SetWorkActorsRef}
-import estuary.concurrency.{BatchGradCalculatorActor, ParameterServerActor}
+import estuary.concurrency.{BatchGradCalculatorActor, ParameterServerActor, createActorSystem}
 import estuary.model.Model
 
 import scala.concurrent.{Await, Future}
@@ -53,7 +55,13 @@ trait AbstractAkkaDistributed[O, M] extends AbstractDistributed[ParameterServerA
 
     val config = ConfigFactory.load("estuary")
 
-    val system = ActorSystem("MainSystem", ConfigFactory.load("MainActorSystem"))
+    val system = try {
+      createActorSystem("MainSystem", "MainSystem")
+    } catch {
+      case _: FileNotFoundException =>
+        logger.warn("No configuration file for MainSystem found, use default akka system: akka.tcp://MainSystem@127.0.0.1:2552")
+        createActorSystem("MainSystem")
+    }
 
     //Create parameter server actor (storing parameters and cost history)
     val parameterServerAddress = AddressFromURIString(config.getString("estuary.parameter-server"))
