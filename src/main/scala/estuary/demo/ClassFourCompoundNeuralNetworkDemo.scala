@@ -1,7 +1,7 @@
 package estuary.demo
 
 import breeze.stats.{mean, stddev}
-import estuary.components.layers.{ReluLayer, SoftmaxLayer}
+import estuary.components.layers.{DropoutLayer, ReluLayer, SoftmaxLayer}
 import estuary.components.optimizer.AkkaAdamOptimizer
 import estuary.helper.GasCensorDataHelper
 import estuary.model.{FullyConnectedNNModel, Model}
@@ -32,6 +32,7 @@ object ClassFourCompoundNeuralNetworkDemo extends App {
 
   val hiddenLayers = List(
     ReluLayer(numHiddenUnits = 128),
+    DropoutLayer(0.1),
     ReluLayer(numHiddenUnits = 64))
   val outputLayer = SoftmaxLayer()
   val nnModel = new FullyConnectedNNModel(hiddenLayers, outputLayer, None)
