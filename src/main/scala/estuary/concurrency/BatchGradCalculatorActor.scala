@@ -2,7 +2,6 @@ package estuary.concurrency
 
 import akka.actor.{Actor, ActorLogging, ActorRef}
 import breeze.linalg.DenseMatrix
-import estuary.components.optimizer.AbstractAkkaDistributed.CostHistory
 import estuary.components.optimizer.Distributed
 import estuary.concurrency.BatchGradCalculatorActor.StartTrain
 import estuary.concurrency.ParameterServerActor._
@@ -30,12 +29,10 @@ class BatchGradCalculatorActor[M, O](feature: DenseMatrix[Double],
   private[this] var currentLabel: DenseMatrix[Double] = _
   private[this] var grads: M = _
   private[this] lazy val miniBatchSize: Int = currentFeature.rows
-  private[this] var mainSender: ActorRef = _
 
   override def receive: Actor.Receive = {
     case StartTrain =>
       parameterServer ! GetCurrentParams
-      mainSender = sender()
 
     case CurrentParams(params) =>
       iter(params.asInstanceOf[O])
@@ -52,7 +49,7 @@ class BatchGradCalculatorActor[M, O](feature: DenseMatrix[Double],
     val cost = calculateCost(convertFunc(params))
     val printCostUnit = math.max(currentFeature.rows / this.miniBatchSize / 5, 10)
     Distributed.printCostInfo(cost, iterTime, miniBatchIndex, printCostUnit, log)
-    if (miniBatchIndex % printCostUnit == 0) mainSender ! CostHistory(cost)
+    if (miniBatchIndex % printCostUnit == 0) parameterServer ! CostHistory(cost)
     grads = calculateGrads(convertFunc(params))
   }
 
@@ -83,7 +80,6 @@ object BatchGradCalculatorActor {
   sealed trait BatchGradCalculatorActorMsg extends Serializable
 
   final case object StartTrain extends BatchGradCalculatorActorMsg
-
 }
 
 

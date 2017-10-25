@@ -1,7 +1,7 @@
 package estuary.demo
 
 import breeze.stats.{mean, stddev}
-import estuary.components.layers.{ReluLayer, SoftmaxLayer}
+import estuary.components.layers.{DropoutLayer, ReluLayer, SoftmaxLayer}
 import estuary.components.optimizer.AkkaAdamOptimizer
 import estuary.helper.GasCensorDataHelper
 import estuary.model.{FullyConnectedNNModel, Model}
@@ -46,7 +46,7 @@ object ClassFourCompoundNeuralNetworkDemo extends App {
 
 //  The train accuracy of this model is: 0.994608195542775
 //  The test accuracy of this model is: 0.6409058231488138
-  val trainedModel = nnModel.train(trainingFeature, trainingLabel, AkkaAdamOptimizer(iteration = 30, nTasks = 4))
+  val trainedModel = nnModel.train(trainingFeature, trainingLabel, AkkaAdamOptimizer(iteration = 30, nTasks = 8))
 
 //  The train accuracy of this model is: 0.9966750539180446
 //  The test accuracy of this model is: 0.6229331416247305
