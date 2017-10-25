@@ -13,7 +13,7 @@ import estuary.utils.NormalizeUtils
 object ClassFourCompoundNeuralNetworkDemo extends App {
   // Dataset Download Website: http://archive.ics.uci.edu/ml/machine-learning-databases/00224/
   //加载Gas Censor的数据集
-  val data = GasCensorDataHelper.getAllData("D:\\Users\\m_pan\\Downloads\\Dataset\\Dataset\\")
+  val data = GasCensorDataHelper.getAllData("/Users/mengpan/Downloads/Dataset/")
   //  val data = CatDataHelper.getAllCatData
 
   //归一化数据特征矩阵

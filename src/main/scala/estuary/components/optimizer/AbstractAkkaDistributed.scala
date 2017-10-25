@@ -73,19 +73,23 @@ trait AbstractAkkaDistributed[O, M] extends AbstractDistributed[ParameterServerA
     val workersAddress = config.getStringList("estuary.workers")
     val nWorkers = workersAddress.size()
     val nTasksPerWorker = math.ceil(nTasks / nWorkers.toDouble).toInt
+    var workerCount = 0
     val workActors = batches.zip(models).zipWithIndex.map { case ((batch, eModel), taskIndex) =>
       val workerIndex = taskIndex / nTasksPerWorker
+      workerCount += 1
       system.actorOf(Props(new BatchGradCalculatorActor[M, O](
         batch._1, batch._2, eModel, iteration, getMiniBatches, updateFunc, paramServerActor, opParamsToModelParams
-      )).withDeploy(Deploy(scope = RemoteScope(AddressFromURIString(workersAddress.get(workerIndex))))))
+      )).withDeploy(Deploy(scope = RemoteScope(AddressFromURIString(workersAddress.get(workerIndex))))), name=s"worker$workerCount")
     }
 
     paramServerActor ! SetWorkActorsRef(workActors)
-    paramServerActor ! StartTrain
+//    paramServerActor ! StartTrain
+    workActors.foreach(_ ! StartTrain)
 
     import akka.pattern.ask
     import scala.concurrent.duration._
-    implicit val timeout = Timeout(100 days) //waiting maximum 100 days for training
+    implicit val timeout = Timeout(100 days)
+
     val trainedParams: Future[Any] = paramServerActor ? GetTrainedParams
     val nowParams = Await.result(trainedParams, 100 days).asInstanceOf[CurrentParams[O]].params
     val costHistoryFuture: Future[List[Double]] = (paramServerActor ? GetCostHistory).mapTo[List[Double]]

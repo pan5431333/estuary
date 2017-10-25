@@ -3,7 +3,7 @@ package estuary.concurrency
 import akka.actor.{Actor, ActorLogging, ActorRef}
 import breeze.linalg.DenseMatrix
 import estuary.components.optimizer.Distributed
-import estuary.concurrency.BatchGradCalculatorActor.StartTrain
+import estuary.concurrency.BatchGradCalculatorActor.{StartTrain, TrainingDone}
 import estuary.concurrency.ParameterServerActor._
 import estuary.model.Model
 
@@ -38,7 +38,7 @@ class BatchGradCalculatorActor[M, O](feature: DenseMatrix[Double],
       iter(params.asInstanceOf[O])
       if (iterTime < iteration) {
         parameterServer ! GetCurrentParamsForUpdate
-      } else context.stop(self)
+      } else parameterServer ! TrainingDone
 
     case CurrentParamsForUpdate(params, miniBatchTime) =>
       parameterServer ! UpdateParams(updateFunc(params.asInstanceOf[O], grads, miniBatchIndex))
@@ -80,6 +80,8 @@ object BatchGradCalculatorActor {
   sealed trait BatchGradCalculatorActorMsg extends Serializable
 
   final case object StartTrain extends BatchGradCalculatorActorMsg
+
+  final case object TrainingDone extends BatchGradCalculatorActorMsg
 }
 
 
