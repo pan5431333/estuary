@@ -59,15 +59,19 @@ trait AbstractAkkaDistributed[O, M] extends AbstractDistributed[ParameterServerA
       createActorSystem("MainSystem", "MainSystem")
     } catch {
       case _: FileNotFoundException =>
-        println("No configuration file for MainSystem found, use default akka system: akka.tcp://MainSystem@127.0.0.1:2552")
+        logger.warn("No configuration file MainSystem found, use default akka system: akka.tcp://MainSystem@127.0.0.1:2552")
         createActorSystem("MainSystem")
     }
+
+    logger.info("MainSystem {} created", system)
 
     //Create parameter server actor (storing parameters)
     val parameterServerAddress = AddressFromURIString(config.getString("estuary.parameter-server"))
     val init = modelParamsToOpParams(initParams)
     val paramServerActor = system.actorOf(Props(
       new ParameterServerActor[O](init)).withDeploy(Deploy(scope = RemoteScope(parameterServerAddress))), name = "parameterServerActor")
+
+    logger.info(s"Parameter Server Actor ($paramServerActor) created and deployed on actor system $parameterServerAddress")
 
     //Create work actors (for calculating cost and grads)
     val workersAddress = config.getStringList("estuary.workers")
@@ -82,18 +86,30 @@ trait AbstractAkkaDistributed[O, M] extends AbstractDistributed[ParameterServerA
       )).withDeploy(Deploy(scope = RemoteScope(AddressFromURIString(workersAddress.get(workerIndex))))), name=s"worker$workerCount")
     }
 
+    workActors.zipWithIndex.foreach{ case (actor, index) =>
+      logger.info(s"${index+1}th Working Actor ($actor) created and deployed on actor system ${workersAddress.get(index / nTasksPerWorker)}")
+    }
+
     //create manager actor (tell workers start to train, handle situations where workers or parameterServer die, storing costHistory)
     val managerSystemAdd = AddressFromURIString(config.getString("estuary.manager"))
     val managerActor = system.actorOf(Props(
       new Manager(paramServerActor, workActors)
     ).withDeploy(Deploy(scope = RemoteScope(managerSystemAdd))), name = "manager")
 
+    logger.info(s"Manager actor ($managerActor) created and deployed on actor system $managerSystemAdd")
+
     import akka.pattern.ask
     import scala.concurrent.duration._
-    implicit val timeout = Timeout(100 days) //waiting 100 days in maximum for training
+    implicit val timeout: Timeout = Timeout(100 days) //waiting 100 days in maximum for training
 
-    val trainedParams: Future[Any] = managerActor ? StartTrain //respect to receive trained parameters after sending StartTrain to manager
+    val trainedParams: Future[Any] = managerActor ? StartTrain //expect to receive trained parameters after sending StartTrain to manager
+
+    logger.info("Waiting for training to be done, please see working actors for training processes...")
+
     val nowParams = Await.result(trainedParams, 100 days).asInstanceOf[CurrentParams[O]].params
+
+    logger.info("Training complete")
+
     val costHistoryFuture: Future[List[Double]] = (managerActor ? GetCostHistory).mapTo[List[Double]]
     for (cost <- Await.result(costHistoryFuture, 1 hour)) costHistory += cost
 

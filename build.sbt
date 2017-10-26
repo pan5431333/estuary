@@ -16,12 +16,14 @@ libraryDependencies  ++= Seq(
 
 //libraryDependencies += "org.springframework" % "spring-context" % "4.3.1.RELEASE"
 
-libraryDependencies += "log4j" % "log4j" % "1.2.16"
 libraryDependencies ++= Seq(
   "com.typesafe.akka" % "akka-actor_2.12" % "2.5.6",
   "com.typesafe.akka" % "akka-remote_2.12" % "2.5.6",
-  "com.twitter" % "chill-akka_2.12" % "0.8.4"
+  "com.twitter" % "chill-akka_2.12" % "0.8.4",
+  "org.slf4j" % "slf4j-api" % "1.7.21",
+  "org.slf4j" % "slf4j-log4j12" % "1.7.21"
 )
+
 
 retrieveManaged := true
 
