@@ -9,7 +9,7 @@ import breeze.linalg.DenseMatrix
 import com.typesafe.config.ConfigFactory
 import estuary.concurrency.BatchGradCalculatorActor.StartTrain
 import estuary.concurrency.ParameterServerActor.{CurrentParams, GetCostHistory, GetTrainedParams, SetWorkActorsRef}
-import estuary.concurrency.{BatchGradCalculatorActor, ParameterServerActor, createActorSystem}
+import estuary.concurrency.{BatchGradCalculatorActor, Manager, ParameterServerActor, createActorSystem}
 import estuary.model.Model
 
 import scala.concurrent.{Await, Future}
@@ -63,7 +63,7 @@ trait AbstractAkkaDistributed[O, M] extends AbstractDistributed[ParameterServerA
         createActorSystem("MainSystem")
     }
 
-    //Create parameter server actor (storing parameters and cost history)
+    //Create parameter server actor (storing parameters)
     val parameterServerAddress = AddressFromURIString(config.getString("estuary.parameter-server"))
     val init = modelParamsToOpParams(initParams)
     val paramServerActor = system.actorOf(Props(
@@ -82,17 +82,19 @@ trait AbstractAkkaDistributed[O, M] extends AbstractDistributed[ParameterServerA
       )).withDeploy(Deploy(scope = RemoteScope(AddressFromURIString(workersAddress.get(workerIndex))))), name=s"worker$workerCount")
     }
 
-    paramServerActor ! SetWorkActorsRef(workActors)
-//    paramServerActor ! StartTrain
-    workActors.foreach(_ ! StartTrain)
+    //create manager actor (tell workers start to train, handle situations where workers or parameterServer die, storing costHistory)
+    val managerSystemAdd = AddressFromURIString(config.getString("estuary.manager"))
+    val managerActor = system.actorOf(Props(
+      new Manager(paramServerActor, workActors)
+    ).withDeploy(Deploy(scope = RemoteScope(managerSystemAdd))), name = "manager")
 
     import akka.pattern.ask
     import scala.concurrent.duration._
-    implicit val timeout = Timeout(100 days)
+    implicit val timeout = Timeout(100 days) //waiting 100 days in maximum for training
 
-    val trainedParams: Future[Any] = paramServerActor ? GetTrainedParams
+    val trainedParams: Future[Any] = managerActor ? StartTrain //respect to receive trained parameters after sending StartTrain to manager
     val nowParams = Await.result(trainedParams, 100 days).asInstanceOf[CurrentParams[O]].params
-    val costHistoryFuture: Future[List[Double]] = (paramServerActor ? GetCostHistory).mapTo[List[Double]]
+    val costHistoryFuture: Future[List[Double]] = (managerActor ? GetCostHistory).mapTo[List[Double]]
     for (cost <- Await.result(costHistoryFuture, 1 hour)) costHistory += cost
 
     //Shutdown main system, however, parameterServer actor and all worker actors are not under control of this actor system,

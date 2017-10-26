@@ -29,16 +29,18 @@ class BatchGradCalculatorActor[M, O](feature: DenseMatrix[Double],
   private[this] var currentLabel: DenseMatrix[Double] = _
   private[this] var grads: M = _
   private[this] lazy val miniBatchSize: Int = currentFeature.rows
+  private[this] var manager: ActorRef = _
 
   override def receive: Actor.Receive = {
     case StartTrain =>
+      manager = sender
       parameterServer ! GetCurrentParams
 
     case CurrentParams(params) =>
-      iter(params.asInstanceOf[O])
       if (iterTime < iteration) {
+        iter(params.asInstanceOf[O])
         parameterServer ! GetCurrentParamsForUpdate
-      } else parameterServer ! TrainingDone
+      } else manager ! TrainingDone
 
     case CurrentParamsForUpdate(params, miniBatchTime) =>
       parameterServer ! UpdateParams(updateFunc(params.asInstanceOf[O], grads, miniBatchIndex))
@@ -49,7 +51,7 @@ class BatchGradCalculatorActor[M, O](feature: DenseMatrix[Double],
     val cost = calculateCost(convertFunc(params))
     val printCostUnit = math.max(currentFeature.rows / this.miniBatchSize / 5, 10)
     Distributed.printCostInfo(cost, iterTime, miniBatchIndex, printCostUnit, log)
-    if (miniBatchIndex % printCostUnit == 0) parameterServer ! CostHistory(cost)
+    if (miniBatchIndex % printCostUnit == 0) manager ! CostHistory(cost)
     grads = calculateGrads(convertFunc(params))
   }
 

@@ -13,7 +13,9 @@ import estuary.utils.NormalizeUtils
 object ClassFourCompoundNeuralNetworkDemo extends App {
   // Dataset Download Website: http://archive.ics.uci.edu/ml/machine-learning-databases/00224/
   //加载Gas Censor的数据集
-  val data = GasCensorDataHelper.getAllData("/Users/mengpan/Downloads/Dataset/")
+  //D:\Users\m_pan\Downloads\Dataset\Dataset\\
+  ///Users/mengpan/Downloads/Dataset/
+  val data = GasCensorDataHelper.getAllData("D:\\Users\\m_pan\\Downloads\\Dataset\\Dataset\\")
   //  val data = CatDataHelper.getAllCatData
 
   //归一化数据特征矩阵
@@ -46,7 +48,7 @@ object ClassFourCompoundNeuralNetworkDemo extends App {
 
 //  The train accuracy of this model is: 0.994608195542775
 //  The test accuracy of this model is: 0.6409058231488138
-  val trainedModel = nnModel.train(trainingFeature, trainingLabel, AkkaAdamOptimizer(iteration = 30, nTasks = 8))
+  val trainedModel = nnModel.train(trainingFeature, trainingLabel, AkkaAdamOptimizer(iteration = 30, nTasks = 4))
 
 //  The train accuracy of this model is: 0.9966750539180446
 //  The test accuracy of this model is: 0.6229331416247305
