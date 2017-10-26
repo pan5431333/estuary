@@ -37,8 +37,8 @@ class BatchGradCalculatorActor[M, O](feature: DenseMatrix[Double],
       parameterServer ! GetCurrentParams
 
     case CurrentParams(params) =>
+      iter(params.asInstanceOf[O])
       if (iterTime < iteration) {
-        iter(params.asInstanceOf[O])
         parameterServer ! GetCurrentParamsForUpdate
       } else manager ! TrainingDone
 
@@ -79,7 +79,7 @@ class BatchGradCalculatorActor[M, O](feature: DenseMatrix[Double],
 
 object BatchGradCalculatorActor {
 
-  sealed trait BatchGradCalculatorActorMsg extends Serializable
+  sealed trait BatchGradCalculatorActorMsg extends Serializable with MyMessage
 
   final case object StartTrain extends BatchGradCalculatorActorMsg
 

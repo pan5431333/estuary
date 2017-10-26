@@ -31,6 +31,7 @@ package object concurrency {
         |akka {
         |  actor {
         |    provider = "akka.remote.RemoteActorRefProvider"
+        |    warn-about-java-serializer-usage = "false"
         |  }
         |
         |  remote {

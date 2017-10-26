@@ -19,7 +19,8 @@ libraryDependencies  ++= Seq(
 libraryDependencies += "log4j" % "log4j" % "1.2.16"
 libraryDependencies ++= Seq(
   "com.typesafe.akka" % "akka-actor_2.12" % "2.5.6",
-  "com.typesafe.akka" % "akka-remote_2.12" % "2.5.6"
+  "com.typesafe.akka" % "akka-remote_2.12" % "2.5.6",
+  "com.twitter" % "chill-akka_2.12" % "0.8.4"
 )
 
 retrieveManaged := true

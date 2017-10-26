@@ -59,7 +59,7 @@ trait AbstractAkkaDistributed[O, M] extends AbstractDistributed[ParameterServerA
       createActorSystem("MainSystem", "MainSystem")
     } catch {
       case _: FileNotFoundException =>
-        logger.warn("No configuration file for MainSystem found, use default akka system: akka.tcp://MainSystem@127.0.0.1:2552")
+        println("No configuration file for MainSystem found, use default akka system: akka.tcp://MainSystem@127.0.0.1:2552")
         createActorSystem("MainSystem")
     }
 
@@ -103,10 +103,4 @@ trait AbstractAkkaDistributed[O, M] extends AbstractDistributed[ParameterServerA
 
     opParamsToModelParams(nowParams)
   }
-}
-
-object AbstractAkkaDistributed {
-
-  sealed trait AbstractAkkaDistributedMsg
-
 }
