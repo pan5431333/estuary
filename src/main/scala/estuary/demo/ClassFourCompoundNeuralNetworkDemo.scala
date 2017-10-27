@@ -2,8 +2,8 @@ package estuary.demo
 
 import breeze.stats.{mean, stddev}
 import estuary.components.layers.{DropoutLayer, ReluLayer, SoftmaxLayer}
-import estuary.components.optimizer.AkkaAdamOptimizer
-import estuary.helper.GasCensorDataHelper
+import estuary.components.optimizer.AdamAkkaParallelOptimizer
+import estuary.helper.{CatDataHelper, GasCensorDataHelper}
 import estuary.model.{FullyConnectedNNModel, Model}
 import estuary.utils.NormalizeUtils
 
@@ -15,8 +15,8 @@ object ClassFourCompoundNeuralNetworkDemo extends App {
   //加载Gas Censor的数据集
   //D:\Users\m_pan\Downloads\Dataset\Dataset\\
   ///Users/mengpan/Downloads/Dataset/
-  val data = GasCensorDataHelper.getAllData("D:\\Users\\m_pan\\Downloads\\Dataset\\Dataset\\")
-  //  val data = CatDataHelper.getAllCatData
+  val data = GasCensorDataHelper.getAllData("/Users/mengpan/Downloads/Dataset/")
+//    val data = CatDataHelper.getAllCatData
 
   //归一化数据特征矩阵
   val normalizedCatData = NormalizeUtils.normalizeBy(data) { col =>
@@ -34,7 +34,6 @@ object ClassFourCompoundNeuralNetworkDemo extends App {
 
   val hiddenLayers = List(
     ReluLayer(numHiddenUnits = 128),
-    DropoutLayer(0.3),
     ReluLayer(numHiddenUnits = 64))
   val outputLayer = SoftmaxLayer()
   val nnModel = new FullyConnectedNNModel(hiddenLayers, outputLayer, None)
@@ -49,7 +48,7 @@ object ClassFourCompoundNeuralNetworkDemo extends App {
 
 //  The train accuracy of this model is: 0.994608195542775
 //  The test accuracy of this model is: 0.6409058231488138
-  val trainedModel = nnModel.train(trainingFeature, trainingLabel, AkkaAdamOptimizer(iteration = 50, nTasks = 6))
+  val trainedModel = nnModel.train(trainingFeature, trainingLabel, AdamAkkaParallelOptimizer(iteration = 50))
 
 //  The train accuracy of this model is: 0.9966750539180446
 //  The test accuracy of this model is: 0.6229331416247305

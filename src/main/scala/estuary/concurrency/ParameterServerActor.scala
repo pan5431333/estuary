@@ -3,8 +3,8 @@ package estuary.concurrency
 import akka.actor.{Actor, ActorLogging, ActorRef}
 import estuary.concurrency.ParameterServerActor._
 
-class ParameterServerActor[B](initParams: B) extends Actor with ActorLogging{
-  private[this] var parameters: B = initParams
+class ParameterServerActor extends Actor with ActorLogging{
+  private[this] var parameters: AnyRef = _
   private[this] var miniBatchTime: Int = 0
 
   override def receive: Actor.Receive = {
@@ -12,7 +12,7 @@ class ParameterServerActor[B](initParams: B) extends Actor with ActorLogging{
 
     case GetCurrentParamsForUpdate => sender ! CurrentParamsForUpdate(parameters, miniBatchTime)
 
-    case UpdateParams(newParams: B) =>
+    case UpdateParams(newParams: AnyRef) =>
       parameters = newParams
       miniBatchTime += 1
   }
@@ -26,12 +26,12 @@ object ParameterServerActor {
   final case object GetTrainedParams extends ParameterServerActorMsg
   final case object GetCostHistory extends ParameterServerActorMsg
 
-  final case class UpdateParams[B](newParams: B) extends ParameterServerActorMsg
+  final case class UpdateParams(newParams: AnyRef) extends ParameterServerActorMsg
 
   final case class SetWorkActorsRef(workActors: Seq[ActorRef]) extends ParameterServerActorMsg
 
-  final case class CurrentParams[B](params: B) extends ParameterServerActorMsg
-  final case class CurrentParamsForUpdate[B](params: B, miniBatchTime: Int) extends ParameterServerActorMsg
+  final case class CurrentParams(params: AnyRef) extends ParameterServerActorMsg
+  final case class CurrentParamsForUpdate(params: AnyRef, miniBatchTime: Int) extends ParameterServerActorMsg
 
   final case class CostHistory(cost: Double) extends ParameterServerActorMsg
 }

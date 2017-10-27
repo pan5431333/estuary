@@ -2,14 +2,14 @@ package estuary.components.optimizer
 
 import java.io.FileNotFoundException
 
-import akka.actor.{ActorSystem, AddressFromURIString, Deploy, Props}
+import akka.actor.{AddressFromURIString, Deploy, Props}
 import akka.remote.RemoteScope
 import akka.util.Timeout
-import breeze.linalg.DenseMatrix
-import com.typesafe.config.ConfigFactory
+import com.typesafe.config.{Config, ConfigFactory}
 import estuary.concurrency.BatchGradCalculatorActor.StartTrain
-import estuary.concurrency.ParameterServerActor.{CurrentParams, GetCostHistory, GetTrainedParams, SetWorkActorsRef}
+import estuary.concurrency.ParameterServerActor.{CurrentParams, GetCostHistory}
 import estuary.concurrency.{BatchGradCalculatorActor, Manager, ParameterServerActor, createActorSystem}
+import estuary.data.Reader
 import estuary.model.Model
 
 import scala.concurrent.{Await, Future}
@@ -19,9 +19,7 @@ import scala.concurrent.{Await, Future}
   * @tparam O type of optimization algorithm's parameters.
   * @tparam M type of model parameters
   */
-trait AbstractAkkaDistributed[O, M] extends AbstractDistributed[ParameterServerActor[O], M] with Serializable {
-
-  final override protected def updateParameterServer(grads: ParameterServerActor[O], miniBatchTime: Int): Unit = {}
+trait AbstractAkkaParallelOptimizer[O <: AnyRef, M <: AnyRef] extends AkkaParallelOptimizer[M] with MiniBatchable with Serializable {
 
   /**
     * Given model parameters to initialize optimization parameters, i.e. for Adam Optimization, model parameters are of type
@@ -42,16 +40,12 @@ trait AbstractAkkaDistributed[O, M] extends AbstractDistributed[ParameterServerA
     * The method parameter 'model' is used here to create several model instances (with copyStructure() method), and
     * then they are distributed to different threads or machines.
     *
-    * @param feature    feature matrix
-    * @param label      label matrix with one-hot representation.
     * @param model      an instance of trait Model, used to create many copies and then distribute them to different threads
     *                   or machines.
     * @param initParams initial parameters.
     * @return trained parameters, with same dimension with the given initial parameters.
     */
-  override def parOptimize(feature: DenseMatrix[Double], label: DenseMatrix[Double], model: Model[M], initParams: M): M = {
-    val batches = genParBatches(feature, label).seq
-    val models = batches.indices.map(_ => model.copyStructure)
+  def parOptimize(model: Model[M]): M = {
 
     val config = ConfigFactory.load("estuary")
 
@@ -67,27 +61,30 @@ trait AbstractAkkaDistributed[O, M] extends AbstractDistributed[ParameterServerA
 
     //Create parameter server actor (storing parameters)
     val parameterServerAddress = AddressFromURIString(config.getString("estuary.parameter-server"))
-    val init = modelParamsToOpParams(initParams)
     val paramServerActor = system.actorOf(Props(
-      new ParameterServerActor[O](init)).withDeploy(Deploy(scope = RemoteScope(parameterServerAddress))), name = "parameterServerActor")
+      new ParameterServerActor).withDeploy(Deploy(scope = RemoteScope(parameterServerAddress))), name = "parameterServerActor")
 
     logger.info(s"Parameter Server Actor ($paramServerActor) created and deployed on actor system $parameterServerAddress")
 
     //Create work actors (for calculating cost and grads)
-    val workersAddress = config.getStringList("estuary.workers")
-    val nWorkers = workersAddress.size()
-    val nTasksPerWorker = math.ceil(nTasks / nWorkers.toDouble).toInt
+    //    val workersAddress = config.getStringList("estuary.workers")
+    val workers = config.getConfigList("estuary.workers").toArray
+    val nWorkers = workers.length
+
+    val models = (0 until nWorkers).map(_ => model.copyStructure)
+
     var workerCount = 0
-    val workActors = batches.zip(models).zipWithIndex.map { case ((batch, eModel), taskIndex) =>
-      val workerIndex = taskIndex / nTasksPerWorker
+    val workActors = models.zipWithIndex.map { case (eModel, workerIndex) =>
       workerCount += 1
+      val worker = workers(workerIndex).asInstanceOf[Config]
+      val reader = Class.forName(worker.getString("data-reader")).getConstructor().newInstance().asInstanceOf[Reader]
       system.actorOf(Props(new BatchGradCalculatorActor[M, O](
-        batch._1, batch._2, eModel, iteration, getMiniBatches, updateFunc, paramServerActor, opParamsToModelParams
-      )).withDeploy(Deploy(scope = RemoteScope(AddressFromURIString(workersAddress.get(workerIndex))))), name=s"worker$workerCount")
+        worker.getString("file-path"), reader, eModel, paramServerActor, iteration, getMiniBatches, updateFunc, modelParamsToOpParams, opParamsToModelParams
+      )).withDeploy(Deploy(scope = RemoteScope(AddressFromURIString(worker.getString("address"))))), name = s"worker$workerCount")
     }
 
-    workActors.zipWithIndex.foreach{ case (actor, index) =>
-      logger.info(s"${index+1}th Working Actor ($actor) created and deployed on actor system ${workersAddress.get(index / nTasksPerWorker)}")
+    workActors.zipWithIndex.foreach { case (actor, index) =>
+      logger.info(s"${index + 1}th Working Actor ($actor) created")
     }
 
     //create manager actor (tell workers start to train, handle situations where workers or parameterServer die, storing costHistory)
@@ -106,7 +103,7 @@ trait AbstractAkkaDistributed[O, M] extends AbstractDistributed[ParameterServerA
 
     logger.info("Waiting for training to be done, please see working actors for training processes...")
 
-    val nowParams = Await.result(trainedParams, 100 days).asInstanceOf[CurrentParams[O]].params
+    val nowParams = Await.result(trainedParams, 100 days).asInstanceOf[CurrentParams].params
 
     logger.info("Training complete")
 
@@ -117,6 +114,10 @@ trait AbstractAkkaDistributed[O, M] extends AbstractDistributed[ParameterServerA
     //hence they will not be terminated.
     system.terminate()
 
-    opParamsToModelParams(nowParams)
+    opParamsToModelParams(nowParams.asInstanceOf[O])
   }
 }
+
+
+
+

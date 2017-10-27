@@ -23,7 +23,7 @@ import scala.collection.parallel.immutable.ParSeq
   *         parameter server again, since parameter server might be updated by other threads during the process of
   *         calculating gradients in current thread.
   */
-trait Distributed[T] extends Optimizer with MiniBatchable {
+trait ParallelOptimizer[T] extends Optimizer with MiniBatchable {
 
   /** Number of models trained in parallel, with sharing the same parameter server. */
   protected val nTasks: Int
@@ -75,7 +75,7 @@ trait Distributed[T] extends Optimizer with MiniBatchable {
 
 }
 
-object Distributed {
+object ParallelOptimizer {
   def printCostInfo(cost: Double, iterTime: Int, miniBatchTime: Int, printCostUnit: Int, logger: Logger): Unit = {
     if (miniBatchTime % printCostUnit == 0) {
       logger.info("Iteration: " + iterTime + "|Thread: " + Thread.currentThread().getName + "|=" + "=" * (miniBatchTime / printCostUnit) + ">> Cost: " + cost)

@@ -3,14 +3,15 @@ package estuary.model
 import breeze.linalg.{DenseMatrix, DenseVector}
 import estuary.components.initializer.WeightsInitializer
 import estuary.components.layers.{DropoutLayer, Layer}
-import estuary.components.optimizer.{Distributed, Optimizer}
+import estuary.components.optimizer.{AkkaParallelOptimizer, Optimizer, ParallelOptimizer}
 import estuary.components.regularizer.Regularizer
 
 import scala.collection.mutable.ArrayBuffer
 
 class FullyConnectedNNModel(override var hiddenLayers: Seq[Layer],
                             override var outputLayer: Layer,
-                            override val regularizer: Option[Regularizer]) extends Model[Seq[DenseMatrix[Double]]] {
+                            override val regularizer: Option[Regularizer])
+  extends Model[Seq[DenseMatrix[Double]]] {
 
   var params: Seq[DenseMatrix[Double]] = _
   var costHistory: ArrayBuffer[Double] = _
@@ -32,9 +33,16 @@ class FullyConnectedNNModel(override var hiddenLayers: Seq[Layer],
   def trainFunc(feature: DenseMatrix[Double], label: DenseMatrix[Double], allLayers: Seq[Layer],
                 initParams: Seq[DenseMatrix[Double]], optimizer: Optimizer): Seq[DenseMatrix[Double]] = {
     optimizer match {
-      case op: Distributed[Seq[DenseMatrix[Double]]] => op.parOptimize(feature, label, this.asInstanceOf[Model[Seq[DenseMatrix[Double]]]], initParams)
+      case op: ParallelOptimizer[Seq[DenseMatrix[Double]]] => op.parOptimize(feature, label, this.asInstanceOf[Model[Seq[DenseMatrix[Double]]]], initParams)
+      case op: AkkaParallelOptimizer[Seq[DenseMatrix[Double]]] => op.parOptimize(this)
       case _ => optimizer.optimize(feature, label)(initParams)(forward)(backward)
     }
+  }
+
+  def multiNodesParTrain(op: AkkaParallelOptimizer[Seq[DenseMatrix[Double]]]): this.type = {
+    val trainedParams = op.parOptimize(this)
+    this.params = trainedParams
+    this
   }
 
   def predict(feature: DenseMatrix[Double]): DenseVector[Int] = {

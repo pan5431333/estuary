@@ -5,7 +5,7 @@ package estuary.components.optimizer
  *
   * @tparam A type of optimization algorithm's parameters.
   */
-trait AbstractDistributed[A, B] extends Distributed[B] {
+trait AbstractParallelOptimizer[A, B] extends ParallelOptimizer[B] {
 
   protected var parameterServer: A = _
 

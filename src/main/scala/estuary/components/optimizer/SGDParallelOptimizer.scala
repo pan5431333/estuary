@@ -4,13 +4,13 @@ import breeze.linalg.DenseMatrix
 import estuary.model.Model
 import org.slf4j.{Logger, LoggerFactory}
 
-class DistributedSGDOptimizer(override val iteration: Int,
-                              override val learningRate: Double,
-                              override val paramSavePath: String,
-                              override val miniBatchSize: Int,
-                              val nTasks: Int)
+class SGDParallelOptimizer(override val iteration: Int,
+                           override val learningRate: Double,
+                           override val paramSavePath: String,
+                           override val miniBatchSize: Int,
+                           val nTasks: Int)
   extends SGDOptimizer(iteration, learningRate, paramSavePath, miniBatchSize)
-    with AbstractDistributed[Seq[DenseMatrix[Double]], Seq[DenseMatrix[Double]]] {
+    with AbstractParallelOptimizer[Seq[DenseMatrix[Double]], Seq[DenseMatrix[Double]]] {
 
   override val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
@@ -28,7 +28,7 @@ class DistributedSGDOptimizer(override val iteration: Int,
           val cost = model.forward(feature, label, params)
 
           if (miniBatchTime % printMiniBatchUnit == 0) {
-            Distributed.printCostInfo(cost, i, miniBatchTime, printMiniBatchUnit, logger)
+            ParallelOptimizer.printCostInfo(cost, i, miniBatchTime, printMiniBatchUnit, logger)
             addCostHistory(cost)
           }
 
@@ -53,9 +53,9 @@ class DistributedSGDOptimizer(override val iteration: Int,
     updateFunc(List(params), List(grads)).head
 }
 
-object DistributedSGDOptimizer {
-  def apply(iteration: Int = 100, learningRate: Double = 0.001, paramSavePath: String = System.getProperty("user.dir"), miniBatchSize: Int = 64, nTasks: Int = 4): DistributedSGDOptimizer = {
-    new DistributedSGDOptimizer(iteration, learningRate, paramSavePath, miniBatchSize, nTasks)
+object SGDParallelOptimizer {
+  def apply(iteration: Int = 100, learningRate: Double = 0.001, paramSavePath: String = System.getProperty("user.dir"), miniBatchSize: Int = 64, nTasks: Int = 4): SGDParallelOptimizer = {
+    new SGDParallelOptimizer(iteration, learningRate, paramSavePath, miniBatchSize, nTasks)
   }
 }
 

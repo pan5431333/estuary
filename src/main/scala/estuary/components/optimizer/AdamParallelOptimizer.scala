@@ -6,15 +6,15 @@ import estuary.components.optimizer.AdamOptimizer.AdamParam
 import estuary.model.Model
 import org.slf4j.{Logger, LoggerFactory}
 
-class DistributedAdamOptimizer(override val iteration: Int,
-                               override val learningRate: Double,
-                               override val paramSavePath: String,
-                               override val miniBatchSize: Int,
-                               override val momentumRate: Double,
-                               override val adamRate: Double,
-                               val nTasks: Int)
+class AdamParallelOptimizer(override val iteration: Int,
+                            override val learningRate: Double,
+                            override val paramSavePath: String,
+                            override val miniBatchSize: Int,
+                            override val momentumRate: Double,
+                            override val adamRate: Double,
+                            val nTasks: Int)
   extends AdamOptimizer(iteration, learningRate, paramSavePath, miniBatchSize, momentumRate, adamRate)
-    with AbstractDistributed[AdamParam, Seq[DenseMatrix[Double]]] {
+    with AbstractParallelOptimizer[AdamParam, Seq[DenseMatrix[Double]]] {
   override val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
   protected def updateParameterServer(grads: AdamParam, miniBatchTime: Int): Unit = {
@@ -37,7 +37,7 @@ class DistributedAdamOptimizer(override val iteration: Int,
       val params = fetchParameterServer()
       val cost = model.forward(feature, label, params.modelParam)
 
-      Distributed.printCostInfo(cost, i, miniBatchTime, printMiniBatchUnit, logger)
+      ParallelOptimizer.printCostInfo(cost, i, miniBatchTime, printMiniBatchUnit, logger)
 
       //save cost and check for gradient explosion every 10 iterations
       if (miniBatchTime % 10 == 0) {
@@ -58,9 +58,9 @@ class DistributedAdamOptimizer(override val iteration: Int,
   }
 }
 
-object DistributedAdamOptimizer {
-  def apply(iteration: Int = 100, learningRate: Double = 0.001, paramSavePath: String = System.getProperty("user.dir"), miniBatchSize: Int = 64, momentumRate: Double = 0.9, adamRate: Double = 0.999, nTasks: Int = 4): DistributedAdamOptimizer = {
-    new DistributedAdamOptimizer(iteration, learningRate, paramSavePath, miniBatchSize, momentumRate, adamRate, nTasks)
+object AdamParallelOptimizer {
+  def apply(iteration: Int = 100, learningRate: Double = 0.001, paramSavePath: String = System.getProperty("user.dir"), miniBatchSize: Int = 64, momentumRate: Double = 0.9, adamRate: Double = 0.999, nTasks: Int = 4): AdamParallelOptimizer = {
+    new AdamParallelOptimizer(iteration, learningRate, paramSavePath, miniBatchSize, momentumRate, adamRate, nTasks)
   }
 }
 
