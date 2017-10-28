@@ -12,9 +12,6 @@ import scala.io.Source
 class RichMatrix(data: Array[Double], nRows: Int, nCols: Int) {
   def save(path: String): Unit = {
     val writer = new PrintWriter(new File(path))
-    writer.println("nRows: " + nRows)
-    writer.println("nCols: " + nCols)
-    writer.print("data: ")
     data.foreach{ d =>
       writer.print(d)
       writer.print(',')
@@ -46,8 +43,6 @@ object RichMatrix {
         case "data" => data = line.substring(indicatorIndex+2).split(',').map(_.trim().toDouble)
       }
     }
-    println("nRows: " + nRows + "|nCols: " + nCols)
-    println("data'size: " + data.length)
     new RichMatrix(data, nRows, nCols)
   }
 }

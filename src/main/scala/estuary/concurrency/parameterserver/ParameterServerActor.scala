@@ -1,7 +1,8 @@
-package estuary.concurrency
+package estuary.concurrency.parameterserver
 
 import akka.actor.{Actor, ActorLogging, ActorRef}
-import estuary.concurrency.ParameterServerActor._
+import estuary.concurrency.MyMessage
+import estuary.concurrency.parameterserver.ParameterServerActor._
 
 class ParameterServerActor extends Actor with ActorLogging{
   private[this] var parameters: AnyRef = _

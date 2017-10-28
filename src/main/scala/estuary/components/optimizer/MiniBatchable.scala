@@ -9,7 +9,8 @@ import scala.util.Random
   * Optimizer using mini-batch optimization algorithm.
   * Its implementations has the ability of "getMiniBatches()"
   */
-trait MiniBatchable extends Optimizer{
+trait MiniBatchable extends Optimizer {
+
   protected val miniBatchSize: Int
 
   /**

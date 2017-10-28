@@ -29,7 +29,7 @@ trait Model[T] extends Serializable{
     params
   }
 
-  def predict(feature: DenseMatrix[Double]): DenseVector[Int]
+  def predict(feature: DenseMatrix[Double]): DenseMatrix[Int]
 
   /**Fully functional method.*/
   def trainFunc(feature: DenseMatrix[Double], label: DenseMatrix[Double], allLayers: Seq[Layer], initParams: T, optimizer: Optimizer): T
@@ -39,6 +39,15 @@ trait Model[T] extends Serializable{
   def backward(label: DenseMatrix[Double], params: T): T
 
   def copyStructure: Model[T]
+
+  def predictToVector(feature: DenseMatrix[Double], labelsMapping: Vector[Int]): DenseVector[Int] = {
+    val yHat = predict(feature)
+    Model.convertMatrixToVector(yHat, labelsMapping)
+  }
+
+  def predictToVector(feature: DenseMatrix[Double]): DenseVector[Int] = {
+    predictToVector(feature, labelsMapping)
+  }
 
   def train(feature: DenseMatrix[Double], label: DenseMatrix[Double]): this.type = {train(feature, label, AdamOptimizer())}
 

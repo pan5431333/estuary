@@ -50,7 +50,7 @@ class SGDParallelOptimizer(override val iteration: Int,
   }
 
   protected def updateFunc(params: DenseMatrix[Double], grads: DenseMatrix[Double], miniBatchTime: Int): DenseMatrix[Double] =
-    updateFunc(List(params), List(grads)).head
+    updateFunc(List(params), List(grads), miniBatchTime).head
 }
 
 object SGDParallelOptimizer {

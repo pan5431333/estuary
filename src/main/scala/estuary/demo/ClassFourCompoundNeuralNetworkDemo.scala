@@ -55,8 +55,8 @@ object ClassFourCompoundNeuralNetworkDemo extends App {
 //  val trainedModel = nnModel.train(trainingFeature, trainingLabel, DistributedAdamOptimizer(iteration = 66, nTasks = 4))
 
   //测试算法获得算法优劣指标
-  val yPredicted = trainedModel.predict(testFeature)
-  val trainYPredicted = trainedModel.predict(trainingFeature)
+  val yPredicted = trainedModel.predictToVector(testFeature)
+  val trainYPredicted = trainedModel.predictToVector(trainingFeature)
 
   val testAccuracy = Model.accuracy(testLabel, yPredicted)
   val trainAccuracy = Model.accuracy(trainingLabel, trainYPredicted)

@@ -47,7 +47,7 @@ class SGDOptimizer(val iteration: Int,
           MiniBatchable.printCostInfo(cost, iterTime, miniBatchTime, printMiniBatchUnit, logger)
         addCostHistory(cost)
 
-        updateFunc(preBatchParams, grads)
+        updateFunc(preBatchParams, grads, 0)
       }
     }
   }
@@ -63,7 +63,7 @@ class SGDOptimizer(val iteration: Int,
     * @param grads  Gradients of model parameters on current iteration.
     * @return Updated model parameters.
     */
-  protected def updateFunc(params: Seq[DenseMatrix[Double]], grads: Seq[DenseMatrix[Double]]): Seq[DenseMatrix[Double]] = {
+  protected def updateFunc(params: Seq[DenseMatrix[Double]], grads: Seq[DenseMatrix[Double]], miniBatchTime: Int): Seq[DenseMatrix[Double]] = {
     val res = for {(param, grad) <- params.zip(grads)} yield param - grad * learningRate
     res.asInstanceOf[Seq[DenseMatrix[Double]]]
   }

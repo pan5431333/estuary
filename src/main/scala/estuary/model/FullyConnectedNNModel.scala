@@ -42,14 +42,14 @@ class FullyConnectedNNModel(override var hiddenLayers: Seq[Layer],
   def multiNodesParTrain(op: AkkaParallelOptimizer[Seq[DenseMatrix[Double]]]): this.type = {
     val trainedParams = op.parOptimize(this)
     this.params = trainedParams
+    this.costHistory = op.costHistory
     this
   }
 
-  def predict(feature: DenseMatrix[Double]): DenseVector[Int] = {
+  def predict(feature: DenseMatrix[Double]): DenseMatrix[Int] = {
     val filtered = allLayers.zip(params).filter(!_._1.isInstanceOf[DropoutLayer]).unzip
     val yHat = forward(feature, filtered._2, filtered._1)
-    val deOneHottedYHat = Model.deOneHot(yHat)
-    Model.convertMatrixToVector(deOneHottedYHat, labelsMapping)
+    Model.deOneHot(yHat)
   }
 
   def forward(feature: DenseMatrix[Double], params: Seq[DenseMatrix[Double]], allLayers: Seq[Layer]): DenseMatrix[Double] = {

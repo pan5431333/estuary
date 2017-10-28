@@ -4,10 +4,9 @@ import estuary.model.Model
 
 /**
   *
-  * @tparam O type of optimization algorithm's parameters.
   * @tparam M type of model parameters
   */
-trait AkkaParallelOptimizer[M] extends Optimizer with Serializable {
+trait AkkaParallelOptimizer[M <: AnyRef] extends Optimizer with Serializable {
 
   /**
     * Optimize the model in parallel, and returning the trained parameters with the same dimensions of initParams.
@@ -20,11 +19,6 @@ trait AkkaParallelOptimizer[M] extends Optimizer with Serializable {
     * @return trained parameters, with same dimension with the given initial parameters.
     */
   def parOptimize(model: Model[M]): M
-}
-
-object AkkaParallelOptimizer {
-
-  class WorkerConfig
 }
 
 

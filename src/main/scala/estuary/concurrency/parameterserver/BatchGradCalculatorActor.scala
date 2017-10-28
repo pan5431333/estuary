@@ -1,14 +1,13 @@
-package estuary.concurrency
+package estuary.concurrency.parameterserver
 
 import akka.actor.{Actor, ActorLogging, ActorRef}
 import breeze.linalg.DenseMatrix
-import com.typesafe.config.Config
 import estuary.components.optimizer.ParallelOptimizer
-import estuary.concurrency.BatchGradCalculatorActor.{StartTrain, TrainingDone}
-import estuary.concurrency.ParameterServerActor._
+import estuary.concurrency.MyMessage
+import estuary.concurrency.parameterserver.BatchGradCalculatorActor.{StartTrain, TrainingDone}
+import estuary.concurrency.parameterserver.ParameterServerActor._
 import estuary.data.Reader
 import estuary.model.Model
-import estuary.utils.DebugUtils
 
 /**
   *

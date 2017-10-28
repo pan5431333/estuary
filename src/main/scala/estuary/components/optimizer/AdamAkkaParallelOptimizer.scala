@@ -10,7 +10,7 @@ class AdamAkkaParallelOptimizer(override val iteration: Int,
                                 override val momentumRate: Double,
                                 override val adamRate: Double)
   extends AdamOptimizer(iteration, learningRate, paramSavePath, miniBatchSize, momentumRate, adamRate)
-    with AbstractAkkaParallelOptimizer[AdamParam, Seq[DenseMatrix[Double]]] {
+    with CentralizedAkkaParallelOptimizer[AdamParam, Seq[DenseMatrix[Double]]] {
 
   /**
     * Given model parameters to initialize optimization parameters, i.e. for Adam Optimization, model parameters are of type

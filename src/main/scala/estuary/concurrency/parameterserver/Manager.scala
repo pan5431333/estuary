@@ -1,8 +1,8 @@
-package estuary.concurrency
+package estuary.concurrency.parameterserver
 
 import akka.actor.{Actor, ActorRef}
-import estuary.concurrency.BatchGradCalculatorActor.{StartTrain, TrainingDone}
-import estuary.concurrency.ParameterServerActor.{CostHistory, CurrentParams, GetCostHistory, GetCurrentParams}
+import estuary.concurrency.parameterserver.BatchGradCalculatorActor.{StartTrain, TrainingDone}
+import estuary.concurrency.parameterserver.ParameterServerActor.{CostHistory, CurrentParams, GetCostHistory, GetCurrentParams}
 
 class Manager(parameterServer: ActorRef, workers: Seq[ActorRef]) extends Actor {
 
