@@ -2,7 +2,8 @@ package estuary.demo
 
 import breeze.stats.{mean, stddev}
 import estuary.components.layers.{DropoutLayer, ReluLayer, SoftmaxLayer}
-import estuary.components.optimizer.AdamAkkaParallelOptimizer
+import estuary.components.optimizer.{AdamAkkaParallelOptimizer, AdamOptimizer}
+import estuary.demo.AkkaParallelDemo.{testLabel, yPredicted}
 import estuary.helper.{CatDataHelper, GasCensorDataHelper}
 import estuary.model.{FullyConnectedNNModel, Model}
 import estuary.utils.NormalizeUtils
@@ -48,7 +49,7 @@ object ClassFourCompoundNeuralNetworkDemo extends App {
 
 //  The train accuracy of this model is: 0.994608195542775
 //  The test accuracy of this model is: 0.6409058231488138
-  val trainedModel = nnModel.train(trainingFeature, trainingLabel, AdamAkkaParallelOptimizer(iteration = 50))
+  val trainedModel = nnModel.train(trainingFeature, trainingLabel, AdamOptimizer())
 
 //  The train accuracy of this model is: 0.9966750539180446
 //  The test accuracy of this model is: 0.6229331416247305
@@ -60,6 +61,7 @@ object ClassFourCompoundNeuralNetworkDemo extends App {
 
   val testAccuracy = Model.accuracy(testLabel, yPredicted)
   val trainAccuracy = Model.accuracy(trainingLabel, trainYPredicted)
+
   println("\n The train accuracy of this model is: " + trainAccuracy)
   println("\n The test accuracy of this model is: " + testAccuracy)
 

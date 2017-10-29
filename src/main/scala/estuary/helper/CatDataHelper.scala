@@ -60,13 +60,16 @@ object CatDataHelper {
           case "frog" => 2
           case "truck" => 3
           case "automobile" => 4
+          case "deer" => 5
+//          case "bird" => 6
+//          case "horse" => 7
+//          case "ship" => 8
+//          case "airplane" => 9
+//          case "dog" => 0
           case _ => 0
         }
         (label._1, numLabel)
-      }
-      .filter { label =>
-        label._2 != 0
-      }
+      }.filter( _._2 != 0)
   }
 
 }

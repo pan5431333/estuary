@@ -19,19 +19,9 @@ class GasCensorDataReader extends Reader with Serializable{
     (data, label)
   }
 
-  def partition(n: Int): Unit = {
-    val (feature, label) = read("/Users/mengpan/Downloads/NewDataset/0.*")
-    val numExamples = feature.rows
-    val shuffledIndex = Random.shuffle[Int, Vector]((0 until numExamples).toVector)
-    val nn = numExamples
 
-    for (i <- 0 until n) yield {
-      feature(shuffledIndex.slice(i * nn / n, (i + 1) * nn / n), ::).toDenseMatrix.save(s"/Users/mengpan/Downloads/NewDataset/${i+1}-feature.dat")
-      label(shuffledIndex.slice(i * nn / n, (i + 1) * nn / n), ::).toDenseMatrix.save(s"/Users/mengpan/Downloads/NewDataset/${i+1}-label.dat")
-    }
-  }
 }
 
 object GasCensorDataReader extends App{
-  new GasCensorDataReader().partition(10)
+  new GasCensorDataReader().partition("/Users/mengpan/Downloads/NewDataset/training.*", 4)
 }
