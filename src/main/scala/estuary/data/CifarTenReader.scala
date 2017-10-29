@@ -1,22 +1,20 @@
 package estuary.data
 
 import breeze.linalg.{DenseMatrix, DenseVector}
-import estuary.helper.CatDataHelper
-import estuary.utils.{ImageReader, NormalizeUtils, RichMatrix}
-import breeze.stats.{mean, stddev}
-import estuary.demo.ClassFourCompoundNeuralNetworkDemo.data
-import estuary.implicits._
 import estuary.model.Model
+import estuary.utils.ImageReader
 import org.slf4j.LoggerFactory
 
-import scala.collection.mutable.ArrayBuffer
 import scala.io.Source
 
 /**
   * Created by mengpan on 2017/10/29.
   */
-class CifarTenReader extends Reader {
+trait CifarTenReader extends Reader {
   private val log = LoggerFactory.getLogger(this.getClass)
+
+  protected val trainingLabelPath: String
+  protected val labelFilteringSeq: Seq[Int]
 
   override def read(filePath: String): (DenseMatrix[Double], DenseMatrix[Double]) = {
     val fileNames = getMatchedFilesName(filePath)
@@ -55,12 +53,12 @@ class CifarTenReader extends Reader {
       .map{ case (name, index) =>
         name -> indexToLabel(index)
       }
-      .filter(a => List(1, 2).contains(a._2))
+      .filter(a => labelFilteringSeq.contains(a._2))
   }
 
   private def getLabels(fileIndexes: Vector[Int]): Map[Int, Int] = {
     val fileLabelMapping = Source
-      .fromFile("/Users/mengpan/Downloads/trainLabels.csv")
+      .fromFile(trainingLabelPath)
       .getLines()
       .map { eachRow =>
         val split = eachRow.split(",")
@@ -77,10 +75,4 @@ class CifarTenReader extends Reader {
 
     intLabel.filter(a => fileIndexes.contains(a._1)).toMap
   }
-}
-
-object CifarTenReader extends App {
-  new CifarTenReader().partition("/Users/mengpan/Downloads/CatData/training.*", 4)
-  //  new CifarTenReader().save()
-  //  println(new CifarTenReader().read("/Users/mengpan/Downloads/CatData/training.*"))
 }
