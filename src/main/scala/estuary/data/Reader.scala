@@ -12,10 +12,10 @@ trait Reader {
   def read(filePath: String): (DenseMatrix[Double], DenseMatrix[Double])
 
   protected def getMatchedFilesName(filePath: String): Seq[String] = {
-    val endDirIndex = filePath.lastIndexOf('/')
+    val endDirIndex = if (filePath.contains('/')) filePath.lastIndexOf('/') else filePath.lastIndexOf("""\""")
     val dirPath = filePath.substring(0, endDirIndex + 1)
     val fileRegex = filePath.r
-    val allFiles = new File(dirPath).listFiles().map(_.getCanonicalPath)
+    val allFiles = new File(dirPath).listFiles().map{ a => val path = a.getCanonicalPath; path}
     (for (path <- allFiles) yield {
       fileRegex.findFirstIn(path)
     }).filter {
@@ -25,7 +25,7 @@ trait Reader {
   }
 
   def partition(srcFile: String, n: Int): Unit = {
-    val endDirIndex = srcFile.lastIndexOf('/')
+    val endDirIndex = if (srcFile.contains('/')) srcFile.lastIndexOf('/') else srcFile.lastIndexOf("""\""")
     val dirPath = srcFile.substring(0, endDirIndex + 1)
     val (feature, label) = read(srcFile)
     val numExamples = feature.rows
@@ -33,8 +33,8 @@ trait Reader {
     val nn = numExamples
 
     for (i <- 0 until n) yield {
-      feature(shuffledIndex.slice(i * nn / n, (i + 1) * nn / n), ::).toDenseMatrix.save(s"${dirPath}/${i + 1}-feature.dat")
-      label(shuffledIndex.slice(i * nn / n, (i + 1) * nn / n), ::).toDenseMatrix.save(s"${dirPath}/${i + 1}-label.dat")
+      feature(shuffledIndex.slice(i * nn / n, (i + 1) * nn / n), ::).toDenseMatrix.save(s"$dirPath/${i + 1}-feature.dat")
+      label(shuffledIndex.slice(i * nn / n, (i + 1) * nn / n), ::).toDenseMatrix.save(s"$dirPath/${i + 1}-label.dat")
     }
   }
 }

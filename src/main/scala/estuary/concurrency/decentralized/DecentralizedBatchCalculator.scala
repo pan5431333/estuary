@@ -1,6 +1,6 @@
 package estuary.concurrency.decentralized
 
-import akka.actor.{Actor, ActorLogging, ActorRef}
+import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import breeze.linalg.DenseMatrix
 import estuary.components.optimizer.ParallelOptimizer
 import estuary.concurrency.MyMessage
@@ -24,7 +24,7 @@ class DecentralizedBatchCalculator[O <: AnyRef, M <: AnyRef](id: Long,
                                                              modelToOpFunc: M => O,
                                                              opToModelFunc: O => M,
                                                              avgOpFunc: Seq[O] => O)
-  extends Actor with ActorLogging{
+  extends Actor with ActorLogging {
 
   private[this] var neibours: Seq[ActorRef] = _
   private[this] val neiboursParams: mutable.HashMap[ActorRef, O] = new mutable.HashMap[ActorRef, O]()
@@ -50,7 +50,10 @@ class DecentralizedBatchCalculator[O <: AnyRef, M <: AnyRef](id: Long,
         myParams = updateFunc(myParams, grads, miniBatchIndex)
         if (iterTime < iteration)
           askNeiboursForParams(neibours)
-        else manager ! TrainingDone
+        else {
+          log.info(s"trained parameters on actor $self is: ${opToModelFunc(myParams)}")
+          manager ! TrainingDone
+        }
       }
 
     case GetParam =>
@@ -63,7 +66,9 @@ class DecentralizedBatchCalculator[O <: AnyRef, M <: AnyRef](id: Long,
   }
 
   private def askNeiboursForParams(neibours: Seq[ActorRef]): Unit = {
-    for (neibour <- neibours) { neibour ! GetParam}
+    for (neibour <- neibours) {
+      neibour ! GetParam
+    }
   }
 
   private def iter(): M = {
@@ -98,6 +103,19 @@ class DecentralizedBatchCalculator[O <: AnyRef, M <: AnyRef](id: Long,
 
 object DecentralizedBatchCalculator {
 
+  def props[O, M](id: Long,
+                  filePath: String,
+                  dataReader: Reader,
+                  model: Model[M],
+                  iteration: Int,
+                  miniBatchFunc: (DenseMatrix[Double], DenseMatrix[Double]) => Iterator[(DenseMatrix[Double], DenseMatrix[Double])],
+                  updateFunc: (O, M, Int) => O,
+                  modelToOpFunc: M => O,
+                  opToModelFunc: O => M,
+                  avgOpFunc: Seq[O] => O): Props = {
+    Props(classOf[DecentralizedBatchCalculator[O, M]], id, filePath, dataReader, model, iteration, miniBatchFunc, updateFunc, modelToOpFunc, opToModelFunc, avgOpFunc)
+  }
+
   sealed trait DecentralizedBatchCalculatorMsg extends MyMessage
 
   final case class Neibours(actors: Seq[ActorRef]) extends DecentralizedBatchCalculatorMsg
@@ -107,4 +125,5 @@ object DecentralizedBatchCalculator {
   final case class CurrentParam(param: AnyRef) extends DecentralizedBatchCalculatorMsg
 
   final case object TrainingDone extends DecentralizedBatchCalculatorMsg
+
 }

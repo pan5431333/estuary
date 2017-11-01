@@ -1,6 +1,6 @@
 package estuary.concurrency.parameterserver
 
-import akka.actor.{Actor, ActorLogging, ActorRef}
+import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import estuary.concurrency.MyMessage
 import estuary.concurrency.parameterserver.ParameterServerActor._
 
@@ -20,6 +20,11 @@ class ParameterServerActor extends Actor with ActorLogging{
 }
 
 object ParameterServerActor {
+  def props: Props = {
+    Props(classOf[ParameterServerActor])
+  }
+
+
   sealed trait ParameterServerActorMsg extends Serializable with MyMessage
 
   final case object GetCurrentParams extends ParameterServerActorMsg

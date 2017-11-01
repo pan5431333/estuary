@@ -1,6 +1,6 @@
 package estuary.concurrency.parameterserver
 
-import akka.actor.{Actor, ActorLogging, ActorRef}
+import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import breeze.linalg.DenseMatrix
 import estuary.components.optimizer.ParallelOptimizer
 import estuary.concurrency.MyMessage
@@ -86,6 +86,18 @@ class BatchGradCalculatorActor[M <: AnyRef, O <: AnyRef](filePath: String,
 }
 
 object BatchGradCalculatorActor {
+
+  def props[O, M](filePath: String,
+                  dataReader: Reader,
+                  model: Model[M],
+                  parameterServer: ActorRef,
+                  iteration: Int,
+                  shuffleFunc: (DenseMatrix[Double], DenseMatrix[Double]) => Iterator[(DenseMatrix[Double], DenseMatrix[Double])],
+                  updateFunc: (O, M, Int) => O,
+                  modelToOp: M => O,
+                  opToModel: O => M): Props = {
+    Props(classOf[BatchGradCalculatorActor[M, O]], filePath, dataReader, model, parameterServer, iteration, shuffleFunc, updateFunc, modelToOp, opToModel)
+  }
 
   sealed trait BatchGradCalculatorActorMsg extends Serializable with MyMessage
 

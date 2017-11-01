@@ -27,7 +27,6 @@ trait CentralizedAkkaParallelOptimizer[O <: AnyRef, M <: AnyRef] extends Abstrac
     *
     * @param model      an instance of trait Model, used to create many copies and then distribute them to different threads
     *                   or machines.
-    * @param initParams initial parameters.
     * @return trained parameters, with same dimension with the given initial parameters.
     */
   def parOptimize(model: Model[M]): M = {
@@ -46,8 +45,7 @@ trait CentralizedAkkaParallelOptimizer[O <: AnyRef, M <: AnyRef] extends Abstrac
 
     //Create parameter server actor (storing parameters)
     val parameterServerAddress = AddressFromURIString(config.getString("estuary.parameter-server"))
-    val paramServerActor = system.actorOf(Props(
-      new ParameterServerActor).withDeploy(Deploy(scope = RemoteScope(parameterServerAddress))), name = "parameterServerActor")
+    val paramServerActor = system.actorOf(ParameterServerActor.props.withDeploy(Deploy(scope = RemoteScope(parameterServerAddress))), name = "parameterServerActor")
 
     logger.info(s"Parameter Server Actor ($paramServerActor) created and deployed on actor system $parameterServerAddress")
 
@@ -60,9 +58,9 @@ trait CentralizedAkkaParallelOptimizer[O <: AnyRef, M <: AnyRef] extends Abstrac
       workerCount += 1
       val worker = workers(workerIndex).asInstanceOf[Config]
       val reader = Class.forName(worker.getString("data-reader")).getConstructor().newInstance().asInstanceOf[Reader]
-      system.actorOf(Props(new BatchGradCalculatorActor[M, O](
+      system.actorOf(BatchGradCalculatorActor.props(
         worker.getString("file-path"), reader, eModel, paramServerActor, iteration, getMiniBatches, updateFunc, modelParamsToOpParams, opParamsToModelParams
-      )).withDeploy(Deploy(scope = RemoteScope(AddressFromURIString(worker.getString("address"))))), name = s"worker$workerCount")
+      ).withDeploy(Deploy(scope = RemoteScope(AddressFromURIString(worker.getString("address"))))), name = s"worker$workerCount")
     }
 
     workActors.zipWithIndex.foreach { case (actor, index) =>
@@ -71,9 +69,7 @@ trait CentralizedAkkaParallelOptimizer[O <: AnyRef, M <: AnyRef] extends Abstrac
 
     //create manager actor (tell workers start to train, handle situations where workers or parameterServer die, storing costHistory)
     val managerSystemAdd = AddressFromURIString(config.getString("estuary.manager"))
-    val managerActor = system.actorOf(Props(
-      new Manager(paramServerActor, workActors)
-    ).withDeploy(Deploy(scope = RemoteScope(managerSystemAdd))), name = "manager")
+    val managerActor = system.actorOf(Manager.props(paramServerActor, workActors).withDeploy(Deploy(scope = RemoteScope(managerSystemAdd))), name = "manager")
 
     logger.info(s"Manager actor ($managerActor) created and deployed on actor system $managerSystemAdd")
 
@@ -82,9 +78,9 @@ trait CentralizedAkkaParallelOptimizer[O <: AnyRef, M <: AnyRef] extends Abstrac
     import scala.concurrent.duration._
     implicit val timeout: Timeout = Timeout(100 days) //waiting 100 days in maximum for training
 
-    val trainedParams: Future[Any] = managerActor ? StartTrain //expect to receive trained parameters after sending StartTrain to manager
+    val trainedParams: Future[Any] = managerActor ? StartTrain //block current thread, expect to receive trained parameters
 
-    logger.info("Waiting for training to be done, please see working actors for training processes...")
+    logger.info("Waiting for training to be done, please see working actors for training progress...")
 
     val nowParams = Await.result(trainedParams, 100 days).asInstanceOf[CurrentParams].params
 
@@ -93,13 +89,12 @@ trait CentralizedAkkaParallelOptimizer[O <: AnyRef, M <: AnyRef] extends Abstrac
     val costHistoryFuture: Future[List[Double]] = (managerActor ? GetCostHistory).mapTo[List[Double]]
     for (cost <- Await.result(costHistoryFuture, 1 hour)) costHistory += cost
 
-    //shutdown workers and manager and parameter server
+    //shutdown workers, manager and parameter server
     managerActor ! PoisonPill
     paramServerActor ! PoisonPill
     workActors.foreach(_ ! PoisonPill)
 
-    //Shutdown main system, however, parameterServer actor and all worker actors are not under control of this actor system,
-    //hence they will not be terminated.
+    //Shutdown main system
     system.terminate()
 
     opParamsToModelParams(nowParams.asInstanceOf[O])

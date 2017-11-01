@@ -1,6 +1,6 @@
 package estuary.concurrency.decentralized
 
-import akka.actor.{Actor, ActorRef}
+import akka.actor.{Actor, ActorRef, Props}
 import estuary.concurrency.MyMessage
 import estuary.concurrency.decentralized.DecentralizedBatchCalculator.{CurrentParam, GetParam, TrainingDone}
 import estuary.concurrency.decentralized.Manager.{CostHistory, GetCostHistory, StartTrain}
@@ -24,7 +24,7 @@ class Manager(workers: Seq[ActorRef]) extends Actor{
     case TrainingDone =>
       nWorkActorsDone += 1
       if (nWorkActorsDone >= nWorkActors)
-        workers(0) ! GetParam
+        workers.head ! GetParam
 
     case CostHistory(cost) => costHistory = cost :: costHistory
 
@@ -35,6 +35,10 @@ class Manager(workers: Seq[ActorRef]) extends Actor{
 }
 
 object Manager {
+
+  def props(workers: Seq[ActorRef]): Props = {
+    Props(classOf[Manager], workers)
+  }
 
   sealed trait ManagerMsg extends MyMessage
   final case object StartTrain extends ManagerMsg

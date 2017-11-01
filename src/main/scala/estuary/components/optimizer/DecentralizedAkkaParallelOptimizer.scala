@@ -30,7 +30,6 @@ trait DecentralizedAkkaParallelOptimizer[O <: AnyRef, M <: AnyRef] extends Abstr
     *
     * @param model      an instance of trait Model, used to create many copies and then distribute them to different threads
     *                   or machines.
-    * @param initParams initial parameters.
     * @return trained parameters, with same dimension with the given initial parameters.
     */
   override def parOptimize(model: Model[M]): M = {
@@ -53,9 +52,11 @@ trait DecentralizedAkkaParallelOptimizer[O <: AnyRef, M <: AnyRef] extends Abstr
         createActorSystem("MainSystem")
     }
 
+    logger.info("MainSystem {} created", system)
+
     //create model instances
     val nWorkers = workers.length
-    val models = (0 to nWorkers).par.map(a => model.copyStructure)
+    val models = (0 to nWorkers).par.map(_ => model.copyStructure)
 
     //mapping id to workers' actor reference
     val workersId = new scala.collection.mutable.HashMap[Long, ActorRef]()
@@ -73,7 +74,7 @@ trait DecentralizedAkkaParallelOptimizer[O <: AnyRef, M <: AnyRef] extends Abstr
       val filePath = config_.getString("file-path")
       val neibour = config_.getLongList("neibours").toArray.map(_.asInstanceOf[Long])
       val dataReader = Class.forName(config_.getString("data-reader")).getConstructor().newInstance().asInstanceOf[Reader]
-      val actor = system.actorOf(Props(new DecentralizedBatchCalculator(id, filePath, dataReader, model, iteration, getMiniBatches, updateFunc, modelParamsToOpParams, opParamsToModelParams, avgOpFunc))
+      val actor = system.actorOf(DecentralizedBatchCalculator.props(id, filePath, dataReader, model, iteration, getMiniBatches, updateFunc, modelParamsToOpParams, opParamsToModelParams, avgOpFunc)
         .withDeploy(Deploy(scope = RemoteScope(addr))), name = s"worker$workerCnt")
       workersId.+=(id -> actor)
       workersNeibour.+=(actor -> neibour)
@@ -82,20 +83,26 @@ trait DecentralizedAkkaParallelOptimizer[O <: AnyRef, M <: AnyRef] extends Abstr
 
     //send neibours' actor references to every worker
     for (worker <- allWorkers) {
-      val neibourMsg = Neibours(workersNeibour.get(worker).get.map(workersId.get(_).get))
+      val neibourMsg = Neibours(workersNeibour(worker).map(workersId(_)))
       worker ! neibourMsg
     }
 
+    allWorkers.zipWithIndex.foreach { case (actor, index) =>
+      logger.info(s"${index + 1}th Working Actor ($actor) created")
+    }
+
     //create manager
-    val manager = system.actorOf(Props(
-      new Manager(allWorkers)).withDeploy(Deploy(scope = RemoteScope(managerAddr)))
-    )
+    val manager = system.actorOf(Manager.props(allWorkers).withDeploy(Deploy(scope = RemoteScope(managerAddr))))
+
+    logger.info(s"Manager actor ($manager) created and deployed on actor system $managerAddr")
 
     import akka.pattern._
     import scala.concurrent.duration._
     implicit val timeout = Timeout(100 days)
     val futureParams = manager ? StartTrain
+    logger.info("Waiting for training to be done, please see working actors for training progress...")
     val trainedParams = Await.result(futureParams, 100 days).asInstanceOf[CurrentParam].param
+    logger.info("Training complete")
 
     val futureCostHistory = (manager ? GetCostHistory).mapTo[List[Double]]
     for (cost <- Await.result(futureCostHistory, 1 hour)) costHistory += cost

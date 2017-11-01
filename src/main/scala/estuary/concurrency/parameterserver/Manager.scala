@@ -1,6 +1,6 @@
 package estuary.concurrency.parameterserver
 
-import akka.actor.{Actor, ActorRef}
+import akka.actor.{Actor, ActorRef, Props}
 import estuary.concurrency.parameterserver.BatchGradCalculatorActor.{StartTrain, TrainingDone}
 import estuary.concurrency.parameterserver.ParameterServerActor.{CostHistory, CurrentParams, GetCostHistory, GetCurrentParams}
 
@@ -29,4 +29,10 @@ class Manager(parameterServer: ActorRef, workers: Seq[ActorRef]) extends Actor {
     case GetCostHistory => sender ! costHistory.reverse
   }
 
+}
+
+object Manager {
+  def props(parameterServer: ActorRef, workers: Seq[ActorRef]): Props = {
+    Props(classOf[Manager], parameterServer, workers)
+  }
 }
