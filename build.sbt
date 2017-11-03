@@ -11,10 +11,7 @@ libraryDependencies  ++= Seq(
   "org.scalanlp" %% "breeze-natives" % "0.13.2",
   "org.scalanlp" %% "breeze-viz" % "0.13.2"
 )
-
-//libraryDependencies += "com.github.fommil.netlib" % "all" % "1.1.2"
-
-//libraryDependencies += "org.springframework" % "spring-context" % "4.3.1.RELEASE"
+libraryDependencies += "com.github.fommil.netlib" % "all" % "1.1.2"
 
 libraryDependencies ++= Seq(
   "com.typesafe.akka" % "akka-actor_2.12" % "2.5.6",
@@ -23,19 +20,3 @@ libraryDependencies ++= Seq(
   "org.slf4j" % "slf4j-api" % "1.7.21",
   "org.slf4j" % "slf4j-log4j12" % "1.7.21"
 )
-
-
-retrieveManaged := true
-
-//libraryDependencies += "com.sksamuel.scrimage" %% "scrimage-core" % "2.1.7"
-
-//libraryDependencies += "com.sksamuel.scrimage" %% "scrimage-io-extra" % "2.1.7"
-//
-//libraryDependencies += "com.sksamuel.scrimage" %% "scrimage-filters" % "2.1.7"
-//
-//resolvers += "stephenjudkins-bintray" at "http://dl.bintray.com/stephenjudkins/maven"
-//
-//libraryDependencies += "ps.tricerato" %% "pureimage" % "0.1.2"
-//
-//resolvers += "Sonatype Releases" at "https://oss.sonatype.org/content/repositories/releases/"
-//

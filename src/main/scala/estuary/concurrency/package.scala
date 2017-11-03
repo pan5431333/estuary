@@ -37,7 +37,7 @@ package object concurrency {
         |  remote {
         |    maximum-payload-bytes = 30000000 bytes
         |    netty.tcp {
-        |      hostname = $ip
+        |      hostname = ${ip.filterNot(_ == """'""")}
         |      port = $port
         |      message-frame-size =  30000000b
         |      send-buffer-size =  30000000b
