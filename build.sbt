@@ -1,4 +1,4 @@
-name := "org/mengpan/deeplearning"
+name := "estuary"
 
 version := "1.0"
 
