@@ -1,15 +1,15 @@
 package estuary.model
 
-import breeze.linalg.{DenseMatrix, DenseVector}
+import breeze.linalg.DenseMatrix
 import estuary.components.initializer.WeightsInitializer
-import estuary.components.layers.{DropoutLayer, Layer}
+import estuary.components.layers.{ClassicLayer, ConvLayer, DropoutLayer, Layer}
 import estuary.components.optimizer.{AkkaParallelOptimizer, Optimizer, ParallelOptimizer}
 import estuary.components.regularizer.Regularizer
 
 import scala.collection.mutable.ArrayBuffer
 
-class FullyConnectedNNModel(override var hiddenLayers: Seq[Layer],
-                            override var outputLayer: Layer,
+class FullyConnectedNNModel(override val hiddenLayers: Seq[Layer],
+                            override val outputLayer: ClassicLayer,
                             override val regularizer: Option[Regularizer])
   extends Model[Seq[DenseMatrix[Double]]] {
 
@@ -20,11 +20,11 @@ class FullyConnectedNNModel(override var hiddenLayers: Seq[Layer],
   lazy val allLayers: Seq[Layer] = hiddenLayers :+ outputLayer
 
   def init(inputDim: Int, outputDim: Int, initializer: WeightsInitializer): Seq[DenseMatrix[Double]] = {
-    outputLayer = outputLayer.updateNumHiddenUnits(outputDim)
-    hiddenLayers.foldLeft(inputDim) { case (previousDim, layer) => layer.setPreviousHiddenUnits(previousDim); layer.getNumHiddenUnits}
-    hiddenLayers = hiddenLayers.map { case l: DropoutLayer => l.updateNumHiddenUnits(l.previousHiddenUnits); case l => l}
-    hiddenLayers.foldLeft(inputDim) { case (previousDim, layer) => layer.setPreviousHiddenUnits(previousDim); layer.getNumHiddenUnits}
-    outputLayer.setPreviousHiddenUnits(hiddenLayers.last.getNumHiddenUnits)
+    outputLayer.setPreviousHiddenUnits(hiddenLayers.last.numHiddenUnits)
+    hiddenLayers.foldLeft(inputDim) {
+      case (previousDim, layer: ClassicLayer) => layer.setPreviousHiddenUnits(previousDim); layer.numHiddenUnits
+      case (_, layer: ConvLayer) => layer.numHiddenUnits
+    }
     params = allLayers.map { layer => layer.init(initializer) }
     params
   }
@@ -64,8 +64,8 @@ class FullyConnectedNNModel(override var hiddenLayers: Seq[Layer],
     }.init.map(_._2).toList
   }
 
-  def copyStructure = {
-    val newModel = new FullyConnectedNNModel(hiddenLayers.map(_.copyStructure), outputLayer.copyStructure, regularizer)
+  def copyStructure: FullyConnectedNNModel = {
+    val newModel = new FullyConnectedNNModel(hiddenLayers.map(_.copyStructure), outputLayer.copyStructure.asInstanceOf[ClassicLayer], regularizer)
     newModel
   }
 }

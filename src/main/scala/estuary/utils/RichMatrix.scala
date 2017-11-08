@@ -3,6 +3,7 @@ package estuary.utils
 import java.io.{File, PrintWriter}
 
 import breeze.linalg.DenseMatrix
+import estuary.components.layers.ConvLayer.RichImageFeature
 
 import scala.io.Source
 
@@ -30,6 +31,14 @@ class RichMatrix(data: Array[Double], nRows: Int, nCols: Int) {
 object RichMatrix {
   def apply(data: Array[Double], nRows: Int, nCols: Int): RichMatrix = {
     new RichMatrix(data, nRows, nCols)
+  }
+
+  def create(a: Seq[RichImageFeature]): RichMatrix = {
+    val m = DenseMatrix.zeros[Double](a.size, a.head.data.length)
+    for ((r, i) <- a.zipWithIndex) {
+      m(i, ::) := r.toDenseVector.t
+    }
+    RichMatrix(m.data, m.rows, m.cols)
   }
 
   def read(path: String): RichMatrix = {

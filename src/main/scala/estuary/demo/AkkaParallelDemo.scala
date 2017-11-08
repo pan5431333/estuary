@@ -1,6 +1,7 @@
 package estuary.demo
 
-import estuary.components.layers.{DropoutLayer, ReluLayer, SoftmaxLayer}
+import estuary.components.layers.ConvLayer.{ConvSize, Filter}
+import estuary.components.layers.{DropoutLayer, ReluConvLayer, ReluLayer, SoftmaxLayer}
 import estuary.components.optimizer.{AdamAkkaParallelOptimizer, AdamOptimizer, DecentralizedAdamAkkaParallelOptimizer}
 import estuary.data.GasCensorDataReader
 import estuary.model.{FullyConnectedNNModel, Model}
@@ -10,10 +11,10 @@ import estuary.model.{FullyConnectedNNModel, Model}
   */
 object AkkaParallelDemo extends App{
   val hiddenLayers = List(
+    ReluConvLayer(Filter(size = 3, pad = 0, stride = 2, oldChannel = 4, newChannel = 8), preConvSize = ConvSize(4, 8, 4)),
     ReluLayer(numHiddenUnits = 128),
-    DropoutLayer(0.1),
     ReluLayer(numHiddenUnits = 64))
-  val outputLayer = SoftmaxLayer()
+  val outputLayer = SoftmaxLayer(6)
   val nnModel = new FullyConnectedNNModel(hiddenLayers, outputLayer, None)
 
 //  val (feature, label) = new GasCensorDataReader().read("/Users/mengpan/Downloads/NewDataset/training.*")

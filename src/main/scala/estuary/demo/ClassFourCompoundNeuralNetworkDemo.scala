@@ -36,7 +36,7 @@ object ClassFourCompoundNeuralNetworkDemo extends App {
   val hiddenLayers = List(
     ReluLayer(numHiddenUnits = 128),
     ReluLayer(numHiddenUnits = 64))
-  val outputLayer = SoftmaxLayer()
+  val outputLayer = SoftmaxLayer(6)
   val nnModel = new FullyConnectedNNModel(hiddenLayers, outputLayer, None)
 
 //  //Test for performance improved by distributed algorithms

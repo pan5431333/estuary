@@ -5,7 +5,7 @@ import java.io.FileWriter
 import breeze.linalg.{DenseMatrix, DenseVector, max, sum}
 import breeze.numerics.log
 import estuary.components.initializer.{HeInitializer, WeightsInitializer}
-import estuary.components.layers.Layer
+import estuary.components.layers.{ClassicLayer, Layer}
 import estuary.components.optimizer.{AdamOptimizer, Optimizer}
 import estuary.components.regularizer.Regularizer
 import estuary.utils.PlotUtils
@@ -15,8 +15,8 @@ import scala.collection.mutable.ArrayBuffer
 trait Model[T] extends Serializable{
   val regularizer: Option[Regularizer]
 
-  var hiddenLayers: Seq[Layer]
-  var outputLayer: Layer
+  val hiddenLayers: Seq[Layer]
+  val outputLayer: ClassicLayer
   var costHistory: ArrayBuffer[Double]
   var params: T
   var labelsMapping: Vector[Int]
