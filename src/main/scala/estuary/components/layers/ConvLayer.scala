@@ -175,10 +175,10 @@ object ConvLayer {
     }
 
     def fromDenseMatrix(m: DenseMatrix[Double]): Unit = {
-      val (ws, bs) = (0 until m.cols).map { j =>
+      val (ws, bs) = (0 until m.cols).par.map { j =>
         val data = m(::, j).copy
         (w(j).update(data(0 until data.length - 1).copy.data), data.data.last)
-      }.unzip
+      }.seq.unzip
       w = ws
       b = bs.toArray
     }
@@ -295,9 +295,9 @@ object ConvLayer {
         newData(index)
       }
 
-      for {(h, hi) <- heightRange.zipWithIndex
-           (w, wi) <- widthRange.zipWithIndex
-           (c, ci) <- channelRange.zipWithIndex
+      for {(h, hi) <- heightRange.zipWithIndex.par
+           (w, wi) <- widthRange.zipWithIndex.par
+           (c, ci) <- channelRange.zipWithIndex.par
       } {
         update(h, w, c, getNewDataIndex(hi, wi, ci))
       }
@@ -311,9 +311,9 @@ object ConvLayer {
         newData(index)
       }
 
-      for {(h, hi) <- heightRange.zipWithIndex
-           (w, wi) <- widthRange.zipWithIndex
-           (c, ci) <- channelRange.zipWithIndex
+      for {(h, hi) <- heightRange.zipWithIndex.par
+           (w, wi) <- widthRange.zipWithIndex.par
+           (c, ci) <- channelRange.zipWithIndex.par
       } {
         +=(h, w, c, getNewDataIndex(hi, wi, ci))
       }
