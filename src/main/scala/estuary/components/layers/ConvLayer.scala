@@ -101,6 +101,7 @@ trait ConvLayer extends Layer with Activator {
       val yData = yPrevious(i, ::).t.copy.data
       val dYData = dYPrevious(i)
       val yP = new RichImageFeature(yData, preConvSize)
+      val newYP = if (filter.pad == 0) yP else yP.pad(filter.pad, filter.pad, 0, 0.0)
       for {c <- 0 until outputConvSize.channel
            w <- 0 until outputConvSize.width
            h <- 0 until outputConvSize.height
@@ -110,7 +111,7 @@ trait ConvLayer extends Layer with Activator {
         val oldChannelRange = 0 until preConvSize.channel
 
         dYData.+=(heightRange, widthRange, oldChannelRange, (filter.w(c) * grad.get(h, w, c)).data)
-        filterGrads.addDW(c, (yP.slice(heightRange, widthRange, oldChannelRange) * grad.get(h, w, c)).data)
+        filterGrads.addDW(c, (newYP.slice(heightRange, widthRange, oldChannelRange) * grad.get(h, w, c)).data)
         filterGrads.addDB(c, grad.get(h, w, c))
       }
     }
@@ -120,7 +121,7 @@ trait ConvLayer extends Layer with Activator {
 
   def convolve(feature: ConvLayer.RichImageFeature, filter: ConvLayer.Filter): RichImageFeature = {
     val outputConvSize = calConvSize(feature.convSize, filter)
-    val newFeature = if (filter.pad == 0) feature else feature //todo padding feature
+    val newFeature = if (filter.pad == 0) feature else feature.pad(filter.pad, filter.pad, 0, 0.0)
     val data = (for {c <- (0 until outputConvSize.channel).par
                      w <- (0 until outputConvSize.width).par
                      h <- (0 until outputConvSize.height).par
@@ -327,6 +328,13 @@ object ConvLayer {
 
     def *(d: Double): RichImageFeature = {
       new RichImageFeature(data.par.map(_ * d).seq.toArray, convSize)
+    }
+
+    def pad(h: Int, w: Int, c: Int, value: Double): RichImageFeature = {
+      val newConvSize = ConvSize(convSize.height + 2*h, convSize.width + 2*w, convSize.channel+2*c)
+      val padded = RichImageFeature(DenseVector.ones[Double](newConvSize.dataLength).data, newConvSize) * value
+      padded.update(h until convSize.height + h, w until convSize.width + w, c until convSize.channel + c, data)
+      padded
     }
 
     def toDenseVector: DenseVector[Double] = {
