@@ -11,7 +11,8 @@ import estuary.model.{FullyConnectedNNModel, Model}
   */
 object AkkaParallelDemo extends App{
   val hiddenLayers = List(
-    ReluConvLayer(Filter(size = 3, pad = 0, stride = 1, oldChannel = 4, newChannel = 8), preConvSize = ConvSize(4, 8, 4)),
+    ReluConvLayer(Filter(size = 2, pad = 0, stride = 1, oldChannel = 4, newChannel = 8), preConvSize = ConvSize(4, 8, 4)),
+    ReluConvLayer(Filter(size = 1, pad = 0, stride = 1, oldChannel = 8, newChannel = 8), preConvSize = ConvSize(3, 7, 8)),
     ReluLayer(numHiddenUnits = 64))
   val outputLayer = SoftmaxLayer(6)
   val nnModel = new FullyConnectedNNModel(hiddenLayers, outputLayer, None)

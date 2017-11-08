@@ -256,6 +256,10 @@ object ConvLayer {
     require(data.length == convSize.height * convSize.width * convSize.channel, s"unmatched data and convSize (${data.length}, $convSize)")
     val size: Int = convSize.height * convSize.width * convSize.channel
 
+    private def getDataIndex = (h: Int, w: Int, c: Int) => {
+      c * (convSize.height * convSize.width)+ w * convSize.height + h
+    }
+
     def slice(heightRange: Range, widthRange: Range, channelRange: Range): RichImageFeature = {
       val data = (for {h <- heightRange.par
                        w <- widthRange.par
@@ -267,11 +271,11 @@ object ConvLayer {
 
     def get(height: Int, width: Int, channel: Int): Double = {
       require(convSize.contains(height, width, channel), s"(height = $height, width = $width, channel = $channel) out of index bound")
-      data(channel * (convSize.width * convSize.height) + width * convSize.height + height)
+      data(getDataIndex(height, width, channel))
     }
 
     def update(height: Int, width: Int, channel: Int, newVal: Double): Unit = {
-      data(channel * convSize.channel + width * convSize.height + height) = newVal
+      data(getDataIndex(height, width, channel)) = newVal
     }
 
     def update(newData: Array[Double]): RichImageFeature = {
@@ -280,7 +284,7 @@ object ConvLayer {
     }
 
     def +=(height: Int, width: Int, channel: Int, newVal: Double): Unit = {
-      data(channel * convSize.channel + width * convSize.height + height) += newVal
+      data(getDataIndex(height, width, channel)) += newVal
     }
 
     def +=(newData: Array[Double]): Unit = {
