@@ -292,7 +292,7 @@ object ConvLayer {
       require(heightRange.size * widthRange.size * channelRange.size == newData.length, s"Unmatched index range and data's length: (${heightRange.size * widthRange.size * channelRange.size}, ${newData.length})")
 
       def getNewDataIndex(h: Int, w: Int, c: Int): Double = {
-        val index = c * channelRange.size + w * widthRange.size + h
+        val index = c * (heightRange.size * widthRange.size)+ w * heightRange.size + h
         newData(index)
       }
 
@@ -308,7 +308,7 @@ object ConvLayer {
       require(heightRange.size * widthRange.size * channelRange.size == newData.length, s"Unmatched index range and data's length: (${heightRange.size * widthRange.size * channelRange.size}, ${newData.length})")
 
       def getNewDataIndex(h: Int, w: Int, c: Int): Double = {
-        val index = c * channelRange.size + w * widthRange.size + h
+        val index = c * (heightRange.size * widthRange.size)+ w * heightRange.size + h
         newData(index)
       }
 
