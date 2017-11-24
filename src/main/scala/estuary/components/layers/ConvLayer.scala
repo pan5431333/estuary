@@ -199,7 +199,7 @@ object ConvLayer {
       val or = (er / outSize.width) * filter.stride + ecol / filter.size
       val ocol = (er % outSize.width) * filter.stride + ecol % filter.size
       val colindex = colIndex(or, ocol, echannel)(pre.height, pre.width)
-      res(en, colindex) = dYPrevious(r, c)
+      res(en, colindex) += dYPrevious(r, c)
     }
 
     res

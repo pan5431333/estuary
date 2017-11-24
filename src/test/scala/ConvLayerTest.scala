@@ -1,7 +1,7 @@
 import breeze.linalg.DenseMatrix
 import estuary.components.initializer.OneInitializer
 import org.scalatest.FunSuite
-import estuary.components.layers.{ConvLayer, ReluConvLayer}
+import estuary.components.layers.{ConvLayer, PoolingLayer, ReluConvLayer}
 import estuary.components.layers.ConvLayer.{ConvSize, Filter}
 import estuary.model.Model
 
@@ -103,8 +103,32 @@ class ConvLayerTest extends FunSuite {
 
     val (dYP, dF) = layer.backward(dY, None)
 
-//    assert(dYP === DenseMatrix.create[Double](4, 4, Array(13.0, 25.0, 17.0, 29.0, 13.0, 25.0, 17.0, 29.0, 13.0, 25.0, 17.0, 29.0)))
-    assert(dF === DenseMatrix.create[Double](5, 3, Array(35,65,45,75,10,83,161,109,187,26,131,257,173,299,42).map(_.toDouble)))
+    //    assert(dYP === DenseMatrix.create[Double](4, 4, Array(13.0, 25.0, 17.0, 29.0, 13.0, 25.0, 17.0, 29.0, 13.0, 25.0, 17.0, 29.0)))
+    assert(dF === DenseMatrix.create[Double](5, 3, Array(35, 65, 45, 75, 10, 83, 161, 109, 187, 26, 131, 257, 173, 299, 42).map(_.toDouble)))
+  }
+
+  test("Test for pooling layer forward with 1 3*3*3 image") {
+    val preConvSize = ConvSize(3, 3, 3)
+    val layer = PoolingLayer(2, 1, 0, PoolingLayer.MAX_POOL, preConvSize)
+    val yP = DenseMatrix.create[Double](1, 27, Array(1,4,7,2,5,8,3,6,9,1,4,7,2,5,8,3,6,9,1,4,7,2,5,8,3,6,9).map(_.toDouble))
+    val yC = layer.forward(yP)
+    println(yC)
+  }
+
+  test("Test for pooling layer forward with 2 3*3 image") {
+    val preConvSize = ConvSize(3, 3, 1)
+    val layer = PoolingLayer(2, 1, 0, PoolingLayer.MAX_POOL, preConvSize)
+    val yP = DenseMatrix.create[Double](2, 9, Array(1,1,4,4,7,7,2,2,5,5,8,8,3,3,6,6,9,9).map(_.toDouble))
+    val yC = layer.forward(yP)
+    assert(yC === DenseMatrix.create[Double](2, 4, Array(5,5,6,6,8,8,9,9).map(_.toDouble)))
+  }
+
+  test("Test for pooling layer forward with 2 3*3*2 image") {
+    val preConvSize = ConvSize(3, 3, 2)
+    val layer = PoolingLayer(2, 1, 0, PoolingLayer.MAX_POOL, preConvSize)
+    val yP = DenseMatrix.create[Double](2, 18, Array(1,1,4,4,7,7,2,2,5,5,8,8,3,3,6,6,9,9,4,5,4,4,8,9,2,11,5,32,8,8,45,3,1,-1,99,911).map(_.toDouble))
+    val yC = layer.forward(yP)
+    assert(yC === DenseMatrix.create[Double](2, 8, Array(5,5,6,6,8,8,9,9,5,5,6,6,8,8,9,9).map(_.toDouble)))
   }
 
 }
