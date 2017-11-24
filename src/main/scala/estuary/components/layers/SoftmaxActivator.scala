@@ -11,7 +11,7 @@ trait SoftmaxActivator extends Activator{
     * @param zCurrent of shape (numExamples, numHiddenUnitsOutputLayer)
     * @return of shape (numExamples, output)
     */
-  protected def activationFuncEval(zCurrent: DenseMatrix[Double]):
+  protected def activate(zCurrent: DenseMatrix[Double]):
   DenseMatrix[Double] = {
 
     val res = DenseMatrix.zeros[Double](zCurrent.rows, zCurrent.cols)
@@ -24,7 +24,7 @@ trait SoftmaxActivator extends Activator{
   /**
     * Since backward has been overriden, this method will no longer be needed
     */
-  protected def activationGradEval(zCurrent: DenseMatrix[Double]):
+  protected def activateGrad(zCurrent: DenseMatrix[Double]):
   DenseMatrix[Double] = ???
 
   private def softMaxScale(_x: DenseVector[Double]): DenseVector[Double] = {

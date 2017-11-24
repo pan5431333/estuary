@@ -149,7 +149,7 @@ trait ClassicLayer extends Layer with Activator{
 
     val numExamples = yPrevious.rows
     z = yPrevious * w + DenseVector.ones[Double](numExamples) * b.t
-    this.activationFuncEval(z)
+    this.activate(z)
   }
 
   private def forwardWithBatchNorm(yPrevious: DenseMatrix[Double]): DenseMatrix[Double] = {
@@ -166,7 +166,7 @@ trait ClassicLayer extends Layer with Activator{
     currentStddevZ = stddevVec
 
     zDelta = zNorm *:* (oneVector * beta.t) + oneVector * alpha.t
-    activationFuncEval(zDelta)
+    activate(zDelta)
   }
 
   private def forwardWithBatchNormForPrediction(yPrevious: DenseMatrix[Double]): DenseMatrix[Double] = {
@@ -182,7 +182,7 @@ trait ClassicLayer extends Layer with Activator{
     }
 
     zDelta = zNorm *:* (oneVector * beta.t) + oneVector * alpha.t
-    activationFuncEval(zDelta)
+    activate(zDelta)
   }
 
   private def normalize(z: DenseMatrix[Double]): (DenseMatrix[Double], DenseVector[Double], DenseVector[Double]) = {
@@ -208,7 +208,7 @@ trait ClassicLayer extends Layer with Activator{
     val numExamples = dYCurrent.rows
     val n = numExamples.toDouble
 
-    val dZ = dYCurrent *:* activationGradEval(z)
+    val dZ = dYCurrent *:* activateGrad(z)
     val dWCurrent = regularizer match {
       case None => yPrevious.t * dZ / n
       case Some(regu) => yPrevious.t * dZ / n + regu.getReguCostGrad(w)
@@ -226,7 +226,7 @@ trait ClassicLayer extends Layer with Activator{
     val n = numExamples.toDouble
     val oneVector = DenseVector.ones[Double](numExamples)
 
-    val dZDelta = dYCurrent *:* activationFuncEval(zDelta)
+    val dZDelta = dYCurrent *:* activate(zDelta)
     val dZNorm = dZDelta *:* (oneVector * beta.t)
     val dAlpha = dZDelta.t * oneVector / n
     val dBeta = (dZDelta *:* zNorm).t * oneVector / n

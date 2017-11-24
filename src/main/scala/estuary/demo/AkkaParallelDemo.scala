@@ -12,14 +12,15 @@ import estuary.model.{FullyConnectedNNModel, Model}
 object AkkaParallelDemo extends App{
   val hiddenLayers = List(
     ReluConvLayer(Filter(size = 2, pad = 0, stride = 1, oldChannel = 4, newChannel = 8), preConvSize = ConvSize(4, 8, 4)),
-    ReluConvLayer(Filter(size = 1, pad = 0, stride = 1, oldChannel = 8, newChannel = 8), preConvSize = ConvSize(3, 7, 8)),
-    ReluLayer(numHiddenUnits = 64))
+    ReluConvLayer(Filter(size = 1, pad = 0, stride = 1, oldChannel = 8, newChannel = 16), preConvSize = ConvSize(3, 7, 8)),
+    ReluConvLayer(Filter(size = 1, pad = 0, stride = 1, oldChannel = 16, newChannel = 32), preConvSize = ConvSize(3, 7, 16)),
+    ReluLayer(numHiddenUnits = 160))
   val outputLayer = SoftmaxLayer(6)
   val nnModel = new FullyConnectedNNModel(hiddenLayers, outputLayer, None)
 
 //  val (feature, label) = new GasCensorDataReader().read("/Users/mengpan/Downloads/NewDataset/training.*")
 
-  val trainedModel = nnModel.multiNodesParTrain(AdamAkkaParallelOptimizer(learningRate = 0.001))
+  val trainedModel = nnModel.multiNodesParTrain(AdamAkkaParallelOptimizer(miniBatchSize = 64, learningRate = 0.001))
 //  val trainedModel = nnModel.train(feature, label, AdamOptimizer())
 
   val (testFeature, testLabel) = new GasCensorDataReader().read("""D:\\Users\\m_pan\\Downloads\\Dataset\\Dataset\\test.*""")

@@ -10,11 +10,11 @@ class DropoutLayer(val numHiddenUnits: Int, val batchNorm: Boolean, val dropoutR
 
   override def forward(yPrevious: DenseMatrix[Double]): DenseMatrix[Double] = {
     this.yPrevious = yPrevious
-    activationFuncEval(yPrevious)
+    activate(yPrevious)
   }
 
   override def backward(dYCurrent: DenseMatrix[Double], regularizer: Option[Regularizer]): (DenseMatrix[Double], DenseMatrix[Double]) = {
-    val filterMat = activationGradEval(yPrevious)
+    val filterMat = activateGrad(yPrevious)
 
     (dYCurrent *:* filterMat, DenseMatrix.zeros[Double](previousHiddenUnits + 1, numHiddenUnits))
   }
