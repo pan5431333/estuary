@@ -2,7 +2,7 @@ package estuary.model
 
 import breeze.linalg.DenseMatrix
 import estuary.components.initializer.WeightsInitializer
-import estuary.components.layers.{ClassicLayer, ConvLayer, DropoutLayer, Layer}
+import estuary.components.layers._
 import estuary.components.optimizer.{AkkaParallelOptimizer, Optimizer, ParallelOptimizer}
 import estuary.components.regularizer.Regularizer
 
@@ -24,6 +24,7 @@ class FullyConnectedNNModel(override val hiddenLayers: Seq[Layer],
     hiddenLayers.foldLeft(inputDim) {
       case (previousDim, layer: ClassicLayer) => layer.setPreviousHiddenUnits(previousDim); layer.numHiddenUnits
       case (_, layer: ConvLayer) => layer.numHiddenUnits
+      case (_, layer: PoolingLayer) => layer.numHiddenUnits
     }
     params = allLayers.map { layer => layer.init(initializer) }
     params

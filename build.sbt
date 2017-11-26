@@ -21,8 +21,9 @@ libraryDependencies ++= Seq(
   "org.slf4j" % "slf4j-log4j12" % "1.7.21"
 )
 
+
 libraryDependencies += "org.scalatest" % "scalatest_2.12" % "3.0.0"
 
 
 // https://mvnrepository.com/artifact/org.deeplearning4j/deeplearning4j-core
-libraryDependencies += "org.deeplearning4j" % "deeplearning4j-core" % "0.9.1"
+//libraryDependencies += "org.deeplearning4j" % "deeplearning4j-core" % "0.9.1"

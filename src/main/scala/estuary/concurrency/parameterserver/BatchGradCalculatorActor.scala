@@ -58,7 +58,7 @@ class BatchGradCalculatorActor[M <: AnyRef, O <: AnyRef](filePath: String,
   private def iter(params: O): Unit = {
     val cost = calculateCost(opToModel(params))
     val printCostUnit = math.max(currentFeature.rows / this.miniBatchSize / 5, 10)
-    ParallelOptimizer.printCostInfo(cost, iterTime, miniBatchIndex, printCostUnit, log)
+    ParallelOptimizer.printAkkaCostInfo(cost, iterTime, miniBatchIndex, printCostUnit, log)
     if (miniBatchIndex % printCostUnit == 0) manager ! CostHistory(cost)
     grads = calculateGrads(opToModel(params))
   }

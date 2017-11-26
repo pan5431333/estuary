@@ -131,4 +131,16 @@ class ConvLayerTest extends FunSuite {
     assert(yC === DenseMatrix.create[Double](2, 8, Array(5,5,6,6,8,8,9,9,5,5,6,6,8,8,9,9).map(_.toDouble)))
   }
 
+  test("Test for pooling layer backward with 1 3*3*3 image") {
+    val preConvSize = ConvSize(3, 3, 3)
+    val layer = PoolingLayer(2, 1, 0, PoolingLayer.MAX_POOL, preConvSize)
+    val yP = DenseMatrix.create[Double](1, 27, Array(1,4,7,2,5,8,3,6,9,1,4,7,2,5,8,3,6,9,1,4,7,2,5,8,3,6,9).map(_.toDouble))
+    val yC = layer.forward(yP)
+    println(yC)
+
+    val (dYP, dW) = layer.backward(yC, None)
+    println(dYP)
+    println(dW)
+  }
+
 }

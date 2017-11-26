@@ -1,10 +1,9 @@
 package estuary.demo
 
 import breeze.stats.{mean, stddev}
-import estuary.components.layers.{DropoutLayer, ReluLayer, SoftmaxLayer}
-import estuary.components.optimizer.{AdamAkkaParallelOptimizer, AdamOptimizer}
-import estuary.demo.AkkaParallelDemo.{testLabel, yPredicted}
-import estuary.helper.{CatDataHelper, GasCensorDataHelper}
+import estuary.components.layers.{ReluLayer, SoftmaxLayer}
+import estuary.components.optimizer.AdamOptimizer
+import estuary.helper.GasCensorDataHelper
 import estuary.model.{FullyConnectedNNModel, Model}
 import estuary.utils.NormalizeUtils
 
@@ -17,7 +16,7 @@ object ClassFourCompoundNeuralNetworkDemo extends App {
   //D:\Users\m_pan\Downloads\Dataset\Dataset\\
   ///Users/mengpan/Downloads/Dataset/
   val data = GasCensorDataHelper.getAllData("/Users/mengpan/Downloads/Dataset/")
-//    val data = CatDataHelper.getAllCatData
+  //    val data = CatDataHelper.getAllCatData
 
   //归一化数据特征矩阵
   val normalizedCatData = NormalizeUtils.normalizeBy(data) { col =>
@@ -39,21 +38,21 @@ object ClassFourCompoundNeuralNetworkDemo extends App {
   val outputLayer = SoftmaxLayer(6)
   val nnModel = new FullyConnectedNNModel(hiddenLayers, outputLayer, None)
 
-//  //Test for performance improved by distributed algorithms
-//  val adamTime = Model.evaluationTime(nnModel.train(trainingFeature, trainingLabel, AkkaAdamOptimizer(iteration = 30)))
-//  val distributedAdamTime = Model.evaluationTime(nnModel.train(trainingFeature, trainingLabel, DistributedAdamOptimizer(iteration = 30)))
-//  println("adamTime: " + adamTime + "ms")
-//  println("distributedAdamTime: " + distributedAdamTime + "ms")
+  //  //Test for performance improved by distributed algorithms
+  //  val adamTime = Model.evaluationTime(nnModel.train(trainingFeature, trainingLabel, AkkaAdamOptimizer(iteration = 30)))
+  //  val distributedAdamTime = Model.evaluationTime(nnModel.train(trainingFeature, trainingLabel, DistributedAdamOptimizer(iteration = 30)))
+  //  println("adamTime: " + adamTime + "ms")
+  //  println("distributedAdamTime: " + distributedAdamTime + "ms")
 
   //用训练集的数据训练算法
 
-//  The train accuracy of this model is: 0.994608195542775
-//  The test accuracy of this model is: 0.6409058231488138
+  //  The train accuracy of this model is: 0.994608195542775
+  //  The test accuracy of this model is: 0.6409058231488138
   val trainedModel = nnModel.train(trainingFeature, trainingLabel, AdamOptimizer())
 
-//  The train accuracy of this model is: 0.9966750539180446
-//  The test accuracy of this model is: 0.6229331416247305
-//  val trainedModel = nnModel.train(trainingFeature, trainingLabel, DistributedAdamOptimizer(iteration = 66, nTasks = 4))
+  //  The train accuracy of this model is: 0.9966750539180446
+  //  The test accuracy of this model is: 0.6229331416247305
+  //  val trainedModel = nnModel.train(trainingFeature, trainingLabel, DistributedAdamOptimizer(iteration = 66, nTasks = 4))
 
   //测试算法获得算法优劣指标
   val yPredicted = trainedModel.predictToVector(testFeature)

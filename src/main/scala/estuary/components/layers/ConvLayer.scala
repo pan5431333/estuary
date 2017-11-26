@@ -135,8 +135,8 @@ object ConvLayer {
     val reshapedRow = N * outSize.height * outSize.width
     val reshapedCol = filter.size * filter.size * filter.oldChannel
     val res = DenseMatrix.zeros[Double](reshapedRow, reshapedCol)
-    for {r <- 0 until reshapedRow
-         c <- 0 until reshapedCol
+    for {r <- (0 until reshapedRow).par
+         c <- (0 until reshapedCol).par
     } {
       val en = r / (outSize.height * outSize.width)
       val er = r % (outSize.height * outSize.width)
@@ -189,8 +189,8 @@ object ConvLayer {
 
     val res = DenseMatrix.zeros[Double](N, pre.height * pre.width * pre.channel)
 
-    for {r <- 0 until dYPrevious.rows
-         c <- 0 until dYPrevious.cols
+    for {r <- (0 until dYPrevious.rows).par
+         c <- (0 until dYPrevious.cols).par
     } {
       val en = r / (outSize.height * outSize.width)
       val er = r % (outSize.height * outSize.width)

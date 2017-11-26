@@ -87,4 +87,10 @@ object ParallelOptimizer {
       logger.info("Iteration: " + iterTime + "|Thread: " + Thread.currentThread().getName + "|=" + "=" * (miniBatchTime / printCostUnit) + ">> Cost: " + cost)
     }
   }
+
+  def printAkkaCostInfo(cost: Double, iterTime: Int, miniBatchTime: Int, printCostUnit: Int, logger: LoggingAdapter): Unit = {
+    if (miniBatchTime % printCostUnit == 0) {
+      logger.info("Iteration: " + iterTime + "|=" + "=" * (miniBatchTime / printCostUnit) + ">> Cost: " + cost)
+    }
+  }
 }

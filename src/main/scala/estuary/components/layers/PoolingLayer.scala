@@ -23,7 +23,7 @@ class PoolingLayer(val poolSize: Int, val stride: Int, val pad: Int, val poolTyp
     setPreConvSize(ConvSize(preHeight, preWidth, preChannel))
   }
 
-  override val numHiddenUnits: Int = 0
+  lazy override val numHiddenUnits: Int = outputConvSize.dataLength
 
   override def copyStructure: Layer = PoolingLayer(poolSize, stride, pad, poolType, preConvSize)
 
@@ -40,7 +40,7 @@ class PoolingLayer(val poolSize: Int, val stride: Int, val pad: Int, val poolTyp
       resRow = yPChannelCol.rows
       maskMatrix(c) = DenseMatrix.zeros[Double](yPChannelCol.rows, yPChannelCol.cols)
 
-      for (i <- 0 until resRow) yield {
+      for (i <- (0 until resRow).par) yield {
         val target = poolType.pool(yPChannelCol(i, ::).t)
         var maskVector = yPChannelCol(i, ::).t.map(d => if (d == target) 1.0 else 0.0)
         maskVector = maskVector / sum(maskVector)
@@ -65,20 +65,17 @@ class PoolingLayer(val poolSize: Int, val stride: Int, val pad: Int, val poolTyp
       mask *:* dZChannelMatrix
     }
 
-    val gradsMatrix = masks.reduceLeft{ case (total, mask) => DenseMatrix.horzcat(total, mask)}
+    val gradsMatrix = masks.reduceLeft[DenseMatrix[Double]]{ case (total, mask) => DenseMatrix.horzcat(total, mask)}
 
     val grads = ConvLayer.colGrad2Im(gradsMatrix, preConvSize, filter)
-    (dYCurrent, dYCurrent)
+    (grads, DenseMatrix.zeros[Double](1,1))
   }
 
-  override def init(initializer: WeightsInitializer): DenseMatrix[Double] =
-    throw new UnsupportedOperationException("Call init() on pooling layer")
+  override def init(initializer: WeightsInitializer): DenseMatrix[Double] = DenseMatrix.zeros[Double](1,1)
 
-  override def getReguCost(regularizer: Option[Regularizer]): Double =
-    throw new UnsupportedOperationException("Call getReguCost() on pooling layer")
+  override def getReguCost(regularizer: Option[Regularizer]): Double = 0.0
 
-  override def setParam(param: DenseMatrix[Double]): Unit =
-    throw new UnsupportedOperationException("Call setParam() on pooling layer")
+  override def setParam(param: DenseMatrix[Double]): Unit = {}
 }
 
 object PoolingLayer {
