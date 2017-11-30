@@ -32,6 +32,12 @@ class AdamOptimizer(val iteration: Int,
         val cost = forwardFunc(batchFeature, batchLabel, preBatchParams.modelParam)
         val grads = backwardFunc(batchLabel, preBatchParams.modelParam)
 
+        if (iterTime == 0 && miniBatchTime == 0) {
+          logger.info("Starting checking correctness of gradients...")
+          Optimizer.checkForGradients(preBatchParams.modelParam, grads, forwardFunc(batchFeature, batchLabel, _), verbose = false)
+          logger.info("Gradient checking passed")
+        }
+
         MiniBatchable.printCostInfo(cost, iterTime, miniBatchTime, printMiniBatchUnit, logger)
         addCostHistory(cost)
 

@@ -40,6 +40,13 @@ class GDOptimizer(val iteration: Int, val learningRate: Double, val paramSavePat
       addCostHistory(cost)
 
       val grads = backwardFunc(label, preParams)
+
+      if (iterTime == 0) {
+        logger.info("Starting checking correctness of gradients...")
+        Optimizer.checkForGradients(preParams, grads, forwardFunc(feature, label, _), verbose = false)
+        logger.info("Gradient checking passed")
+      }
+
       updateFunc(preParams, grads)
     }
   }

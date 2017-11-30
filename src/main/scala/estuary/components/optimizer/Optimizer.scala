@@ -4,6 +4,7 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 
 import breeze.linalg.DenseMatrix
+import breeze.numerics.abs
 import estuary.components.Exception.GradientExplosionException
 import estuary.model.Model
 import org.slf4j.Logger
@@ -76,5 +77,28 @@ trait Optimizer extends Serializable{
 object Optimizer {
   def printCostInfo(cost: Double, iterTime: Int, logger: Logger): Unit = {
     logger.info("Iteration: " + iterTime + "| Cost: " + cost)
+  }
+
+  def checkForGradients(param: Seq[DenseMatrix[Double]],
+                        grads: Seq[DenseMatrix[Double]],
+                        func: Seq[DenseMatrix[Double]] => Double,
+                        epsilon: Double = 1e-10,
+                        precision: Double = 1e-3,
+                        verbose: Boolean = true): Unit = {
+    for {n <- param.indices
+         i <- 0 until param(n).rows
+         j <- 0 until param(n).cols
+    } {
+      param(n)(i, j) += epsilon
+      val cost1 = func(param)
+      param(n)(i, j) -= 2.0 * epsilon
+      val cost2 = func(param)
+      val grad = (cost1 - cost2) / (2.0 * epsilon)
+      assert(abs(grad - grads(n)(i, j)) < precision, s"Correct gradient for ${n}th param in ${i}th row and ${j}th col is: $grad, while your gradient is: ${grads(n)(i, j)}")
+      if (verbose) {
+        println(s"Numeric gradient for ${n}th param in ${i}th row and ${j}th col is: $grad")
+        println(s"Your gradient for ${n}th param in ${i}th row and ${j}th col is: ${grads(n)(i, j)}")
+      }
+    }
   }
 }

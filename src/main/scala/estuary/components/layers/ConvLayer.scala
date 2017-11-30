@@ -1,11 +1,9 @@
 package estuary.components.layers
 
 import breeze.linalg.{DenseMatrix, DenseVector}
-import breeze.stats.distributions.Rand
 import estuary.components.initializer.WeightsInitializer
-import estuary.components.layers.ConvLayer.{ConvSize, Filter, FilterGrad, RichImageFeature, calConvSize}
+import estuary.components.layers.ConvLayer.{ConvSize, Filter, calConvSize}
 import estuary.components.regularizer.Regularizer
-import estuary.implicits._
 
 
 trait ConvLayer extends Layer with Activator {
@@ -26,7 +24,6 @@ trait ConvLayer extends Layer with Activator {
   protected var y: DenseMatrix[Double] = _
   protected var filterMatrix: DenseMatrix[Double] = _
   protected var filterBias: DenseVector[Double] = _
-  protected var numExamples: Int = 0
 
   def setPreConvSize(pre: ConvSize): this.type = {
     this.preConvSize = pre
@@ -50,7 +47,6 @@ trait ConvLayer extends Layer with Activator {
   override def forward(yPrevious: DenseMatrix[Double]): DenseMatrix[Double] = {
     checkInputValidity(yPrevious, preConvSize)
 
-    this.numExamples = yPrevious.rows
     this.yPreviousIm2Col = ConvLayer.im2col(yPrevious, preConvSize, filter)
 
     val filterWeightsAndBias = filter.toIm2Col
@@ -104,8 +100,9 @@ trait ConvLayer extends Layer with Activator {
     val dZ = dYCurrent *:* activateGrad(z)
     val dZCol = ConvLayer.imGrad2Col(dZ, outputConvSize)
     val dYPrevious = dZCol * this.filterMatrix.t
-    val dW = this.yPreviousIm2Col.t * dZCol
-    val dB = (dZCol.t * DenseVector.ones[Double](dZCol.rows)).toDenseMatrix
+    val n = dYCurrent.rows.toDouble
+    val dW = this.yPreviousIm2Col.t * dZCol / n
+    val dB = (dZCol.t * DenseVector.ones[Double](dZCol.rows)).toDenseMatrix / n
     val grads = DenseMatrix.vertcat(dW, dB)
     val dYPreviousIm = ConvLayer.colGrad2Im(dYPrevious, preConvSize, filter)
 
@@ -206,9 +203,9 @@ object ConvLayer {
   }
 
   case class Filter(size: Int, pad: Int, stride: Int, oldChannel: Int, newChannel: Int) {
-    var w: Seq[RichImageFeature] = (0 until newChannel).par.map(_ => RichImageFeature.zeros(size, size, oldChannel)).seq
-    var b: Array[Double] = (0 until newChannel).map(_ => 0.0).toArray
-    val matrixShape: (Int, Int) = (size * size * oldChannel + 1, newChannel)
+    val w: DenseMatrix[Double] = DenseMatrix.zeros[Double](size * size * oldChannel, newChannel)
+    val b: DenseVector[Double] = DenseVector.zeros[Double](newChannel)
+    val matrixShape: (Int, Int) = (w.rows + 1, w.cols)
 
     def init(initializer: WeightsInitializer): this.type = {
       val params = initializer.init(matrixShape._1, matrixShape._2)
@@ -216,96 +213,27 @@ object ConvLayer {
       this
     }
 
-    def update(newFilter: Filter): this.type = {
-      require(this == newFilter, s"update by a filter of different size! ${this} updated by $newFilter")
-      w = newFilter.w
-      b = newFilter.b
-      this
-    }
-
     def toIm2Col: (DenseMatrix[Double], DenseVector[Double]) = {
-      val resW = DenseMatrix.zeros[Double](size * size * oldChannel, newChannel)
-      for (j <- 0 until resW.cols) {
-        resW(::, j) := w(j).toDenseVector
-      }
-
-      val resB = new DenseVector[Double](b)
-      (resW, resB)
+      (w, b)
     }
 
-    /**
-      * Almost identical to toIm2Col, except that w and b are concatenated vertically.
-      * @return
-      */
     def toDenseMatrix: DenseMatrix[Double] = {
-      val res = DenseMatrix.zeros[Double](matrixShape._1, matrixShape._2)
-      for (((w_, b_), j) <- w.zip(b).zipWithIndex.par) {
-        res(0 until w_.size, j) := w_.toDenseVector
-        res(w_.size, j) = b_
-      }
-      res
+      DenseMatrix.vertcat(w, b.toDenseMatrix)
     }
 
     def fromDenseMatrix(m: DenseMatrix[Double]): Unit = {
-      val (ws, bs) = (0 until m.cols).par.map { j =>
-        val data = m(::, j).copy
-        (w(j).update(data(0 until data.length - 1).copy.data), data.data.last)
-      }.seq.unzip
-      w = ws
-      b = bs.toArray
-    }
+      assert(m.rows == matrixShape._1)
+      assert(m.cols == matrixShape._2)
 
-    def ==(that: Filter): Boolean = {
-      size == that.size && pad == that.pad && stride == that.stride && oldChannel == that.oldChannel && newChannel == that.newChannel
+      for (i <- 0 until w.rows) {
+        w(i, ::) := m(i, ::)
+      }
+
+      b := m(w.rows, ::).t
     }
 
     override def toString: String = {
       s"""(size: $size, pad: $pad, stride: $stride, oldChannel: $oldChannel, newChannel: $newChannel)"""
-    }
-  }
-
-  class FilterGrad(filter: Filter) {
-    val size: Int = filter.size
-    val pad: Int = filter.pad
-    val stride: Int = filter.stride
-    val oldChannel: Int = filter.oldChannel
-    val newChannel: Int = filter.newChannel
-    val dW: Seq[RichImageFeature] = (0 until newChannel).par.map(_ => RichImageFeature.zeros(size, size, oldChannel)).seq
-    val dB: Array[Double] = (0 until newChannel).map(_ => 0.0).toArray
-
-    def updateDW(height: Int, width: Int, oldChannel: Int, newChannel: Int, newW: Double): Unit = {
-      dW(newChannel).update(height, width, oldChannel, newW)
-    }
-
-    def addDW(height: Int, width: Int, oldChannel: Int, newChannel: Int, newW: Double): Unit = {
-      dW(newChannel).+=(height, width, oldChannel, newW)
-    }
-
-    def updateDW(newChannel: Int, newData: Array[Double]): Unit = {
-      require(newData.length == dW.head.size, s"newData.length not equal to the filter's range: (${newData.length}, ${dW.head.size})")
-      dW(newChannel) update newData
-    }
-
-    def addDW(newChannel: Int, newData: Array[Double]): Unit = {
-      require(newData.length == dW.head.size, s"newData.length not equal to the filter's range: (${newData.length}, ${dW.head.size})")
-      dW(newChannel) += newData
-    }
-
-    def updateDB(newChannel: Int, newB: Double): Unit = {
-      dB(newChannel) = newB
-    }
-
-    def addDB(newChannel: Int, newB: Double): Unit = {
-      dB(newChannel) += newB
-    }
-
-    def toDenseMatrix: DenseMatrix[Double] = {
-      val res = DenseMatrix.zeros[Double](dW.head.size + 1, dW.size)
-      for (((w_, b_), j) <- dW.zip(dB).zipWithIndex.par) {
-        res(0 until w_.size, j) := w_.toDenseVector
-        res(w_.size, j) = b_
-      }
-      res
     }
   }
 
@@ -322,119 +250,4 @@ object ConvLayer {
 
     override def toString: String = s"""(height: $height, width: $width, channel: $channel)"""
   }
-
-  case class RichImageFeature(data: Array[Double], convSize: ConvSize) {
-    require(data.length == convSize.height * convSize.width * convSize.channel, s"unmatched data and convSize (${data.length}, $convSize)")
-    val size: Int = convSize.height * convSize.width * convSize.channel
-
-    private def getDataIndex = (h: Int, w: Int, c: Int) => {
-      c * (convSize.height * convSize.width) + w * convSize.height + h
-    }
-
-
-    def slice(heightRange: Range, widthRange: Range, channelRange: Range): RichImageFeature = {
-      val data = (for {h <- heightRange.par
-                       w <- widthRange.par
-                       c <- channelRange.par
-      } yield get(h, w, c)).toArray
-      val newConvSize = ConvSize(heightRange.size, widthRange.size, channelRange.size)
-      RichImageFeature(data, newConvSize)
-    }
-
-    def get(height: Int, width: Int, channel: Int): Double = {
-      require(convSize.contains(height, width, channel), s"(height = $height, width = $width, channel = $channel) out of index bound")
-      data(getDataIndex(height, width, channel))
-    }
-
-    def update(height: Int, width: Int, channel: Int, newVal: Double): Unit = {
-      data(getDataIndex(height, width, channel)) = newVal
-    }
-
-    def update(newData: Array[Double]): RichImageFeature = {
-      require(size == newData.length, s"Unmatched index range and data's length: ($size, ${newData.length})")
-      RichImageFeature(newData, convSize)
-    }
-
-    def +=(height: Int, width: Int, channel: Int, newVal: Double): Unit = {
-      data(getDataIndex(height, width, channel)) += newVal
-    }
-
-    def +=(newData: Array[Double]): Unit = {
-      require(size == newData.length, s"Unmatched index range and data's length: ($size, ${newData.length})")
-      +=(0 until convSize.height, 0 until convSize.width, 0 until convSize.channel, newData)
-    }
-
-    def update(heightRange: Range, widthRange: Range, channelRange: Range, newData: Array[Double]): Unit = {
-      require(heightRange.size * widthRange.size * channelRange.size == newData.length, s"Unmatched index range and data's length: (${heightRange.size * widthRange.size * channelRange.size}, ${newData.length})")
-
-      def getNewDataIndex(h: Int, w: Int, c: Int): Double = {
-        val index = c * (heightRange.size * widthRange.size) + w * heightRange.size + h
-        newData(index)
-      }
-
-      for {(h, hi) <- heightRange.zipWithIndex.par
-           (w, wi) <- widthRange.zipWithIndex.par
-           (c, ci) <- channelRange.zipWithIndex.par
-      } {
-        update(h, w, c, getNewDataIndex(hi, wi, ci))
-      }
-    }
-
-    def +=(heightRange: Range, widthRange: Range, channelRange: Range, newData: Array[Double]): Unit = {
-      require(heightRange.size * widthRange.size * channelRange.size == newData.length, s"Unmatched index range and data's length: (${heightRange.size * widthRange.size * channelRange.size}, ${newData.length})")
-
-      def getNewDataIndex(h: Int, w: Int, c: Int): Double = {
-        val index = c * (heightRange.size * widthRange.size) + w * heightRange.size + h
-        newData(index)
-      }
-
-      for {(h, hi) <- heightRange.zipWithIndex.par
-           (w, wi) <- widthRange.zipWithIndex.par
-           (c, ci) <- channelRange.zipWithIndex.par
-      } {
-        +=(h, w, c, getNewDataIndex(hi, wi, ci))
-      }
-    }
-
-    def *:*(that: RichImageFeature): RichImageFeature = {
-      require(convSize == that.convSize, s"RichImageFeatures $convSize and ${that.convSize} with different shape multiplied")
-      val data = this.data.zip(that.data).par.map { case (a, b) => a * b }.seq.toArray
-      RichImageFeature(data, convSize)
-    }
-
-    def *(d: Double): RichImageFeature = {
-      new RichImageFeature(data.map(_ * d), convSize)
-    }
-
-    def pad(h: Int, w: Int, c: Int, value: Double): RichImageFeature = {
-      val newConvSize = ConvSize(convSize.height + 2 * h, convSize.width + 2 * w, convSize.channel + 2 * c)
-      val padded = RichImageFeature(DenseVector.ones[Double](newConvSize.dataLength).data, newConvSize) * value
-      padded.update(h until convSize.height + h, w until convSize.width + w, c until convSize.channel + c, data)
-      padded
-    }
-
-    def toDenseVector: DenseVector[Double] = {
-      new DenseVector[Double](data)
-    }
-
-  }
-
-  object RichImageFeature {
-    def rand(height: Int, width: Int, channel: Int, rand: Rand[Double]): RichImageFeature = {
-      RichImageFeature(DenseVector.rand[Double](height * width * channel, rand).data, ConvSize(height, width, channel))
-    }
-
-    def zeros(height: Int, width: Int, channel: Int): RichImageFeature = {
-      RichImageFeature(DenseVector.zeros[Double](height * width * channel).data, ConvSize(height, width, channel))
-    }
-
-    def zeros(convSize: ConvSize): RichImageFeature = {
-      zeros(convSize.height, convSize.width, convSize.channel)
-    }
-
-    def rand(convSize: ConvSize, rand: Rand[Double]): RichImageFeature = {
-      this.rand(convSize.height, convSize.width, convSize.channel, rand)
-    }
-  }
-
 }

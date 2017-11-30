@@ -33,6 +33,7 @@ class SGDParallelOptimizer(override val iteration: Int,
           }
 
           val grads = model.backward(label, params)
+
           updateParameterServer(grads, miniBatchTime)
         }
       }

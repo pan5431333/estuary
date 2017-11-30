@@ -52,6 +52,7 @@ class AdamParallelOptimizer(override val iteration: Int,
       }
 
       val grads = model.backward(label, params.modelParam)
+
       updateParameterServer(AdamParam(grads, null, null), miniBatchTime)
     }
     fetchParameterServer().modelParam
