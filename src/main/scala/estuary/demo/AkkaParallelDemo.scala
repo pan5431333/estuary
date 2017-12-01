@@ -25,10 +25,10 @@ object AkkaParallelDemo extends App{
 
   val nnModel = new FullyConnectedNNModel(hiddenLayers, outputLayer, None)
 
-  val (feature, label) = new GasCensorDataReader().read("""D:\\Users\\m_pan\\Downloads\\Dataset\\Dataset\\train.*""")
+//  val (feature, label) = new GasCensorDataReader().read("""D:\\Users\\m_pan\\Downloads\\Dataset\\Dataset\\train.*""")
 
-//  val trainedModel = nnModel.multiNodesParTrain(AdamAkkaParallelOptimizer(iteration = 10, miniBatchSize = 32, learningRate = 0.0005))
-  val trainedModel = nnModel.train(feature, label, SGDOptimizer(iteration = 20, learningRate = 0.0005))
+  val trainedModel = nnModel.multiNodesParTrain(AdamAkkaParallelOptimizer(iteration = 10, miniBatchSize = 32, learningRate = 0.0005))
+//  val trainedModel = nnModel.train(feature, label, SGDOptimizer(iteration = 20, learningRate = 0.0005))
 
   val (testFeature, testLabel) = new GasCensorDataReader().read("""D:\\Users\\m_pan\\Downloads\\Dataset\\Dataset\\test.*""")
   val yPredicted = trainedModel.predictToVector(testFeature, Vector(1, 2, 3, 4, 5, 6))

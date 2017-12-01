@@ -11,10 +11,10 @@ object EmptyLayer extends ClassicLayer {
   val numHiddenUnits = 0
   val batchNorm = false
 
-  protected def activate(zCurrent: DenseMatrix[Double]): DenseMatrix[Double] =
+  def activate(zCurrent: DenseMatrix[Double]): DenseMatrix[Double] =
     throw new Error("EmptyLayer.activate")
 
-  protected def activateGrad(zCurrent: DenseMatrix[Double]): DenseMatrix[Double] =
+  def activateGrad(zCurrent: DenseMatrix[Double]): DenseMatrix[Double] =
     throw new Error("EmptyLayer.activateGrad")
 
   def copyStructure: ClassicLayer = this

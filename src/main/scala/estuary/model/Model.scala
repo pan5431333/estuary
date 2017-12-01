@@ -162,6 +162,24 @@ object Model {
     res
   }
 
+  def normalize(z: DenseMatrix[Double]): (DenseMatrix[Double], DenseVector[Double], DenseVector[Double]) = {
+    val res = DenseMatrix.zeros[Double](z.rows, z.cols)
+    val meanVec = DenseVector.zeros[Double](z.cols)
+    val stddevVec = DenseVector.zeros[Double](z.cols)
+
+    for (j <- (0 until z.cols).par) {
+      val jthCol = z(::, j)
+      val mean = breeze.stats.mean(jthCol)
+      val variance = breeze.stats.variance(jthCol)
+      val stdDev = breeze.numerics.sqrt(variance + 1E-9)
+      res(::, j) := (jthCol - mean) / stdDev
+      meanVec(j) = mean
+      stddevVec(j) = stdDev
+    }
+
+    (res, meanVec, stddevVec)
+  }
+
   /**
     * Compare two vector for equality in element-wise.
     * e.g. a = Vector(1, 2, 3), b = Vector(1, 0, 0), then return Vector(1, 0, 0)

@@ -5,14 +5,15 @@ import estuary.components.initializer.WeightsInitializer
 import estuary.components.layers.ConvLayer.{ConvSize, Filter, calConvSize}
 import estuary.components.layers.PoolingLayer.PoolType
 import estuary.components.regularizer.Regularizer
+import estuary.components.support._
 
 class PoolingLayer(val poolSize: Int, val stride: Int, val pad: Int, val poolType: PoolType) extends Layer {
-  protected var preConvSize: ConvSize = _
+  var preConvSize: ConvSize = _
 
-  lazy protected val filter: Filter = Filter(poolSize, pad, stride, preConvSize.channel, preConvSize.channel)
-  lazy protected val outputConvSize: ConvSize = calConvSize(preConvSize, filter)
+  lazy val filter: Filter = Filter(poolSize, pad, stride, preConvSize.channel, preConvSize.channel)
+  lazy val outputConvSize: ConvSize = calConvSize(preConvSize, filter)
 
-  lazy protected val maskMatrix: Array[DenseMatrix[Double]] = new Array[DenseMatrix[Double]](preConvSize.channel)
+  lazy val maskMatrix: Array[DenseMatrix[Double]] = new Array[DenseMatrix[Double]](preConvSize.channel)
 
   def setPreConvSize(pre: ConvSize): this.type = {
     this.preConvSize = pre
@@ -27,55 +28,20 @@ class PoolingLayer(val poolSize: Int, val stride: Int, val pad: Int, val poolTyp
 
   override def copyStructure: Layer = PoolingLayer(poolSize, stride, pad, poolType, preConvSize)
 
-  override def forward(yPrevious: DenseMatrix[Double]): DenseMatrix[Double] = {
-    val preConvSizeChannel = ConvSize(preConvSize.height, preConvSize.width, 1)
-    val filterChannel = Filter(poolSize, pad, stride, 1, 1)
+  override def forward(yPrevious: DenseMatrix[Double])(implicit op: CanForward[ClassicLayer, DenseMatrix[Double], DenseMatrix[Double]]): DenseMatrix[Double] =
+    implicitly[CanForward[PoolingLayer, DenseMatrix[Double], DenseMatrix[Double]]].forward(yPrevious, this)
 
-    var resRow: Int = 0
-    val pooledData = (for (c <- 0 until preConvSize.channel) yield {
-      val startCol = c * (preConvSize.height * preConvSize.width)
-      val endCol = (c + 1) * (preConvSize.height * preConvSize.width)
-      val yPreviousChannel = yPrevious(::, startCol until endCol)
-      val yPChannelCol = ConvLayer.im2col(yPreviousChannel, preConvSizeChannel, filterChannel)
-      resRow = yPChannelCol.rows
-      maskMatrix(c) = DenseMatrix.zeros[Double](yPChannelCol.rows, yPChannelCol.cols)
+  override def forwardForPrediction(yPrevious: DenseMatrix[Double])(implicit op: CanForward[ClassicLayer, DenseMatrix[Double], DenseMatrix[Double]]): DenseMatrix[Double] = forward(yPrevious)
 
-      for (i <- (0 until resRow).par) yield {
-        val target = poolType.pool(yPChannelCol(i, ::).t)
-        var maskVector = yPChannelCol(i, ::).t.map(d => if (d == target) 1.0 else 0.0)
-        maskVector = maskVector / sum(maskVector)
-        maskMatrix(c)(i, ::) := maskVector.t
-        target
-      }
-    }).flatten.toArray
+  override def backward(dYCurrent: DenseMatrix[Double], regularizer: Option[Regularizer])(implicit op: CanBackward[ClassicLayer, DenseMatrix[Double], (DenseMatrix[Double], DenseMatrix[Double])]): (DenseMatrix[Double], DenseMatrix[Double]) =
+    implicitly[CanBackward[PoolingLayer, DenseMatrix[Double], (DenseMatrix[Double], DenseMatrix[Double])]].backward(dYCurrent, this, regularizer)
 
-    val pooledMatrix = DenseMatrix.create[Double](resRow, preConvSize.channel, pooledData)
-    ConvLayer.col2im(pooledMatrix, outputConvSize)
-  }
-
-  override def forwardForPrediction(yPrevious: DenseMatrix[Double]): DenseMatrix[Double] = forward(yPrevious)
-
-  override def backward(dYCurrent: DenseMatrix[Double], regularizer: Option[Regularizer]): (DenseMatrix[Double], DenseMatrix[Double]) = {
-    val dZCol = ConvLayer.imGrad2Col(dYCurrent, outputConvSize)
-
-    val masks = for (c <- 0 until dZCol.cols) yield {
-      val dZChannel = dZCol(::, c)
-      val mask = maskMatrix(c)
-      val dZChannelMatrix = dZChannel * DenseVector.ones[Double](mask.cols).t
-      mask *:* dZChannelMatrix
-    }
-
-    val gradsMatrix = masks.reduceLeft[DenseMatrix[Double]]{ case (total, mask) => DenseMatrix.horzcat(total, mask)}
-
-    val grads = ConvLayer.colGrad2Im(gradsMatrix, preConvSize, filter)
-    (grads, DenseMatrix.zeros[Double](1,1))
-  }
-
-  override def init(initializer: WeightsInitializer): DenseMatrix[Double] = DenseMatrix.zeros[Double](1,1)
+  override def init(initializer: WeightsInitializer): DenseMatrix[Double] = DenseMatrix.zeros[Double](1, 1)
 
   override def getReguCost(regularizer: Option[Regularizer]): Double = 0.0
 
-  override def setParam(param: DenseMatrix[Double]): Unit = {}
+  override def setParam(param: DenseMatrix[Double])(implicit op: CanSetParam[ClassicLayer, DenseMatrix[Double], (DenseMatrix[Double], DenseVector[Double], DenseVector[Double])],
+                                                    op2: CanSetParam[ClassicLayer, DenseMatrix[Double], (DenseMatrix[Double], DenseVector[Double])]): Unit = {}
 }
 
 object PoolingLayer {
@@ -94,5 +60,57 @@ object PoolingLayer {
   object AVG_POOL extends PoolType {
     override def pool(d: DenseVector[Double]): Double = breeze.stats.mean(d)
   }
+
+  implicit val poolingLayerCanBackward: CanBackward[PoolingLayer, DenseMatrix[Double], (DenseMatrix[Double], DenseMatrix[Double])] =
+    (input, by, regularizer) => {
+      val dZCol = implicitly[CanTransformForConv[TransformType.IMAGE_GRAD_2_COL, (DenseMatrix[Double], ConvSize), DenseMatrix[Double]]]
+        .transform(input, by.outputConvSize)
+
+      val masks = for (c <- 0 until dZCol.cols) yield {
+        val dZChannel = dZCol(::, c)
+        val mask = by.maskMatrix(c)
+        val dZChannelMatrix = dZChannel * DenseVector.ones[Double](mask.cols).t
+        mask *:* dZChannelMatrix
+      }
+
+      val gradsMatrix = masks.reduceLeft[DenseMatrix[Double]] { case (total, mask) => DenseMatrix.horzcat(total, mask) }
+
+      val grads = implicitly[CanTransformForConv[TransformType.COL_GRAD_2_IMAGE, (DenseMatrix[Double], ConvSize, Filter), DenseMatrix[Double]]]
+        .transform(gradsMatrix, by.preConvSize, by.filter)
+
+      (grads, DenseMatrix.zeros[Double](1, 1))
+    }
+
+  implicit val poolingLayerCanForward: CanForward[PoolingLayer, DenseMatrix[Double], DenseMatrix[Double]] =
+    (input, by) => {
+      val preConvSizeChannel = ConvSize(by.preConvSize.height, by.preConvSize.width, 1)
+      val filterChannel = Filter(by.poolSize, by.pad, by.stride, 1, 1)
+
+      var resRow: Int = 0
+      val pooledData = (for (c <- 0 until by.preConvSize.channel) yield {
+        val startCol = c * (by.preConvSize.height * by.preConvSize.width)
+        val endCol = (c + 1) * (by.preConvSize.height * by.preConvSize.width)
+        val yPreviousChannel = input(::, startCol until endCol)
+
+        val yPChannelCol = implicitly[CanTransformForConv[TransformType.IMAGE_TO_COL, (DenseMatrix[Double], ConvSize, Filter), DenseMatrix[Double]]]
+          .transform(yPreviousChannel, preConvSizeChannel, filterChannel)
+
+        resRow = yPChannelCol.rows
+        by.maskMatrix(c) = DenseMatrix.zeros[Double](yPChannelCol.rows, yPChannelCol.cols)
+
+        for (i <- (0 until resRow).par) yield {
+          val target = by.poolType.pool(yPChannelCol(i, ::).t)
+          var maskVector = yPChannelCol(i, ::).t.map(d => if (d == target) 1.0 else 0.0)
+          maskVector = maskVector / sum(maskVector)
+          by.maskMatrix(c)(i, ::) := maskVector.t
+          target
+        }
+      }).flatten.toArray
+
+      val pooledMatrix = DenseMatrix.create[Double](resRow, by.preConvSize.channel, pooledData)
+      val res = implicitly[CanTransformForConv[TransformType.COL_TO_IMAGE, (DenseMatrix[Double], ConvSize), DenseMatrix[Double]]]
+        .transform(pooledMatrix, by.outputConvSize)
+      res
+    }
 
 }

@@ -4,14 +4,17 @@ import breeze.linalg.{DenseMatrix, DenseVector}
 import breeze.numerics.pow
 import estuary.components.initializer.WeightsInitializer
 import estuary.components.regularizer.Regularizer
+import estuary.components.support.{CanAutoInit, CanBackward, CanForward, CanSetParam}
+import ClassicLayer._
+import estuary.model.Model.normalize
 
 /**
   * Interface for neural network's layer.
   */
-trait ClassicLayer extends Layer with Activator{
-  /** ClassicLayer hyperparameters */
-  protected val batchNorm: Boolean
+trait ClassicLayer extends Layer with Activator {
 
+  /** ClassicLayer hyperparameters */
+  val batchNorm: Boolean
   var previousHiddenUnits: Int = _
 
   def setPreviousHiddenUnits(numHiddenUnits: Int): this.type = {
@@ -20,154 +23,58 @@ trait ClassicLayer extends Layer with Activator{
   }
 
   /** ClassicLayer parameters to be learned during training */
-  protected var w: DenseMatrix[Double] = _
-  protected var b: DenseVector[Double] = _
-  protected var alpha: DenseVector[Double] = _
-  protected var beta: DenseVector[Double] = _
+  var w: DenseMatrix[Double] = _
+  var b: DenseVector[Double] = _
+  var alpha: DenseVector[Double] = _
+  var beta: DenseVector[Double] = _
 
   /** Cache processed data */
-  protected var yPrevious: DenseMatrix[Double] = _
-  protected var z: DenseMatrix[Double] = _
-  protected var meanZ: DenseVector[Double] = _
-  protected var stddevZ: DenseVector[Double] = _
-  protected var currentMeanZ: DenseVector[Double] = _
-  protected var currentStddevZ: DenseVector[Double] = _
-  protected var zNorm: DenseMatrix[Double] = _
-  protected var zDelta: DenseMatrix[Double] = _
-  protected var y: DenseMatrix[Double] = _
+  var yPrevious: DenseMatrix[Double] = _
+  var z: DenseMatrix[Double] = _
+  var meanZ: DenseVector[Double] = _
+  var stddevZ: DenseVector[Double] = _
+  var currentMeanZ: DenseVector[Double] = _
+  var currentStddevZ: DenseVector[Double] = _
+  var zNorm: DenseMatrix[Double] = _
+  var zDelta: DenseMatrix[Double] = _
+  var y: DenseMatrix[Double] = _
 
-  def isBatchNormed: Boolean = batchNorm
+  def forward(yPrevious: DenseMatrix[Double])(implicit op: CanForward[ClassicLayer, DenseMatrix[Double], DenseMatrix[Double]]): DenseMatrix[Double] =
+    op.forward(yPrevious, this)
 
-  /**
-    * Forward propagation of current layer.
-    *
-    * @param yPrevious Output of previous layer, of the shape (n, d(l-1)), where
-    *                  n: #training examples,
-    *                  d(l-1): #hidden units in previous layer L-1.
-    * @return Output of this layer, of the shape (n, d(l)), where
-    *         n: #training examples,
-    *         d(l): #hidden units in current layer L.
-    */
-  def forward(yPrevious: DenseMatrix[Double]): DenseMatrix[Double] = {
-    this.yPrevious = yPrevious
-    y = if (this.batchNorm) forwardWithBatchNorm(yPrevious) else forwardWithoutBatchNorm(yPrevious)
-    y
-  }
+  def forwardForPrediction(yPrevious: DenseMatrix[Double])(implicit op: CanForward[ClassicLayer, DenseMatrix[Double], DenseMatrix[Double]]): DenseMatrix[Double] =
+    op.forward(yPrevious, this)
 
-  /**
-    * Forward propagation of current layer for prediction's usage.
-    *
-    * @note The difference between "forward" and "forwardForPrediction" is that,
-    *       when the layer is batch normed, i.e. batchNorm is true, we use
-    *       "forwardWithBatchNormForPrediction" instead of "forwardWithBatchNorm".
-    * @param yPrevious Output of previous layer, of the shape (n, d(l-1)), where
-    *                  n: #training examples,
-    *                  d(l-1): #hidden units in previous layer L-1.
-    * @return Output of this layer, of the shape (n, d(l)), where
-    *         n: #training examples,
-    *         d(l): #hidden units in current layer L.
-    */
-  def forwardForPrediction(yPrevious: DenseMatrix[Double]): DenseMatrix[Double] = {
-    if (this.batchNorm) forwardWithBatchNormForPrediction(yPrevious)
-    else forwardWithoutBatchNorm(yPrevious)
-  }
+  def backward(dYCurrent: DenseMatrix[Double], regularizer: Option[Regularizer])(implicit op: CanBackward[ClassicLayer, DenseMatrix[Double], (DenseMatrix[Double], DenseMatrix[Double])]): (DenseMatrix[Double], DenseMatrix[Double]) =
+    op.backward(dYCurrent, this, regularizer)
 
-  /**
-    * Backward propagation of current layer.
-    *
-    * @param dYCurrent Gradients of current layer's output, DenseMatrix of shape (n, d(l))
-    *                  where n: #training examples,
-    *                  d(l): #hidden units in current layer L.
-    * @return (dYPrevious, grads), where dYPrevious is gradients for output of previous
-    *         layer; grads is gradients of current layer's parameters, i.e. for layer
-    *         without batchNorm, parameters are w and b, for layers with batchNorm,
-    *         parameters are w, alpha and beta.
-    */
-  def backward(dYCurrent: DenseMatrix[Double], regularizer: Option[Regularizer]): (DenseMatrix[Double], DenseMatrix[Double]) = {
-
-    if (this.batchNorm) backWithBatchNorm(dYCurrent, yPrevious, regularizer)
-    else backWithoutBatchNorm(dYCurrent, yPrevious, regularizer)
-  }
-
-  /**
-    * Initialization for parameters in current layer.
-    *
-    * @param initializer coule be HeInitializer, NormalInitializer of XaiverInitializer.
-    * @return An DenseMatrix containing all parameters in current layer.
-    *         For batchNorm is true, return's shape is (d(l-1) + 2, d(l)),
-    *         For batchNorm is false, return's shape is (d(l-1) + 1, d(l))
-    */
   def init(initializer: WeightsInitializer): DenseMatrix[Double] = {
     if (this.batchNorm) {
-      this.w = initializer.init(previousHiddenUnits, numHiddenUnits)
-      this.alpha = DenseVector.zeros[Double](numHiddenUnits)
-      this.beta = DenseVector.ones[Double](numHiddenUnits)
+      val (w_, alpha_, beta_) = implicitly[CanAutoInit[WeightsInitializer, (Int, Int), (DenseMatrix[Double], DenseVector[Double], DenseVector[Double])]].init((previousHiddenUnits, numHiddenUnits), initializer)
+      w = w_
+      alpha = alpha_
+      beta = beta_
       DenseMatrix.vertcat(this.w, this.alpha.toDenseMatrix, this.beta.toDenseMatrix)
     }
     else {
-      this.w = initializer.init(previousHiddenUnits, numHiddenUnits)
-      this.b = DenseVector.zeros[Double](numHiddenUnits)
+      val (w_, b_) = implicitly[CanAutoInit[WeightsInitializer, (Int, Int), (DenseMatrix[Double], DenseVector[Double])]].init((previousHiddenUnits, numHiddenUnits), initializer)
+      w = w_
+      b = b_
       DenseMatrix.vertcat(this.w, this.b.toDenseMatrix)
     }
   }
 
-  /**
-    * Get regularization cost, i.e. L1 norm or Frobinious norm of matrix w.
-    *
-    * @param regularizer Could be L1Regularizer, or L2Regularizer.
-    * @return Regularization cost of type Double.
-    */
   def getReguCost(regularizer: Option[Regularizer]): Double = regularizer match {
     case Some(rg) => rg.getReguCost(w)
     case None => 0.0
   }
 
-
-  /**
-    * Set model parameters of current layer according to the input, which is a vertically
-    * concatenated matrix containing all parameters.
-    *
-    * @param param For batchNorm is true, param is of shape (d(l-1) + 2, d(l)),
-    *              where d(l-1) is #hidden units in previous layer; d(l) is #hidden units
-    *              in current layer. The top d(l-1) rows represent 'w', the (d(l-1)+1)th
-    *              row represents transpose of 'alpha', the last row represents 'beta'.
-    *              For batchNorm is false, param is of shape (d(l-1) + 1, d(l)). The top
-    *              d(l-1) rows represent 'w', the last row represents 'b'.
-    */
-  def setParam(param: DenseMatrix[Double]): Unit = {
-    if (this.batchNorm) {
-      this.w = param(0 to param.rows - 3, ::)
-      this.alpha = param(param.rows - 2, ::).t
-      this.beta = param(param.rows - 1, ::).t
-    } else {
-      this.w = param(0 to param.rows - 2, ::)
-      this.b = param(param.rows - 1, ::).t
-    }
-  }
-
-  private def forwardWithoutBatchNorm(yPrevious: DenseMatrix[Double]): DenseMatrix[Double] = {
-
-    val numExamples = yPrevious.rows
-    z = yPrevious * w + DenseVector.ones[Double](numExamples) * b.t
-    this.activate(z)
-  }
-
-  private def forwardWithBatchNorm(yPrevious: DenseMatrix[Double]): DenseMatrix[Double] = {
-    val numExamples = yPrevious.rows
-    val oneVector = DenseVector.ones[Double](numExamples)
-
-    z = yPrevious * w
-    val (znorm, meanVec, stddevVec) = normalize(z)
-
-    zNorm = znorm
-    meanZ = if (meanZ == null) meanVec else 0.99 * meanZ + 0.01 * meanVec
-    stddevZ = if (stddevZ == null) stddevVec else 0.99 * stddevZ + 0.01 * stddevVec
-    currentMeanZ = meanVec
-    currentStddevZ = stddevVec
-
-    zDelta = zNorm *:* (oneVector * beta.t) + oneVector * alpha.t
-    activate(zDelta)
-  }
+  def setParam(param: DenseMatrix[Double])(implicit op: CanSetParam[ClassicLayer, DenseMatrix[Double], (DenseMatrix[Double], DenseVector[Double], DenseVector[Double])],
+                                           op2: CanSetParam[ClassicLayer, DenseMatrix[Double], (DenseMatrix[Double], DenseVector[Double])]): Unit =
+    if (this.batchNorm)
+      op.set(param, this)
+    else
+      op2.set(param, this)
 
   private def forwardWithBatchNormForPrediction(yPrevious: DenseMatrix[Double]): DenseMatrix[Double] = {
     val numExamples = yPrevious.rows
@@ -185,71 +92,7 @@ trait ClassicLayer extends Layer with Activator{
     activate(zDelta)
   }
 
-  private def normalize(z: DenseMatrix[Double]): (DenseMatrix[Double], DenseVector[Double], DenseVector[Double]) = {
-    val res = DenseMatrix.zeros[Double](z.rows, z.cols)
-    val meanVec = DenseVector.zeros[Double](z.cols)
-    val stddevVec = DenseVector.zeros[Double](z.cols)
-
-    for (j <- (0 until z.cols).par) {
-      val jthCol = z(::, j)
-      val mean = breeze.stats.mean(jthCol)
-      val variance = breeze.stats.variance(jthCol)
-      val stdDev = breeze.numerics.sqrt(variance + 1E-9)
-      res(::, j) := (jthCol - mean) / stdDev
-      meanVec(j) = mean
-      stddevVec(j) = stdDev
-    }
-
-    (res, meanVec, stddevVec)
-  }
-
-  private def backWithoutBatchNorm(dYCurrent: DenseMatrix[Double], yPrevious: DenseMatrix[Double], regularizer: Option[Regularizer]): (DenseMatrix[Double], DenseMatrix[Double]) = {
-
-    val numExamples = dYCurrent.rows
-    val n = numExamples.toDouble
-
-    val dZ = dYCurrent *:* activateGrad(z)
-    val dWCurrent = regularizer match {
-      case None => yPrevious.t * dZ / n
-      case Some(regu) => yPrevious.t * dZ / n + regu.getReguCostGrad(w)
-    }
-    val dBCurrent = (DenseVector.ones[Double](numExamples).t * dZ).t / numExamples.toDouble
-    val dYPrevious = dZ * w.t
-
-    val grads = DenseMatrix.vertcat(dWCurrent, dBCurrent.toDenseMatrix)
-
-    (dYPrevious, grads)
-  }
-
-  private def backWithBatchNorm(dYCurrent: DenseMatrix[Double], yPrevious: DenseMatrix[Double], regularizer: Option[Regularizer]): (DenseMatrix[Double], DenseMatrix[Double]) = {
-    val numExamples = dYCurrent.rows
-    val n = numExamples.toDouble
-    val oneVector = DenseVector.ones[Double](numExamples)
-
-    val dZDelta = dYCurrent *:* activate(zDelta)
-    val dZNorm = dZDelta *:* (oneVector * beta.t)
-    val dAlpha = dZDelta.t * oneVector / n
-    val dBeta = (dZDelta *:* zNorm).t * oneVector / n
-
-    //Vector version
-    val dZ = normalizeGradVec(dZNorm, z, currentMeanZ, currentStddevZ)
-
-    //Matrix version (preffered, bug worse results than normalizeGradVec, why?)
-    //        val dZ = normalizeGrad(dZNorm, z, currentMeanZ, currentStddevZ)
-
-    val dWCurrent = regularizer match {
-      case None => yPrevious.t * dZ / n
-      case Some(regu) => yPrevious.t * dZ / n + regu.getReguCostGrad(w)
-    }
-
-    val dYPrevious = dZ * w.t
-
-    val grads = DenseMatrix.vertcat(dWCurrent, dAlpha.toDenseMatrix, dBeta.toDenseMatrix)
-
-    (dYPrevious, grads)
-  }
-
-  protected def normalizeGrad(dZNorm: DenseMatrix[Double], z: DenseMatrix[Double], meanZ: DenseVector[Double], stddevZ: DenseVector[Double]): DenseMatrix[Double] = {
+  def normalizeGrad(dZNorm: DenseMatrix[Double], z: DenseMatrix[Double], meanZ: DenseVector[Double], stddevZ: DenseVector[Double]): DenseMatrix[Double] = {
     val oneVector = DenseVector.ones[Double](dZNorm.rows)
     val oneMat = DenseMatrix.ones[Double](dZNorm.rows, dZNorm.rows)
     val n = dZNorm.rows.toDouble
@@ -257,7 +100,7 @@ trait ClassicLayer extends Layer with Activator{
     (oneVector * pow(stddevZ + 1E-9, -1.0).t) / n *:* (dZNorm * n + (oneMat * dZNorm) - (z - oneVector * meanZ.t) *:* (oneVector * pow(stddevZ + 1E-9, -2.0).t) *:* (oneMat * (dZNorm *:* (z - oneVector * meanZ.t))))
   }
 
-  protected def normalizeGradVec(dZNorm: DenseMatrix[Double], z: DenseMatrix[Double], meanZ: DenseVector[Double], stddevZ: DenseVector[Double]): DenseMatrix[Double] = {
+  def normalizeGradVec(dZNorm: DenseMatrix[Double], z: DenseMatrix[Double], meanZ: DenseVector[Double], stddevZ: DenseVector[Double]): DenseMatrix[Double] = {
     val n = z.rows.toDouble
 
     //Vectorized version
@@ -277,4 +120,117 @@ trait ClassicLayer extends Layer with Activator{
        |Is Batch Normed? $batchNorm,
        |Previous Number of Hidden Units? $previousHiddenUnits
     """.stripMargin
+}
+
+object ClassicLayer {
+  implicit val classicLayerCanAutoInitBN: CanAutoInit[WeightsInitializer, (Int, Int), (DenseMatrix[Double], DenseVector[Double], DenseVector[Double])] =
+    (shape: (Int, Int), initializer: WeightsInitializer) => {
+      val w = initializer.init(shape._1, shape._2)
+      val alpha = DenseVector.zeros[Double](shape._2)
+      val beta = DenseVector.zeros[Double](shape._2)
+      (w, alpha, beta)
+    }
+
+  implicit val classicLayerCanAutoInitNonBN: CanAutoInit[WeightsInitializer, (Int, Int), (DenseMatrix[Double], DenseVector[Double])] =
+    (shape: (Int, Int), initializer: WeightsInitializer) => {
+      val w = initializer.init(shape._1, shape._2)
+      val b = DenseVector.zeros[Double](shape._2)
+      (w, b)
+    }
+
+  implicit val classicLayerCanBackward: CanBackward[ClassicLayer, DenseMatrix[Double], (DenseMatrix[Double], DenseMatrix[Double])] =
+    (input, by, regularizer) => {
+      if (by.batchNorm) {
+        val numExamples = input.rows
+        val n = numExamples.toDouble
+        val oneVector = DenseVector.ones[Double](numExamples)
+
+        val dZDelta = input *:* by.activate(by.zDelta)
+        val dZNorm = dZDelta *:* (oneVector * by.beta.t)
+        val dAlpha = dZDelta.t * oneVector / n
+        val dBeta = (dZDelta *:* by.zNorm).t * oneVector / n
+
+        //Vector version
+        val dZ = by.normalizeGradVec(dZNorm, by.z, by.currentMeanZ, by.currentStddevZ)
+
+        //Matrix version (preffered, bug worse results than normalizeGradVec, why?)
+        //        val dZ = by.normalizeGrad(dZNorm, z, currentMeanZ, currentStddevZ)
+
+        val dWCurrent = regularizer match {
+          case None => by.yPrevious.t * dZ / n
+          case Some(regu) => by.yPrevious.t * dZ / n + regu.getReguCostGrad(by.w)
+        }
+
+        val dYPrevious = dZ * by.w.t
+
+        val grads = DenseMatrix.vertcat(dWCurrent, dAlpha.toDenseMatrix, dBeta.toDenseMatrix)
+
+        (dYPrevious, grads)
+      } else {
+        val numExamples = input.rows
+        val n = numExamples.toDouble
+
+        val dZ = input *:* by.activateGrad(by.z)
+        val dWCurrent = regularizer match {
+          case None => by.yPrevious.t * dZ / n
+          case Some(regu) => by.yPrevious.t * dZ / n + regu.getReguCostGrad(by.w)
+        }
+        val dBCurrent = (DenseVector.ones[Double](numExamples).t * dZ).t / numExamples.toDouble
+        val dYPrevious = dZ * by.w.t
+
+        val grads = DenseMatrix.vertcat(dWCurrent, dBCurrent.toDenseMatrix)
+
+        (dYPrevious, grads)
+      }
+    }
+
+  implicit val classicLayerCanForward: CanForward[ClassicLayer, DenseMatrix[Double], DenseMatrix[Double]] =
+    (input, by) => {
+      if (!by.batchNorm) {
+        by.yPrevious = input
+        val numExamples = input.rows
+        by.z = input * by.w + DenseVector.ones[Double](numExamples) * by.b.t
+        by.y = by.activate(by.z)
+        by.y
+      } else {
+        by.yPrevious = input
+        val numExamples = input.rows
+        val oneVector = DenseVector.ones[Double](numExamples)
+
+        val z = input * by.w
+        val (znorm, meanVec, stddevVec) = normalize(z)
+
+        by.zNorm = znorm
+        by.meanZ = if (by.meanZ == null) meanVec else 0.99 * by.meanZ + 0.01 * meanVec
+        by.stddevZ = if (by.stddevZ == null) stddevVec else 0.99 * by.stddevZ + 0.01 * stddevVec
+        by.currentMeanZ = meanVec
+        by.currentStddevZ = stddevVec
+
+        by.zDelta = by.zNorm *:* (oneVector * by.beta.t) + oneVector * by.alpha.t
+        by.y = by.activate(by.zDelta)
+        by.y
+      }
+    }
+
+  implicit val classicLayerCanSetParamBN: CanSetParam[ClassicLayer, DenseMatrix[Double], (DenseMatrix[Double], DenseVector[Double], DenseVector[Double])] =
+    (from, foor) => {
+      val w = from(0 to from.rows - 3, ::)
+      val alpha = from(from.rows - 2, ::).t
+      val beta = from(from.rows - 1, ::).t
+      foor.w := w
+      foor.alpha := alpha
+      foor.beta := beta
+      (w, alpha, beta)
+    }
+
+  implicit val classicLayerCanSetParamNonBN: CanSetParam[ClassicLayer, DenseMatrix[Double], (DenseMatrix[Double], DenseVector[Double])] =
+    (from, foor) => {
+      val w = from(0 to from.rows - 2, ::)
+      val b = from(from.rows - 1, ::).t
+      foor.w := w
+      foor.b := b
+      (w, b)
+    }
+
+
 }

@@ -3,7 +3,7 @@ package estuary.components.layers
 import breeze.linalg.DenseMatrix
 
 trait ReluActivator extends Activator{
-  protected def activate(zCurrent: DenseMatrix[Double]): DenseMatrix[Double] = {
+  def activate(zCurrent: DenseMatrix[Double]): DenseMatrix[Double] = {
     val res = DenseMatrix.zeros[Double](zCurrent.rows, zCurrent.cols)
     for {i <- (0 until zCurrent.rows).par
          j <- (0 until zCurrent.cols).par
@@ -13,7 +13,7 @@ trait ReluActivator extends Activator{
     res
   }
 
-  protected def activateGrad(zCurrent: DenseMatrix[Double]): DenseMatrix[Double] = {
+  def activateGrad(zCurrent: DenseMatrix[Double]): DenseMatrix[Double] = {
     val res = DenseMatrix.zeros[Double](zCurrent.rows, zCurrent.cols)
 
     for {i <- (0 until zCurrent.rows).par

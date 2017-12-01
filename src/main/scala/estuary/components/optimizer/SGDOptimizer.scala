@@ -43,9 +43,9 @@ class SGDOptimizer(val iteration: Int,
         val cost = forwardFunc(batchFeature, batchLabel, preBatchParams)
         val grads = backwardFunc(batchLabel, preBatchParams)
 
-        if (iterTime == 0) {
+        if (iterTime == 0 && miniBatchTime == 0) {
           logger.info("Starting checking correctness of gradients...")
-          Optimizer.checkForGradients(preParams, grads, forwardFunc(batchFeature, batchLabel, _), verbose = false)
+          Optimizer.checkForGradients(preBatchParams, grads, forwardFunc(batchFeature, batchLabel, _), verbose = false)
           logger.info("Gradient checking passed")
         }
 

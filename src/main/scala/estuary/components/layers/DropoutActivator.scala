@@ -17,7 +17,7 @@ trait DropoutActivator extends Activator{
     res
   }
 
-  protected def activate(zCurrent: DenseMatrix[Double]): DenseMatrix[Double] = {
+  def activate(zCurrent: DenseMatrix[Double]): DenseMatrix[Double] = {
     dropoutVector = generateDropoutVector(zCurrent.cols, dropoutRate)
 
     val numExamples = zCurrent.rows
@@ -25,7 +25,7 @@ trait DropoutActivator extends Activator{
     zCurrent *:* (oneVector * dropoutVector.t) / (1.0 - this.dropoutRate)
   }
 
-  protected def activateGrad(zCurrent: DenseMatrix[Double]): DenseMatrix[Double] = {
+  def activateGrad(zCurrent: DenseMatrix[Double]): DenseMatrix[Double] = {
     val numExamples = zCurrent.rows
     val oneVector = DenseVector.ones[Double](numExamples)
 
