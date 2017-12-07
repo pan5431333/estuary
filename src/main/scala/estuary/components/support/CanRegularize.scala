@@ -2,7 +2,7 @@ package estuary.components.support
 
 import estuary.components.regularizer.Regularizer
 
-trait CanRegularize[-Param] {
-  def regu(param: Param, regularizer: Option[Regularizer]): Double
+trait CanRegularize[-Repr] {
+  def regu(foor: Repr, regularizer: Option[Regularizer]): Double
 }
 

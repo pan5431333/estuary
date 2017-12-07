@@ -15,7 +15,7 @@ import estuary.model.Model
   */
 class BatchGradCalculatorActor[OptParam, ModelParam](filePath: String,
                                                      dataReader: Reader,
-                                                     model: Model[ModelParam],
+                                                     model: Model,
                                                      parameterServer: ActorRef,
                                                      iteration: Int,
                                                      shuffleFunc: (DenseMatrix[Double], DenseMatrix[Double]) => Iterator[(DenseMatrix[Double], DenseMatrix[Double])],
@@ -91,7 +91,7 @@ object BatchGradCalculatorActor {
 
   def props[OptParam, ModelParam](filePath: String,
                                   dataReader: Reader,
-                                  model: Model[ModelParam],
+                                  model: Model,
                                   parameterServer: ActorRef,
                                   iteration: Int,
                                   shuffleFunc: (DenseMatrix[Double], DenseMatrix[Double]) => Iterator[(DenseMatrix[Double], DenseMatrix[Double])],

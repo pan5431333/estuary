@@ -1,7 +1,7 @@
 package estuary.model
 
 import breeze.linalg.DenseMatrix
-import estuary.components.initializer.WeightsInitializer
+import estuary.components.initializer.{HeInitializer, WeightsInitializer}
 import estuary.components.layers.LayerLike.ForPrediction
 import estuary.components.layers._
 import estuary.components.optimizer.{AkkaParallelOptimizer, Optimizer, ParallelOptimizer}
@@ -9,11 +9,18 @@ import estuary.components.regularizer.Regularizer
 import estuary.components.support.{CanAutoInit, CanBackward, CanForward, CanSetParam}
 import estuary.support.CanTrain
 
-class NNModel(val hiddenLayers: Seq[Layer[Any]],
-              val outputLayer: ClassicLayer)
-  extends Model[Seq[DenseMatrix[Double]]] with ModelLike[Seq[DenseMatrix[Double]], NNModel] {
+import scala.collection.mutable.ArrayBuffer
 
-  lazy val allLayers = hiddenLayers :+ outputLayer
+class NNModel(val hiddenLayers: Seq[Layer],
+              val outputLayer: ClassicLayer)
+  extends Model with ModelLike[NNModel] {
+
+  protected var params: Seq[DenseMatrix[Double]] = _
+  protected var costHistory: ArrayBuffer[Double] = new ArrayBuffer[Double]()
+  var inputDim: Int = _
+  var outputDim: Int = _
+
+  lazy val allLayers: Seq[Layer] = hiddenLayers :+ outputLayer
 
   def multiNodesParTrain(op: AkkaParallelOptimizer[Seq[DenseMatrix[Double]]]): this.type = {
     val trainedParams = op.parOptimize(repr)
@@ -82,13 +89,15 @@ object NNModel {
       filtered.foldLeft(input.input) { (yPrevious, layer) => layer.forward(yPrevious) }
     }
 
-  implicit val nnModelCanTrain: CanTrain[NNModel, DenseMatrix[Double], DenseMatrix[Double], Seq[DenseMatrix[Double]]] =
-    (feature: DenseMatrix[Double], label: DenseMatrix[Double], initParam: Seq[DenseMatrix[Double]], optimizer: Optimizer, by: NNModel) => {
+  implicit val nnModelCanTrain: CanTrain[NNModel, DenseMatrix[Double], DenseMatrix[Double]] =
+    (feature: DenseMatrix[Double], label: DenseMatrix[Double], optimizer: Optimizer, by: NNModel) => {
       val params = optimizer match {
         case op: ParallelOptimizer[Seq[DenseMatrix[Double]]] => op.parOptimize(feature, label, by, by.params)
         case op: AkkaParallelOptimizer[Seq[DenseMatrix[Double]]] => by.multiNodesParTrain(op).params
         case _ =>
-          by.init(feature.cols, label.cols)
+          by.inputDim = feature.cols
+          by.outputDim = label.cols
+          by.init(HeInitializer)
           optimizer.optimize(feature, label)(by.params)(by.forwardAndCalCost)(by.backwardWithGivenParams)
       }
 

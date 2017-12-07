@@ -5,7 +5,7 @@ package estuary.components.optimizer
   * @tparam OptParam type of optimization algorithm's parameters.
   * @tparam ModelParam type of model parameters
   */
-trait AbstractAkkaParallelOptimizer[OptParam, ModelParam] extends AkkaParallelOptimizer[ModelParam] with MiniBatchable with Serializable {
+trait AbstractAkkaParallelOptimizer[OptParam, ModelParam] extends AkkaParallelOptimizer with MiniBatchable with Serializable {
 
   /**
     * Given model parameters to initialize optimization parameters, i.e. for Adam Optimization, model parameters are of type

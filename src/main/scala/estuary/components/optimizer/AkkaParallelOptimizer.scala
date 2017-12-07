@@ -1,11 +1,11 @@
 package estuary.components.optimizer
 
-import estuary.model.{Model, ModelLike}
+import estuary.model.Model
 
 /**
   *
   */
-trait AkkaParallelOptimizer[ModelParam] extends Optimizer with Serializable {
+trait AkkaParallelOptimizer extends Optimizer with Serializable {
 
   /**
     * Optimize the model in parallel, and returning the trained parameters with the same dimensions of initParams.
@@ -16,7 +16,7 @@ trait AkkaParallelOptimizer[ModelParam] extends Optimizer with Serializable {
     *                   or machines.
     * @return trained parameters, with same dimension with the given initial parameters.
     */
-  def parOptimize(model: Model[ModelParam]): ModelParam
+  def parOptimize[ModelParam](model: Model): ModelParam
 }
 
 

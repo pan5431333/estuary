@@ -7,7 +7,7 @@ import estuary.components.regularizer.Regularizer
 import estuary.components.support._
 
 
-trait ConvLayer extends Layer[Filter] with LayerLike[Filter, ConvLayer] with Activator {
+trait ConvLayer extends Layer with LayerLike[ConvLayer] with Activator {
 
   /** LayerLike parameters */
   protected[estuary] var preConvSize: ConvSize = _
@@ -36,12 +36,6 @@ trait ConvLayer extends Layer[Filter] with LayerLike[Filter, ConvLayer] with Act
   protected[estuary] var y: DenseMatrix[Double] = _
   protected[estuary] var filterMatrix: DenseMatrix[Double] = _
   protected[estuary] var filterBias: DenseVector[Double] = _
-
-  /** Set parameters received from optimizer */
-  override def setParam[O](param: O)(implicit op: CanSetParam[ConvLayer, O]): Unit = op.set(param, repr)
-
-  override def getReguCost(regularizer: Option[Regularizer])(implicit op: CanRegularize[Filter]): Double =
-    op.regu(param, regularizer)
 }
 
 object ConvLayer {
@@ -145,6 +139,15 @@ object ConvLayer {
 
       (dYPreviousIm, grads)
     }
+
+  implicit val convLayerCanRegularize = new CanRegularize[ConvLayer] {
+    override def regu(foor: ConvLayer, regularizer: Option[Regularizer]): Double = {
+      regularizer match {
+        case None => 0.0
+        case r: Regularizer => r.getReguCost(foor.param.w)
+      }
+    }
+  }
 
 
 

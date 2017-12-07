@@ -23,7 +23,7 @@ import scala.collection.parallel.immutable.ParSeq
   *       parameter server again, since parameter server might be updated by other threads during the process of
   *       calculating gradients in current thread.
   */
-trait ParallelOptimizer[ModelParam] extends Optimizer with MiniBatchable {
+trait ParallelOptimizer extends Optimizer with MiniBatchable {
 
   /** Number of models trained in parallel, with sharing the same parameter server. */
   protected val nTasks: Int
@@ -40,7 +40,7 @@ trait ParallelOptimizer[ModelParam] extends Optimizer with MiniBatchable {
     * @param initParams initial parameters.
     * @return trained parameters, with same dimension with the given initial parameters.
     */
-  def parOptimize(feature: DenseMatrix[Double], label: DenseMatrix[Double], model: Model[ModelParam], initParams: ModelParam): ModelParam
+  def parOptimize[ModelParam](feature: DenseMatrix[Double], label: DenseMatrix[Double], model: Model, initParams: ModelParam): ModelParam
 
   /**
     * Functionality 1: add cost to MutableList: costHistory with synchronization.

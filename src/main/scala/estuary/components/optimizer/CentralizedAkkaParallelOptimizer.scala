@@ -29,7 +29,7 @@ trait CentralizedAkkaParallelOptimizer[OptParam, ModelParam] extends AbstractAkk
     *                   or machines.
     * @return trained parameters, with same dimension with the given initial parameters.
     */
-  def parOptimize(model: Model[ModelParam]): ModelParam = {
+  def parOptimize(model: Model): ModelParam = {
 
     val config = ConfigFactory.load("estuary")
 

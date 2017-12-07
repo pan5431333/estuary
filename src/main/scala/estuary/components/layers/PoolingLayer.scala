@@ -8,13 +8,7 @@ import estuary.components.regularizer.Regularizer
 import estuary.components.support._
 
 class PoolingLayer(val poolSize: Int, val stride: Int, val pad: Int, val poolType: PoolType)
-  extends Layer[None.type] with LayerLike[None.type, PoolingLayer] {
-
-  /** Set parameters received from optimizer */
-  override def setParam[O](param: O)(implicit op: CanSetParam[PoolingLayer, O]): Unit = op.set(param, repr)
-
-  override def getReguCost(regularizer: Option[Regularizer])
-                          (implicit op: CanRegularize[None.type]): Double = op.regu(None, regularizer)
+  extends Layer with LayerLike[PoolingLayer] {
 
   var preConvSize: ConvSize = _
 
@@ -116,5 +110,9 @@ object PoolingLayer {
 
       (grads, None)
     }
+
+  implicit val poolingLayerCanRegularize = new CanRegularize[PoolingLayer] {
+    override def regu(foor: PoolingLayer, regularizer: Option[Regularizer]): Double = 0.0
+  }
 
 }

@@ -9,16 +9,14 @@ import estuary.components.support._
 /**
   * Interface for neural network's layer.
   */
-trait ClassicLayer extends Layer[(DenseMatrix[Double], DenseVector[Double])]
-  with LayerLike[(DenseMatrix[Double], DenseVector[Double]), ClassicLayer]
+trait ClassicLayer extends Layer
+  with LayerLike[ClassicLayer]
   with Activator {
-
-  val numHiddenUnits: Int
 
   override def hasParams = true
 
+  val numHiddenUnits: Int
   var param: (DenseMatrix[Double], DenseVector[Double]) = _
-
   protected[estuary] var previousHiddenUnits: Int = _
 
   def setPreviousHiddenUnits(n: Int): this.type = {
@@ -30,13 +28,6 @@ trait ClassicLayer extends Layer[(DenseMatrix[Double], DenseVector[Double])]
   protected[estuary] var yPrevious: DenseMatrix[Double] = _
   protected[estuary] var z: DenseMatrix[Double] = _
   protected[estuary] var y: DenseMatrix[Double] = _
-
-  /** Set parameters received from optimizer */
-  override def setParam[O](param: O)(implicit op: CanSetParam[ClassicLayer, O]): Unit = op.set(param, repr)
-
-  override def getReguCost(regularizer: Option[Regularizer])
-                          (implicit op: CanRegularize[(DenseMatrix[Double], DenseVector[Double])]): Double =
-    op.regu(param, regularizer)
 
   override def toString: String =
     s"""
@@ -105,6 +96,15 @@ object ClassicLayer {
 
       (dYPrevious, grads)
     }
+
+  implicit val classicLayerCanRegularize = new CanRegularize[ClassicLayer] {
+    override def regu(foor: ClassicLayer, regularizer: Option[Regularizer]): Double = {
+      regularizer match {
+        case None => 0.0
+        case r: Regularizer => r.getReguCost(foor.param._1)
+      }
+    }
+  }
 
 
 }

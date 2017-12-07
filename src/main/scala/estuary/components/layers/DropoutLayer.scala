@@ -9,13 +9,7 @@ import estuary.components.support._
   * Created by mengpan on 2017/9/7.
   */
 class DropoutLayer(override val numHiddenUnits: Int, val dropoutRate: Double)
-  extends Layer[None.type] with LayerLike[None.type, DropoutLayer] with DropoutActivator {
-
-  /** Set parameters received from optimizer */
-  override def setParam[O](param: O)(implicit op: CanSetParam[DropoutLayer, O]): Unit = op.set(param, repr)
-
-  override def getReguCost(regularizer: Option[Regularizer])
-                          (implicit op: CanRegularize[None.type]): Double = op.regu(None, regularizer)
+  extends Layer with LayerLike[DropoutLayer] with DropoutActivator {
 
   /** Cache processed data */
   protected[estuary] var yPrevious: DenseMatrix[Double] = _
@@ -30,7 +24,7 @@ object DropoutLayer {
     new DropoutLayer(numHiddenUnits, dropoutRate)
   }
 
-  implicit val dropoutLayerCanSetParam: CanSetParam[DropoutLayer, None.type] = (_, _) => None
+  implicit val dropoutLayerCanSetParam: CanSetParam[DropoutLayer, None.type] = (_, _) => {}
 
   implicit val dropoutLayerCanExportParam: CanExportParam[DropoutLayer, None.type] = (_) => None
 
@@ -50,4 +44,8 @@ object DropoutLayer {
       val filterMat = by.activateGrad(by.yPrevious)
       (input *:* filterMat, None)
     }
+
+  implicit val dropoutLayerCanRegularize = new CanRegularize[DropoutLayer] {
+    override def regu(foor: DropoutLayer, regularizer: Option[Regularizer]): Double = 0.0
+  }
 }
