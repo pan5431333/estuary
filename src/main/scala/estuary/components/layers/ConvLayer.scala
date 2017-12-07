@@ -7,54 +7,41 @@ import estuary.components.regularizer.Regularizer
 import estuary.components.support._
 
 
-trait ConvLayer extends Layer with Activator {
-  /** Layer parameters */
-  val filter: Filter
-  var preConvSize: ConvSize
+trait ConvLayer extends Layer[Filter] with LayerLike[Filter, ConvLayer] with Activator {
 
-  /** Inferred layer structure */
-  lazy val outputConvSize: ConvSize = calConvSize(preConvSize, filter)
-  lazy val numHiddenUnits: Int = outputConvSize.dataLength
-  lazy val previousHiddenUnits: Int = preConvSize.dataLength
-
-  /** cache intermediate results to be used later */
-  var yPrevious: DenseMatrix[Double] = _
-  var yPreviousIm2Col: DenseMatrix[Double] = _
-  var z: DenseMatrix[Double] = _
-  var zIm2Col: DenseMatrix[Double] = _
-  var y: DenseMatrix[Double] = _
-  var filterMatrix: DenseMatrix[Double] = _
-  var filterBias: DenseVector[Double] = _
-
+  /** LayerLike parameters */
+  protected[estuary] var preConvSize: ConvSize = _
   def setPreConvSize(pre: ConvSize): this.type = {
     this.preConvSize = pre
     this
   }
-
   def setPreConvSize(preHeight: Int, preWidth: Int, preChannel: Int): this.type = {
     setPreConvSize(ConvSize(preHeight, preWidth, preChannel))
   }
 
-  override def init(initializer: WeightsInitializer): DenseMatrix[Double] = {
-    filter.init(initializer)
-    filter.toDenseMatrix
-  }
+  val param: Filter
 
-  override def getReguCost(regularizer: Option[Regularizer]): Double = regularizer match {
-    case None => 0.0
-    case Some(regu) => regu.getReguCost(filter.w.toDenseMatrix)
-  }
+  override def hasParams = true
 
-  override def forward(yPrevious: DenseMatrix[Double])(implicit op: CanForward[ClassicLayer, DenseMatrix[Double], DenseMatrix[Double]]): DenseMatrix[Double] =
-    implicitly[CanForward[ConvLayer, DenseMatrix[Double], DenseMatrix[Double]]].forward(yPrevious, this)
+  /** Inferred layer structure */
+  protected[estuary] lazy val outputConvSize: ConvSize = calConvSize(preConvSize, param)
+  lazy val numHiddenUnits: Int = outputConvSize.dataLength
+  lazy val previousHiddenUnits: Int = preConvSize.dataLength
 
-  override def forwardForPrediction(yPrevious: DenseMatrix[Double])(implicit op: CanForward[ClassicLayer, DenseMatrix[Double], DenseMatrix[Double]]): DenseMatrix[Double] = forward(yPrevious)
+  /** cache intermediate results to be used later */
+  protected[estuary] var yPrevious: DenseMatrix[Double] = _
+  protected[estuary] var yPreviousIm2Col: DenseMatrix[Double] = _
+  protected[estuary] var z: DenseMatrix[Double] = _
+  protected[estuary] var zIm2Col: DenseMatrix[Double] = _
+  protected[estuary] var y: DenseMatrix[Double] = _
+  protected[estuary] var filterMatrix: DenseMatrix[Double] = _
+  protected[estuary] var filterBias: DenseVector[Double] = _
 
-  override def setParam(param: DenseMatrix[Double])(implicit op: CanSetParam[ClassicLayer, DenseMatrix[Double], (DenseMatrix[Double], DenseVector[Double], DenseVector[Double])],
-                                                    op2: CanSetParam[ClassicLayer, DenseMatrix[Double], (DenseMatrix[Double], DenseVector[Double])]): Unit = filter.fromDenseMatrix(param)
+  /** Set parameters received from optimizer */
+  override def setParam[O](param: O)(implicit op: CanSetParam[ConvLayer, O]): Unit = op.set(param, repr)
 
-  override def backward(dYCurrent: DenseMatrix[Double], regularizer: Option[Regularizer])(implicit op: CanBackward[ClassicLayer, DenseMatrix[Double], (DenseMatrix[Double], DenseMatrix[Double])]): (DenseMatrix[Double], DenseMatrix[Double]) =
-    implicitly[CanBackward[ConvLayer, DenseMatrix[Double], (DenseMatrix[Double], DenseMatrix[Double])]].backward(dYCurrent, this, regularizer)
+  override def getReguCost(regularizer: Option[Regularizer])(implicit op: CanRegularize[Filter]): Double =
+    op.regu(param, regularizer)
 }
 
 object ConvLayer {
@@ -77,23 +64,12 @@ object ConvLayer {
   }
 
   case class Filter(size: Int, pad: Int, stride: Int, oldChannel: Int, newChannel: Int) {
-    val w: DenseMatrix[Double] = DenseMatrix.zeros[Double](size * size * oldChannel, newChannel)
-    val b: DenseVector[Double] = DenseVector.zeros[Double](newChannel)
+    var w: DenseMatrix[Double] = DenseMatrix.zeros[Double](size * size * oldChannel, newChannel)
+    var b: DenseVector[Double] = DenseVector.zeros[Double](newChannel)
     val matrixShape: (Int, Int) = (w.rows + 1, w.cols)
-
-    def init(initializer: WeightsInitializer): this.type = {
-      val params = initializer.init(matrixShape._1, matrixShape._2)
-      fromDenseMatrix(params)
-      this
-    }
 
     def toIm2Col: (DenseMatrix[Double], DenseVector[Double]) =
       implicitly[CanTransformForConv[TransformType.FILTER_TO_COL, Filter, (DenseMatrix[Double], DenseVector[Double])]].transform(this)
-
-    def toDenseMatrix: DenseMatrix[Double] = implicitly[CanExportParam[Filter, DenseMatrix[Double]]].export(this)
-
-    def fromDenseMatrix(m: DenseMatrix[Double]): Unit =
-      implicitly[CanSetParam[Filter, DenseMatrix[Double], (DenseMatrix[Double], DenseVector[Double])]].set(m, this)
 
     override def toString: String = {
       s"""(size: $size, pad: $pad, stride: $stride, oldChannel: $oldChannel, newChannel: $newChannel)"""
@@ -101,6 +77,8 @@ object ConvLayer {
   }
 
   case class ConvSize(height: Int, width: Int, channel: Int) {
+    val dataLength: Int = height * width * channel
+
     def linearIndex(h: Int, w: Int, c: Int): Int = c * height * width + w * height + h
 
     def ==(that: ConvSize): Boolean = (height == that.height) && (width == that.width) && (channel == that.channel)
@@ -108,10 +86,46 @@ object ConvLayer {
     def contains(height: Int, width: Int, channel: Int): Boolean =
       height <= this.height && width <= this.width && channel <= this.channel
 
-    val dataLength: Int = height * width * channel
-
     override def toString: String = s"""(height: $height, width: $width, channel: $channel)"""
   }
+
+  implicit val convLayerCanSetParam: CanSetParam[ConvLayer, DenseMatrix[Double]] =
+    (from, foor) => {
+      val w = from(0 to from.rows - 2, ::)
+      val b = from(from.rows - 1, ::).t
+      foor.param.w = w
+      foor.param.b = b
+    }
+
+  implicit val convLayerCanExportParam: CanExportParam[ConvLayer, DenseMatrix[Double]] =
+    (from) => {
+      DenseMatrix.vertcat(from.param.w, from.param.b.toDenseMatrix)
+    }
+
+  implicit val convLayerCanAutoInit: CanAutoInit[ConvLayer] =
+    (foor: ConvLayer, initializer: WeightsInitializer) => {
+      val w = initializer.init(foor.param.w.rows, foor.param.matrixShape._2)
+      val b = DenseVector.zeros[Double](foor.param.matrixShape._2)
+      foor.setParam(DenseMatrix.vertcat(w, b.toDenseMatrix))
+    }
+
+  implicit val convLayerCanForward: CanForward[ConvLayer, DenseMatrix[Double], DenseMatrix[Double]] =
+    (input, by) => {
+      ConvLayer.checkInputValidity(input, by.preConvSize)
+
+      by.yPreviousIm2Col = implicitly[CanTransformForConv[TransformType.IMAGE_TO_COL, (DenseMatrix[Double], ConvSize, Filter), DenseMatrix[Double]]]
+        .transform((input, by.preConvSize, by.param))
+
+      val filterWeightsAndBias = by.param.toIm2Col
+      by.filterMatrix = filterWeightsAndBias._1 // shape (size * size * oldChannel, newChannel)
+      by.filterBias = filterWeightsAndBias._2
+
+      by.zIm2Col = by.yPreviousIm2Col * by.filterMatrix + DenseVector.ones[Double](by.yPreviousIm2Col.rows) * by.filterBias.t
+      by.z = implicitly[CanTransformForConv[TransformType.COL_TO_IMAGE, (DenseMatrix[Double], ConvSize), DenseMatrix[Double]]]
+        .transform(by.zIm2Col, by.outputConvSize)
+      by.y = by.activate(by.z)
+      by.y
+    }
 
   implicit val convLayerCanBackward: CanBackward[ConvLayer, DenseMatrix[Double], (DenseMatrix[Double], DenseMatrix[Double])] =
     (input, by, regularizer) => {
@@ -127,41 +141,15 @@ object ConvLayer {
       val grads = DenseMatrix.vertcat(dW, dB)
 
       val dYPreviousIm = implicitly[CanTransformForConv[TransformType.COL_GRAD_2_IMAGE, (DenseMatrix[Double], ConvSize, Filter), DenseMatrix[Double]]]
-        .transform(dYPrevious, by.preConvSize, by.filter)
+        .transform((dYPrevious, by.preConvSize, by.param))
 
       (dYPreviousIm, grads)
     }
 
-  implicit val filterCanExportParam: CanExportParam[Filter, DenseMatrix[Double]] =
-    (from) => {
-      DenseMatrix.vertcat(from.w, from.b.toDenseMatrix)
-    }
 
-  implicit val convLayerCanForward: CanForward[ConvLayer, DenseMatrix[Double], DenseMatrix[Double]] =
-    (input, by) => {
-      ConvLayer.checkInputValidity(input, by.preConvSize)
 
-      by.yPreviousIm2Col = implicitly[CanTransformForConv[TransformType.IMAGE_TO_COL, (DenseMatrix[Double], ConvSize, Filter), DenseMatrix[Double]]]
-        .transform(input, by.preConvSize, by.filter)
 
-      val filterWeightsAndBias = by.filter.toIm2Col
-      by.filterMatrix = filterWeightsAndBias._1 // shape (size * size * oldChannel, newChannel)
-      by.filterBias = filterWeightsAndBias._2
 
-      by.zIm2Col = by.yPreviousIm2Col * by.filterMatrix + DenseVector.ones[Double](by.yPreviousIm2Col.rows) * by.filterBias.t
-      by.z = implicitly[CanTransformForConv[TransformType.COL_TO_IMAGE, (DenseMatrix[Double], ConvSize), DenseMatrix[Double]]]
-        .transform(by.zIm2Col, by.outputConvSize)
-      by.y = by.activate(by.z)
-      by.y
-    }
 
-  implicit val filterCanSetParamNonBN: CanSetParam[Filter, DenseMatrix[Double], (DenseMatrix[Double], DenseVector[Double])] =
-    (from, foor) => {
-      val w = from(0 to from.rows - 2, ::)
-      val b = from(from.rows - 1, ::).t
-      foor.w := w
-      foor.b := b
-      (w, b)
-    }
 
 }

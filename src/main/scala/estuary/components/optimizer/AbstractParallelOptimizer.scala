@@ -3,16 +3,16 @@ package estuary.components.optimizer
 /**
   * All distributed optimizer MUST implement this trait.
  *
-  * @tparam A type of optimization algorithm's parameters.
+  * @tparam OptParam type of optimization algorithm's parameters.
   */
-trait AbstractParallelOptimizer[A, B] extends ParallelOptimizer[B] {
+trait AbstractParallelOptimizer[OptParam, ModelParam] extends ParallelOptimizer[ModelParam] {
 
-  protected var parameterServer: A = _
+  protected var parameterServer: OptParam = _
 
-  protected def updateParameterServer(grads: A, miniBatchTime: Int): Unit
+  protected def updateParameterServer(grads: OptParam, miniBatchTime: Int): Unit
 
-  protected def updateParameterServer(newParam: A): Unit = this.synchronized(parameterServer = newParam)
+  protected def updateParameterServer(newParam: OptParam): Unit = this.synchronized(parameterServer = newParam)
 
-  protected def fetchParameterServer(): A = this.synchronized(parameterServer)
+  protected def fetchParameterServer(): OptParam = this.synchronized(parameterServer)
 
 }

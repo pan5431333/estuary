@@ -1,10 +1,9 @@
 package estuary.components.layers
 import estuary.components.layers.ConvLayer.{ConvSize, Filter}
 
-class ReluConvLayer(val filter: Filter) extends ConvLayer with ReluActivator{
-  override var preConvSize: ConvSize = _
+class ReluConvLayer(override val param: Filter) extends ConvLayer with ReluActivator{
 
-  override def copyStructure: ReluConvLayer = new ReluConvLayer(filter).setPreConvSize(preConvSize)
+  override def copyStructure: ReluConvLayer = new ReluConvLayer(param).setPreConvSize(preConvSize)
 }
 
 object ReluConvLayer {

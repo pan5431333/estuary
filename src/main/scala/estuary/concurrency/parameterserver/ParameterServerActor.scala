@@ -32,12 +32,12 @@ object ParameterServerActor {
   final case object GetTrainedParams extends ParameterServerActorMsg
   final case object GetCostHistory extends ParameterServerActorMsg
 
-  final case class UpdateParams(newParams: AnyRef) extends ParameterServerActorMsg
+  final case class UpdateParams(newParams: Any) extends ParameterServerActorMsg
 
   final case class SetWorkActorsRef(workActors: Seq[ActorRef]) extends ParameterServerActorMsg
 
-  final case class CurrentParams(params: AnyRef) extends ParameterServerActorMsg
-  final case class CurrentParamsForUpdate(params: AnyRef, miniBatchTime: Int) extends ParameterServerActorMsg
+  final case class CurrentParams(params: Any) extends ParameterServerActorMsg
+  final case class CurrentParamsForUpdate(params: Any, miniBatchTime: Int) extends ParameterServerActorMsg
 
   final case class CostHistory(cost: Double) extends ParameterServerActorMsg
 }

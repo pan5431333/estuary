@@ -2,7 +2,7 @@ package estuary.components.optimizer
 
 import java.io.FileNotFoundException
 
-import akka.actor.{ActorRef, AddressFromURIString, Deploy, PoisonPill, Props}
+import akka.actor.{ActorRef, AddressFromURIString, Deploy, PoisonPill}
 import akka.remote.RemoteScope
 import akka.util.Timeout
 import com.typesafe.config.{Config, ConfigFactory}
@@ -19,20 +19,20 @@ import scala.concurrent.Await
 /**
   * Created by mengpan on 2017/10/28.
   */
-trait DecentralizedAkkaParallelOptimizer[O <: AnyRef, M <: AnyRef] extends AbstractAkkaParallelOptimizer[O, M] {
+trait DecentralizedAkkaParallelOptimizer[OptParam, ModelParam] extends AbstractAkkaParallelOptimizer[OptParam, ModelParam] {
 
-  protected def avgOpFunc(params: Seq[O]): O
+  protected def avgOpFunc(params: Seq[OptParam]): OptParam
 
   /**
     * Optimize the model in parallel, and returning the trained parameters with the same dimensions of initParams.
     * The method parameter 'model' is used here to create several model instances (with copyStructure() method), and
     * then they are distributed to different threads or machines.
     *
-    * @param model      an instance of trait Model, used to create many copies and then distribute them to different threads
+    * @param model      an instance of trait ModelLike, used to create many copies and then distribute them to different threads
     *                   or machines.
     * @return trained parameters, with same dimension with the given initial parameters.
     */
-  override def parOptimize(model: Model[M]): M = {
+  override def parOptimize(model: Model[ModelParam]): ModelParam = {
 
     //Read configuration file "estuary.conf"
     val config = ConfigFactory.load("estuary")
@@ -97,6 +97,7 @@ trait DecentralizedAkkaParallelOptimizer[O <: AnyRef, M <: AnyRef] extends Abstr
     logger.info(s"Manager actor ($manager) created and deployed on actor system $managerAddr")
 
     import akka.pattern._
+
     import scala.concurrent.duration._
     implicit val timeout = Timeout(100 days)
     val futureParams = manager ? StartTrain
@@ -112,7 +113,7 @@ trait DecentralizedAkkaParallelOptimizer[O <: AnyRef, M <: AnyRef] extends Abstr
     allWorkers.foreach(_ ! PoisonPill)
 
     system.terminate()
-    opParamsToModelParams(trainedParams.asInstanceOf[O])
+    opParamsToModelParams(trainedParams.asInstanceOf[OptParam])
   }
 
 }

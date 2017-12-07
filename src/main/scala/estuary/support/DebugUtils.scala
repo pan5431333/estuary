@@ -1,4 +1,4 @@
-package estuary.utils
+package estuary.support
 
 import breeze.linalg.{DenseMatrix, DenseVector}
 

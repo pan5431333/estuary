@@ -4,7 +4,7 @@ import estuary.components.layers.ConvLayer.{ConvSize, Filter}
 import estuary.components.layers._
 import estuary.components.optimizer._
 import estuary.data.GasCensorDataReader
-import estuary.model.{FullyConnectedNNModel, Model}
+import estuary.model.{NNModel, ModelLike}
 
 /**
   * Created by mengpan on 2017/10/27.
@@ -16,24 +16,20 @@ object AkkaParallelDemo extends App{
 //    PoolingLayer(3, 1, 0, PoolingLayer.MAX_POOL, preConvSize = ConvSize(29, 29, 16)))
 //  val outputLayer = SoftmaxLayer(2)
 
-  val hiddenLayers = List(
+  val hiddenLayers: Seq[Layer[Any]] = List(
     ReluConvLayer(Filter(size = 2, pad = 0, stride = 1, oldChannel = 2, newChannel = 8), preConvSize = ConvSize(8, 8, 2)),
     ReluConvLayer(Filter(size = 3, pad = 0, stride = 1, oldChannel = 8, newChannel = 16), preConvSize = ConvSize(7, 7, 8)),
     PoolingLayer(2, 1, 0, PoolingLayer.MAX_POOL, preConvSize = ConvSize(5, 5, 16))
   )
   val outputLayer = SoftmaxLayer(6)
 
-  val nnModel = new FullyConnectedNNModel(hiddenLayers, outputLayer, None)
+  val nnModel = new NNModel(hiddenLayers, outputLayer)
 
-//  val (feature, label) = new GasCensorDataReader().read("""D:\\Users\\m_pan\\Downloads\\Dataset\\Dataset\\train.*""")
+  val (feature, label) = new GasCensorDataReader().read("""D:\\Users\\m_pan\\Downloads\\Dataset\\Dataset\\train.*""")
 
-  val trainedModel = nnModel.multiNodesParTrain(AdamAkkaParallelOptimizer(iteration = 10, miniBatchSize = 32, learningRate = 0.0005))
-//  val trainedModel = nnModel.train(feature, label, SGDOptimizer(iteration = 20, learningRate = 0.0005))
+//  val trainedModel = nnModel.multiNodesParTrain(AdamAkkaParallelOptimizer(iteration = 10, miniBatchSize = 128, learningRate = 0.005))
+  nnModel.train(feature, label, AdamOptimizer(iteration = 20, learningRate = 0.0005))
 
-  val (testFeature, testLabel) = new GasCensorDataReader().read("""D:\\Users\\m_pan\\Downloads\\Dataset\\Dataset\\test.*""")
-  val yPredicted = trainedModel.predictToVector(testFeature, Vector(1, 2, 3, 4, 5, 6))
-  val testAccuracy = Model.accuracy(Model.convertMatrixToVector(testLabel.map(_.toInt), Vector(1, 2, 3, 4, 5, 6)), yPredicted)
-  println("\n The test accuracy of this model is: " + testAccuracy)
 
-  trainedModel.plotCostHistory()
+  nnModel.plotCostHistory()
 }

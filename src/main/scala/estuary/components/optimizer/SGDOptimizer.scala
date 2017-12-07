@@ -65,7 +65,7 @@ class SGDOptimizer(val iteration: Int,
   /**
     * Update model parameters using Gradient Descent method.
     *
-    * @param params Model parameters' values on current iteration.
+    * @param params ModelLike parameters' values on current iteration.
     * @param grads  Gradients of model parameters on current iteration.
     * @return Updated model parameters.
     */

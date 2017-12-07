@@ -11,18 +11,17 @@ import estuary.model.Model
 
 /**
   *
-  * @tparam M Model Parameter
-  * @tparam O Optimizer Parameter
+  * @tparam OptParam Optimizer Parameter
   */
-class BatchGradCalculatorActor[M <: AnyRef, O <: AnyRef](filePath: String,
-                                                         dataReader: Reader,
-                                                         model: Model[M],
-                                                         parameterServer: ActorRef,
-                                                         iteration: Int,
-                                                         shuffleFunc: (DenseMatrix[Double], DenseMatrix[Double]) => Iterator[(DenseMatrix[Double], DenseMatrix[Double])],
-                                                         updateFunc: (O, M, Int) => O,
-                                                         modelToOp: M => O,
-                                                         opToModel: O => M)
+class BatchGradCalculatorActor[OptParam, ModelParam](filePath: String,
+                                                     dataReader: Reader,
+                                                     model: Model[ModelParam],
+                                                     parameterServer: ActorRef,
+                                                     iteration: Int,
+                                                     shuffleFunc: (DenseMatrix[Double], DenseMatrix[Double]) => Iterator[(DenseMatrix[Double], DenseMatrix[Double])],
+                                                     updateFunc: (OptParam, ModelParam, Int) => OptParam,
+                                                     modelToOp: ModelParam => OptParam,
+                                                     opToModel: OptParam => ModelParam)
   extends Actor with ActorLogging {
 
   private[this] val (feature, label) = dataReader.read(filePath)
@@ -31,31 +30,34 @@ class BatchGradCalculatorActor[M <: AnyRef, O <: AnyRef](filePath: String,
   private[this] var iterTime: Int = 0
   private[this] var currentFeature: DenseMatrix[Double] = _
   private[this] var currentLabel: DenseMatrix[Double] = _
-  private[this] var grads: M = _
+  private[this] var grads: ModelParam = _
   private[this] lazy val miniBatchSize: Int = currentFeature.rows
   private[this] var manager: ActorRef = _
 
   override def receive: Actor.Receive = {
     case StartTrain =>
       manager = sender
-      val init = model.init(feature.cols, label.cols)
+      val init = {
+        model.init(feature.cols, label.cols);
+        model.params
+      }
       val initOp = modelToOp(init)
       parameterServer ! UpdateParams(initOp)
       parameterServer ! GetCurrentParams
 
     case CurrentParams(params) =>
-      iter(params.asInstanceOf[O])
+      iter(params.asInstanceOf[OptParam])
       if (iterTime < iteration) {
         parameterServer ! GetCurrentParamsForUpdate
       } else manager ! TrainingDone
 
 
     case CurrentParamsForUpdate(params, miniBatchTime) =>
-      parameterServer ! UpdateParams(updateFunc(params.asInstanceOf[O], grads, miniBatchIndex))
+      parameterServer ! UpdateParams(updateFunc(params.asInstanceOf[OptParam], grads, miniBatchIndex))
       parameterServer ! GetCurrentParams
   }
 
-  private def iter(params: O): Unit = {
+  private def iter(params: OptParam): Unit = {
     val cost = calculateCost(opToModel(params))
     val printCostUnit = math.max(currentFeature.rows / this.miniBatchSize / 5, 10)
     ParallelOptimizer.printAkkaCostInfo(cost, iterTime, miniBatchIndex, printCostUnit, log)
@@ -63,7 +65,7 @@ class BatchGradCalculatorActor[M <: AnyRef, O <: AnyRef](filePath: String,
     grads = calculateGrads(opToModel(params))
   }
 
-  private def calculateCost(params: M): Double = {
+  private def calculateCost(params: ModelParam): Double = {
     if (shuffledData.hasNext) {
       val (onefeature, onelabel) = shuffledData.next()
       currentFeature = onefeature
@@ -77,26 +79,26 @@ class BatchGradCalculatorActor[M <: AnyRef, O <: AnyRef](filePath: String,
       currentFeature = onefeature
       currentLabel = onelabel
     }
-    model.forward(currentFeature, currentLabel, params)
+    model.forwardAndCalCost(currentFeature, currentLabel, params)
   }
 
-  private def calculateGrads(params: M): M = {
-    model.backward(currentLabel, params)
+  private def calculateGrads(params: ModelParam): ModelParam = {
+    model.backwardWithGivenParams(currentLabel, params)
   }
 }
 
 object BatchGradCalculatorActor {
 
-  def props[O, M](filePath: String,
-                  dataReader: Reader,
-                  model: Model[M],
-                  parameterServer: ActorRef,
-                  iteration: Int,
-                  shuffleFunc: (DenseMatrix[Double], DenseMatrix[Double]) => Iterator[(DenseMatrix[Double], DenseMatrix[Double])],
-                  updateFunc: (O, M, Int) => O,
-                  modelToOp: M => O,
-                  opToModel: O => M): Props = {
-    Props(classOf[BatchGradCalculatorActor[M, O]], filePath, dataReader, model, parameterServer, iteration, shuffleFunc, updateFunc, modelToOp, opToModel)
+  def props[OptParam, ModelParam](filePath: String,
+                                  dataReader: Reader,
+                                  model: Model[ModelParam],
+                                  parameterServer: ActorRef,
+                                  iteration: Int,
+                                  shuffleFunc: (DenseMatrix[Double], DenseMatrix[Double]) => Iterator[(DenseMatrix[Double], DenseMatrix[Double])],
+                                  updateFunc: (OptParam, ModelParam, Int) => OptParam,
+                                  modelToOp: ModelParam => OptParam,
+                                  opToModel: OptParam => ModelParam): Props = {
+    Props(classOf[BatchGradCalculatorActor[OptParam, ModelParam]], filePath, dataReader, model, parameterServer, iteration, shuffleFunc, updateFunc, modelToOp, opToModel)
   }
 
   sealed trait BatchGradCalculatorActorMsg extends Serializable with MyMessage

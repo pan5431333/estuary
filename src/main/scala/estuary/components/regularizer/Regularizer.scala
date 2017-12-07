@@ -1,6 +1,6 @@
 package estuary.components.regularizer
 
-import breeze.linalg.DenseMatrix
+import breeze.linalg.{DenseMatrix, Matrix}
 
 /**
   * Created by mengpan on 2017/9/5.
@@ -8,7 +8,7 @@ import breeze.linalg.DenseMatrix
 trait Regularizer {
   def getReguCost(m: DenseMatrix[Double]*): Double
 
-  def getReguCostGrad(w: DenseMatrix[Double]): DenseMatrix[Double]
+  def getReguCostGrad(w: DenseMatrix[Double]): Matrix[Double]
 
   var lambda: Double = 0.7
 

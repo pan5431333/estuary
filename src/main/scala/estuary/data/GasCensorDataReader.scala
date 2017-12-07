@@ -1,7 +1,7 @@
 package estuary.data
 
 import breeze.linalg.DenseMatrix
-import estuary.utils.RichMatrix
+import estuary.support.RichMatrix
 
 import scala.util.Random
 import estuary.implicits._

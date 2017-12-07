@@ -1,8 +1,8 @@
 package estuary.data
 
 import breeze.linalg.{DenseMatrix, DenseVector}
-import estuary.model.Model
-import estuary.utils.ImageReader
+import estuary.model.ModelLike
+import estuary.support.ImageReader
 import org.slf4j.LoggerFactory
 
 import scala.io.Source
@@ -36,7 +36,7 @@ trait CifarTenReader extends Reader {
     }.seq.unzip
     log.info(s"${tFeature.length} records read")
 
-    val label = Model.convertVectorToMatrix(new DenseVector(tLabel.seq.toArray))._1
+    val label = ModelLike.convertVectorToMatrix(new DenseVector(tLabel.seq.toArray))._1
     val rows = tFeature.length
     val cols = tFeature(0).length
     val data = DenseMatrix.zeros[Double](rows, cols)

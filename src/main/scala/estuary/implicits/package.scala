@@ -1,7 +1,7 @@
 package estuary
 
 import breeze.linalg.DenseMatrix
-import estuary.utils.RichMatrix
+import estuary.support.RichMatrix
 
 /**
   * Created by mengpan on 2017/10/27.

@@ -14,22 +14,22 @@ import scala.collection.mutable
 /**
   * Created by mengpan on 2017/10/28.
   */
-class DecentralizedBatchCalculator[O <: AnyRef, M <: AnyRef](id: Long,
-                                                             filePath: String,
-                                                             dataReader: Reader,
-                                                             model: Model[M],
-                                                             iteration: Int,
-                                                             miniBatchFunc: (DenseMatrix[Double], DenseMatrix[Double]) => Iterator[(DenseMatrix[Double], DenseMatrix[Double])],
-                                                             updateFunc: (O, M, Int) => O,
-                                                             modelToOpFunc: M => O,
-                                                             opToModelFunc: O => M,
-                                                             avgOpFunc: Seq[O] => O)
+class DecentralizedBatchCalculator[OptParam, ModelParam <: Any](id: Long,
+                                                                filePath: String,
+                                                                dataReader: Reader,
+                                                                model: Model[ModelParam],
+                                                                iteration: Int,
+                                                                miniBatchFunc: (DenseMatrix[Double], DenseMatrix[Double]) => Iterator[(DenseMatrix[Double], DenseMatrix[Double])],
+                                                                updateFunc: (OptParam, ModelParam, Int) => OptParam,
+                                                                modelToOpFunc: ModelParam => OptParam,
+                                                                opToModelFunc: OptParam => ModelParam,
+                                                                avgOpFunc: Seq[OptParam] => OptParam)
   extends Actor with ActorLogging {
 
   private[this] var neibours: Seq[ActorRef] = _
-  private[this] val neiboursParams: mutable.HashMap[ActorRef, O] = new mutable.HashMap[ActorRef, O]()
+  private[this] val neiboursParams: mutable.HashMap[ActorRef, OptParam] = new mutable.HashMap[ActorRef, OptParam]()
   private[this] val (feature, label) = dataReader.read(filePath)
-  private[this] var myParams: O = modelToOpFunc(model.init(feature.cols, label.cols))
+  private[this] var myParams: OptParam = modelToOpFunc(model.init(feature.cols, label.cols))
   private[this] var shuffledData: Iterator[(DenseMatrix[Double], DenseMatrix[Double])] = miniBatchFunc(feature, label)
   private[this] var miniBatchIndex: Int = 0
   private[this] var iterTime: Int = 0
@@ -42,7 +42,7 @@ class DecentralizedBatchCalculator[O <: AnyRef, M <: AnyRef](id: Long,
     case Neibours(neibours) => this.neibours = neibours
 
     case CurrentParam(param) =>
-      neiboursParams.+=(sender -> param.asInstanceOf[O])
+      neiboursParams.+=(sender -> param.asInstanceOf[OptParam])
       if (neiboursParams.size == neibours.length) {
         myParams = avgOpFunc(myParams :: neiboursParams.values.toList)
         neiboursParams.clear()
@@ -71,7 +71,7 @@ class DecentralizedBatchCalculator[O <: AnyRef, M <: AnyRef](id: Long,
     }
   }
 
-  private def iter(): M = {
+  private def iter(): ModelParam = {
     val cost = calculateCost(opToModelFunc(myParams))
     val printCostUnit = math.max(currentFeature.rows / this.miniBatchSize / 5, 10)
     ParallelOptimizer.printCostInfo(cost, iterTime, miniBatchIndex, printCostUnit, log)
@@ -79,7 +79,7 @@ class DecentralizedBatchCalculator[O <: AnyRef, M <: AnyRef](id: Long,
     calculateGrads(opToModelFunc(myParams))
   }
 
-  private def calculateCost(params: M): Double = {
+  private def calculateCost(params: ModelParam): Double = {
     if (shuffledData.hasNext) {
       val (onefeature, onelabel) = shuffledData.next()
       currentFeature = onefeature
@@ -93,27 +93,27 @@ class DecentralizedBatchCalculator[O <: AnyRef, M <: AnyRef](id: Long,
       currentFeature = onefeature
       currentLabel = onelabel
     }
-    model.forward(currentFeature, currentLabel, params)
+    model.forwardAndCalCost(currentFeature, currentLabel, params)
   }
 
-  private def calculateGrads(params: M): M = {
-    model.backward(currentLabel, params)
+  private def calculateGrads(params: ModelParam): ModelParam = {
+    model.backwardWithGivenParams(currentLabel, params)
   }
 }
 
 object DecentralizedBatchCalculator {
 
-  def props[O, M](id: Long,
-                  filePath: String,
-                  dataReader: Reader,
-                  model: Model[M],
-                  iteration: Int,
-                  miniBatchFunc: (DenseMatrix[Double], DenseMatrix[Double]) => Iterator[(DenseMatrix[Double], DenseMatrix[Double])],
-                  updateFunc: (O, M, Int) => O,
-                  modelToOpFunc: M => O,
-                  opToModelFunc: O => M,
-                  avgOpFunc: Seq[O] => O): Props = {
-    Props(classOf[DecentralizedBatchCalculator[O, M]], id, filePath, dataReader, model, iteration, miniBatchFunc, updateFunc, modelToOpFunc, opToModelFunc, avgOpFunc)
+  def props[OptParam, ModelParam](id: Long,
+                                  filePath: String,
+                                  dataReader: Reader,
+                                  model: Model[ModelParam],
+                                  iteration: Int,
+                                  miniBatchFunc: (DenseMatrix[Double], DenseMatrix[Double]) => Iterator[(DenseMatrix[Double], DenseMatrix[Double])],
+                                  updateFunc: (OptParam, ModelParam, Int) => OptParam,
+                                  modelToOpFunc: ModelParam => OptParam,
+                                  opToModelFunc: OptParam => ModelParam,
+                                  avgOpFunc: Seq[OptParam] => OptParam): Props = {
+    Props(classOf[DecentralizedBatchCalculator[OptParam, ModelParam]], id, filePath, dataReader, model, iteration, miniBatchFunc, updateFunc, modelToOpFunc, opToModelFunc, avgOpFunc)
   }
 
   sealed trait DecentralizedBatchCalculatorMsg extends MyMessage
@@ -122,7 +122,7 @@ object DecentralizedBatchCalculator {
 
   final case object GetParam extends DecentralizedBatchCalculatorMsg
 
-  final case class CurrentParam(param: AnyRef) extends DecentralizedBatchCalculatorMsg
+  final case class CurrentParam(param: Any) extends DecentralizedBatchCalculatorMsg
 
   final case object TrainingDone extends DecentralizedBatchCalculatorMsg
 

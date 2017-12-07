@@ -1,12 +1,10 @@
 import breeze.linalg.DenseMatrix
-import estuary.components.initializer.OneInitializer
-import org.scalatest.FunSuite
-import estuary.components.layers.{ConvLayer, PoolingLayer, ReluConvLayer}
 import estuary.components.layers.ConvLayer.{ConvSize, Filter}
+import estuary.components.layers.PoolingLayer
 import estuary.components.support.{CanTransformForConv, TransformType}
-import estuary.model.Model
+import org.scalatest.FunSuite
 
-class ConvLayerTest extends FunSuite {
+class ConvLayerLikeTest extends FunSuite {
 
   test("Test for Im2Col for 3*3 image and 2*2 filter") {
     val a = DenseMatrix.create[Double](1, 9, Array(1, 4, 7, 2, 5, 8, 3, 6, 9).map(_.toDouble))
@@ -59,16 +57,6 @@ class ConvLayerTest extends FunSuite {
     assert(b === DenseMatrix.create[Double](2, 12, Array(1, 13, 2, 14, 3, 15, 4, 16, 5, 17, 6, 18, 7, 19, 8, 20, 9, 21, 10, 22, 11, 23, 12, 24).map(_.toDouble)))
   }
 
-  test("Test for convolutional layer forward") {
-    val filter = Filter(2, 0, 1, 1, 3)
-    filter.init(OneInitializer)
-    val layer = ReluConvLayer(filter, ConvSize(3, 3, 1))
-    val yP = DenseMatrix.create[Double](1, 9, Array(1, 2, 3, 4, 5, 6, 7, 8, 9).map(_.toDouble))
-    val yC = layer.forward(yP)
-    println(yC)
-    assert(yC === DenseMatrix.create[Double](1, 12, Array(13, 25, 17, 29, 13, 25, 17, 29, 13, 25, 17, 29).map(_.toDouble)))
-  }
-
   test("Test for imGrad2Col with 1 2*2*1 image") {
     val a = DenseMatrix.create[Double](1, 4, Array(1, 2, 3, 4).map(_.toDouble))
     val b = implicitly[CanTransformForConv[TransformType.IMAGE_GRAD_2_COL, (DenseMatrix[Double], ConvSize), DenseMatrix[Double]]].transform(a, ConvSize(2, 2, 1))
@@ -88,24 +76,6 @@ class ConvLayerTest extends FunSuite {
     val b = implicitly[CanTransformForConv[TransformType.IMAGE_GRAD_2_COL, (DenseMatrix[Double], ConvSize), DenseMatrix[Double]]].transform(a, ConvSize(2, 2, 2))
     println(b)
     assert(b === DenseMatrix.create[Double](8, 2, Array(1, 2, 3, 4, 9, 10, 11, 12, 5, 6, 7, 8, 13, 14, 15, 16).map(_.toDouble)))
-  }
-
-  test("Test for convolutional layer backward") {
-    val filter = Filter(2, 0, 1, 1, 3)
-    filter.init(OneInitializer)
-    val layer = ReluConvLayer(filter, ConvSize(3, 3, 1))
-
-    val yP = DenseMatrix.create[Double](1, 9, Array(1, 2, 3, 4, 5, 6, 7, 8, 9).map(_.toDouble))
-    val yC = layer.forward(yP)
-
-    assert(yC === DenseMatrix.create[Double](1, 12, Array(13.0, 25.0, 17.0, 29.0, 13.0, 25.0, 17.0, 29.0, 13.0, 25.0, 17.0, 29.0)))
-
-    val dY = DenseMatrix.create[Double](1, 12, Array(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12).map(_.toDouble))
-
-    val (dYP, dF) = layer.backward(dY, None)
-
-    //    assert(dYP === DenseMatrix.create[Double](4, 4, Array(13.0, 25.0, 17.0, 29.0, 13.0, 25.0, 17.0, 29.0, 13.0, 25.0, 17.0, 29.0)))
-    assert(dF === DenseMatrix.create[Double](5, 3, Array(35, 65, 45, 75, 10, 83, 161, 109, 187, 26, 131, 257, 173, 299, 42).map(_.toDouble)))
   }
 
   test("Test for pooling layer forward with 1 3*3*3 image") {

@@ -6,7 +6,7 @@ import java.util.Calendar
 import breeze.linalg.DenseMatrix
 import breeze.numerics.abs
 import estuary.components.Exception.GradientExplosionException
-import estuary.model.Model
+import estuary.model.ModelLike
 import org.slf4j.Logger
 
 import scala.collection.mutable.ArrayBuffer
@@ -69,7 +69,7 @@ trait Optimizer extends Serializable{
     val currentTime = Calendar.getInstance().getTime
     val timeFormat = new SimpleDateFormat("yyyyMMddHHmmss")
     val fileName = paramSavePath + "/" + timeFormat.format(currentTime) + ".txt"
-    Model.saveDenseMatricesToDisk(modelParams, fileName)
+    ModelLike.saveDenseMatricesToDisk(modelParams, fileName)
     logger.warn(s"Something wrong happened during training, the current parameters have been save to $fileName")
   }
 }

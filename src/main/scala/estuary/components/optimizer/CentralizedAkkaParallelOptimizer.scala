@@ -11,25 +11,25 @@ import estuary.concurrency.parameterserver.BatchGradCalculatorActor.StartTrain
 import estuary.concurrency.parameterserver.{BatchGradCalculatorActor, Manager, ParameterServerActor}
 import estuary.concurrency.parameterserver.ParameterServerActor.{CurrentParams, GetCostHistory}
 import estuary.data.Reader
-import estuary.model.Model
+import estuary.model.{Model, ModelLike}
 
 import scala.concurrent.{Await, Future}
 
 /**
   * Created by mengpan on 2017/10/28.
   */
-trait CentralizedAkkaParallelOptimizer[O <: AnyRef, M <: AnyRef] extends AbstractAkkaParallelOptimizer[O, M] {
+trait CentralizedAkkaParallelOptimizer[OptParam, ModelParam] extends AbstractAkkaParallelOptimizer[OptParam, ModelParam] {
 
   /**
     * Optimize the model in parallel, and returning the trained parameters with the same dimensions of initParams.
     * The method parameter 'model' is used here to create several model instances (with copyStructure() method), and
     * then they are distributed to different threads or machines.
     *
-    * @param model      an instance of trait Model, used to create many copies and then distribute them to different threads
+    * @param model      an instance of trait ModelLike, used to create many copies and then distribute them to different threads
     *                   or machines.
     * @return trained parameters, with same dimension with the given initial parameters.
     */
-  def parOptimize(model: Model[M]): M = {
+  def parOptimize(model: Model[ModelParam]): ModelParam = {
 
     val config = ConfigFactory.load("estuary")
 
@@ -97,7 +97,7 @@ trait CentralizedAkkaParallelOptimizer[O <: AnyRef, M <: AnyRef] extends Abstrac
     //Shutdown main system
     system.terminate()
 
-    opParamsToModelParams(nowParams.asInstanceOf[O])
+    opParamsToModelParams(nowParams.asInstanceOf[OptParam])
   }
 
 }

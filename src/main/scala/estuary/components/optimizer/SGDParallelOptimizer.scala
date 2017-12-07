@@ -25,14 +25,14 @@ class SGDParallelOptimizer(override val iteration: Int,
         for (((feature, label), miniBatchTime) <- getMiniBatches(batch._1, batch._2).zipWithIndex) {
           val printMiniBatchUnit = math.max(feature.rows / this.miniBatchSize / 5, 10)
           val params = fetchParameterServer()
-          val cost = model.forward(feature, label, params)
+          val cost = model.forwardAndCalCost(feature, label, params)
 
           if (miniBatchTime % printMiniBatchUnit == 0) {
             ParallelOptimizer.printCostInfo(cost, i, miniBatchTime, printMiniBatchUnit, logger)
             addCostHistory(cost)
           }
 
-          val grads = model.backward(label, params)
+          val grads = model.backwardWithGivenParams(label, params)
 
           updateParameterServer(grads, miniBatchTime)
         }

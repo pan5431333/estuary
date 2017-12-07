@@ -2,10 +2,10 @@ package estuary.components.optimizer
 
 /**
   *
-  * @tparam O type of optimization algorithm's parameters.
-  * @tparam M type of model parameters
+  * @tparam OptParam type of optimization algorithm's parameters.
+  * @tparam ModelParam type of model parameters
   */
-trait AbstractAkkaParallelOptimizer[O <: AnyRef, M <: AnyRef] extends AkkaParallelOptimizer[M] with MiniBatchable with Serializable {
+trait AbstractAkkaParallelOptimizer[OptParam, ModelParam] extends AkkaParallelOptimizer[ModelParam] with MiniBatchable with Serializable {
 
   /**
     * Given model parameters to initialize optimization parameters, i.e. for Adam Optimization, model parameters are of type
@@ -15,11 +15,11 @@ trait AbstractAkkaParallelOptimizer[O <: AnyRef, M <: AnyRef] extends AkkaParall
     * @param modelParams model parameters
     * @return optimization parameters
     */
-  protected def modelParamsToOpParams(modelParams: M): O
+  protected def modelParamsToOpParams(modelParams: ModelParam): OptParam
 
-  protected def updateFunc(opParams: O, grads: M, miniBatchTime: Int): O
+  protected def updateFunc(opParams: OptParam, grads: ModelParam, miniBatchTime: Int): OptParam
 
-  protected def opParamsToModelParams(opParams: O): M
+  protected def opParamsToModelParams(opParams: OptParam): ModelParam
 
 }
 

@@ -3,7 +3,7 @@ package estuary.components.optimizer
 import breeze.linalg.DenseMatrix
 import estuary.components.Exception.GradientExplosionException
 import estuary.components.optimizer.AdamOptimizer.AdamParam
-import estuary.model.Model
+import estuary.model.{Model, ModelLike}
 import org.slf4j.{Logger, LoggerFactory}
 
 class AdamParallelOptimizer(override val iteration: Int,
@@ -35,7 +35,7 @@ class AdamParallelOptimizer(override val iteration: Int,
     } {
       val printMiniBatchUnit = math.max(feature.rows / this.miniBatchSize / 5, 10)
       val params = fetchParameterServer()
-      val cost = model.forward(feature, label, params.modelParam)
+      val cost = model.forwardAndCalCost(feature, label, params.modelParam)
 
       ParallelOptimizer.printCostInfo(cost, i, miniBatchTime, printMiniBatchUnit, logger)
 
@@ -51,7 +51,7 @@ class AdamParallelOptimizer(override val iteration: Int,
         }
       }
 
-      val grads = model.backward(label, params.modelParam)
+      val grads = model.backwardWithGivenParams(label, params.modelParam)
 
       updateParameterServer(AdamParam(grads, null, null), miniBatchTime)
     }

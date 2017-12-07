@@ -16,14 +16,14 @@ import scala.collection.parallel.immutable.ParSeq
   *
   * @note Some lessons learned from building large scala distributed neural network:
   *       1. The right way to slice parallel data sets from training set:
-  *         1) Split up training set into a ParSeq of multiple parallel data sets (without shuffle) first
-  *         2) For each parallel data set, do sequential optimization (with sharing of parameter server)
+  *       1) Split up training set into a ParSeq of multiple parallel data sets (without shuffle) first
+  *       2) For each parallel data set, do sequential optimization (with sharing of parameter server)
   *      2. The right way to update parameter server:
-  *         After calculating gradients, before updating parameter server, remember to fetch current parameters from
-  *         parameter server again, since parameter server might be updated by other threads during the process of
-  *         calculating gradients in current thread.
+  *       After calculating gradients, before updating parameter server, remember to fetch current parameters from
+  *       parameter server again, since parameter server might be updated by other threads during the process of
+  *       calculating gradients in current thread.
   */
-trait ParallelOptimizer[T] extends Optimizer with MiniBatchable {
+trait ParallelOptimizer[ModelParam] extends Optimizer with MiniBatchable {
 
   /** Number of models trained in parallel, with sharing the same parameter server. */
   protected val nTasks: Int
@@ -35,12 +35,12 @@ trait ParallelOptimizer[T] extends Optimizer with MiniBatchable {
     *
     * @param feature    feature matrix
     * @param label      label matrix with one-hot representation.
-    * @param model      an instance of trait Model, used to create many copies and then distribute them to different threads
+    * @param model      an instance of trait ModelLike, used to create many copies and then distribute them to different threads
     *                   or machines.
     * @param initParams initial parameters.
     * @return trained parameters, with same dimension with the given initial parameters.
     */
-  def parOptimize(feature: DenseMatrix[Double], label: DenseMatrix[Double], model: Model[T], initParams: T): T
+  def parOptimize(feature: DenseMatrix[Double], label: DenseMatrix[Double], model: Model[ModelParam], initParams: ModelParam): ModelParam
 
   /**
     * Functionality 1: add cost to MutableList: costHistory with synchronization.
@@ -51,7 +51,6 @@ trait ParallelOptimizer[T] extends Optimizer with MiniBatchable {
     costHistory.+=(cost)
     minCost = if (cost < minCost) cost else minCost
   }
-
 
 
   /**
