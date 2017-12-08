@@ -14,7 +14,7 @@ class SGDParallelOptimizer(override val iteration: Int,
 
   override val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
-  override def parOptimize(feature: DenseMatrix[Double], label: DenseMatrix[Double], model: Model[Seq[DenseMatrix[Double]]], initParams: Seq[DenseMatrix[Double]]): Seq[DenseMatrix[Double]] = {
+  override def parOptimize(feature: DenseMatrix[Double], label: DenseMatrix[Double], model: Model, initParams: Seq[DenseMatrix[Double]]): Seq[DenseMatrix[Double]] = {
     updateParameterServer(initParams)
 
     val parBatches = genParBatches(feature, label)

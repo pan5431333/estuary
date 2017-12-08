@@ -38,10 +38,10 @@ class BatchGradCalculatorActor[OptParam, ModelParam](filePath: String,
     case StartTrain =>
       manager = sender
       val init = {
-        model.init(feature.cols, label.cols);
-        model.params
+        model.init(feature.cols, label.cols)
+        model.getParams[Seq[DenseMatrix[Double]]]
       }
-      val initOp = modelToOp(init)
+      val initOp = modelToOp(init.asInstanceOf[ModelParam])
       parameterServer ! UpdateParams(initOp)
       parameterServer ! GetCurrentParams
 
@@ -50,7 +50,6 @@ class BatchGradCalculatorActor[OptParam, ModelParam](filePath: String,
       if (iterTime < iteration) {
         parameterServer ! GetCurrentParamsForUpdate
       } else manager ! TrainingDone
-
 
     case CurrentParamsForUpdate(params, miniBatchTime) =>
       parameterServer ! UpdateParams(updateFunc(params.asInstanceOf[OptParam], grads, miniBatchIndex))

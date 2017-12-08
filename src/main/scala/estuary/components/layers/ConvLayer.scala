@@ -9,25 +9,13 @@ import estuary.components.support._
 
 trait ConvLayer extends Layer with LayerLike[ConvLayer] with Activator {
 
-  /** LayerLike parameters */
-  protected[estuary] var preConvSize: ConvSize = _
-  def setPreConvSize(pre: ConvSize): this.type = {
-    this.preConvSize = pre
-    this
-  }
-  def setPreConvSize(preHeight: Int, preWidth: Int, preChannel: Int): this.type = {
-    setPreConvSize(ConvSize(preHeight, preWidth, preChannel))
-  }
-
   val param: Filter
-
-  override def hasParams = true
-
-  /** Inferred layer structure */
-  protected[estuary] lazy val outputConvSize: ConvSize = calConvSize(preConvSize, param)
   lazy val numHiddenUnits: Int = outputConvSize.dataLength
+  override def hasParams = true
   lazy val previousHiddenUnits: Int = preConvSize.dataLength
 
+  protected[estuary] var preConvSize: ConvSize = _
+  protected[estuary] lazy val outputConvSize: ConvSize = calConvSize(preConvSize, param)
   /** cache intermediate results to be used later */
   protected[estuary] var yPrevious: DenseMatrix[Double] = _
   protected[estuary] var yPreviousIm2Col: DenseMatrix[Double] = _
@@ -36,6 +24,14 @@ trait ConvLayer extends Layer with LayerLike[ConvLayer] with Activator {
   protected[estuary] var y: DenseMatrix[Double] = _
   protected[estuary] var filterMatrix: DenseMatrix[Double] = _
   protected[estuary] var filterBias: DenseVector[Double] = _
+
+  def setPreConvSize(pre: ConvSize): this.type = {
+    this.preConvSize = pre
+    this
+  }
+  def setPreConvSize(preHeight: Int, preWidth: Int, preChannel: Int): this.type = {
+    setPreConvSize(ConvSize(preHeight, preWidth, preChannel))
+  }
 }
 
 object ConvLayer {

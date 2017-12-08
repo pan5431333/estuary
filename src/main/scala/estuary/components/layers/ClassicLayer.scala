@@ -15,19 +15,17 @@ trait ClassicLayer extends Layer
 
   override def hasParams = true
 
-  val numHiddenUnits: Int
-  var param: (DenseMatrix[Double], DenseVector[Double]) = _
+  protected[estuary] var param: (DenseMatrix[Double], DenseVector[Double]) = _
   protected[estuary] var previousHiddenUnits: Int = _
+  /** Cache processed data */
+  protected[estuary] var yPrevious: DenseMatrix[Double] = _
+  protected[estuary] var z: DenseMatrix[Double] = _
+  protected[estuary] var y: DenseMatrix[Double] = _
 
   def setPreviousHiddenUnits(n: Int): this.type = {
     this.previousHiddenUnits = n
     this
   }
-
-  /** Cache processed data */
-  protected[estuary] var yPrevious: DenseMatrix[Double] = _
-  protected[estuary] var z: DenseMatrix[Double] = _
-  protected[estuary] var y: DenseMatrix[Double] = _
 
   override def toString: String =
     s"""

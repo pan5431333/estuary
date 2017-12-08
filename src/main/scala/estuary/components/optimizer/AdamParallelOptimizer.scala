@@ -23,7 +23,7 @@ class AdamParallelOptimizer(override val iteration: Int,
     updateParameterServer(newParams)
   }
 
-  def parOptimize(feature: DenseMatrix[Double], label: DenseMatrix[Double], model: Model[Seq[DenseMatrix[Double]]], initParams: Seq[DenseMatrix[Double]]): Seq[DenseMatrix[Double]] = {
+  def parOptimize(feature: DenseMatrix[Double], label: DenseMatrix[Double], model: Model, initParams: Seq[DenseMatrix[Double]]): Seq[DenseMatrix[Double]] = {
     updateParameterServer(AdamParam(initParams, getInitAdam(initParams), getInitAdam(initParams)))
 
     val parBatches = genParBatches(feature, label)

@@ -14,7 +14,6 @@ trait LayerLike[+Repr <: Layer] extends Serializable {
 
   def getParam[O](implicit op: CanExportParam[Repr, O]): O = op.export(repr)
 
-  /**Initialize parameters and transform them to the form that can be understood by optimizer*/
   def init(initializer: WeightsInitializer)(implicit op: CanAutoInit[Repr]): Unit = op.init(repr, initializer)
 
   def forward[Input, Output](yPrevious: Input)(implicit op: CanForward[Repr, Input, Output]): Output =

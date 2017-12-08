@@ -16,7 +16,7 @@ class SoftmaxLayer(val numHiddenUnits: Int, val batchNorm: Boolean) extends Clas
 
   override def backward[BackwardInput, BackwardOutput](dYCurrent: BackwardInput, regularizer: Option[Regularizer])
                                                       (implicit op: CanBackward[ClassicLayer, BackwardInput, BackwardOutput]): BackwardOutput =
-    implicitly[CanBackward[SoftmaxLayer, BackwardInput, BackwardOutput]].backward(dYCurrent, repr, regularizer)
+    SoftmaxLayer.softmaxLayerCanBackward.backward(dYCurrent.asInstanceOf[DenseMatrix[Double]], this, regularizer).asInstanceOf[BackwardOutput]
 }
 
 object SoftmaxLayer {

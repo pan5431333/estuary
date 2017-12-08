@@ -24,6 +24,15 @@ libraryDependencies ++= Seq(
 
 libraryDependencies += "org.scalatest" % "scalatest_2.12" % "3.0.0"
 
+resolvers ++= Seq(
+  Resolver.sonatypeRepo("releases"),
+  Resolver.sonatypeRepo("snapshots")
+)
+
+libraryDependencies ++= Seq(
+  "com.chuusai" %% "shapeless" % "2.3.2"
+)
+
 
 // https://mvnrepository.com/artifact/org.deeplearning4j/deeplearning4j-core
 //libraryDependencies += "org.deeplearning4j" % "deeplearning4j-core" % "0.9.1"

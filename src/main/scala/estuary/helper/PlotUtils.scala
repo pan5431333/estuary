@@ -1,12 +1,10 @@
-package estuary.support
+package estuary.helper
 
 import javax.swing.JFrame
 
 import org.jfree.chart.plot.PlotOrientation
 import org.jfree.chart.{ChartFactory, ChartPanel, JFreeChart}
 import org.jfree.data.xy.DefaultXYDataset
-
-import scala.collection.mutable
 
 /**
   * Created by mengpan on 2017/8/17.

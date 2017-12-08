@@ -1,6 +1,7 @@
 package estuary.components.layers
 
 import breeze.linalg.DenseMatrix
+import estuary.components.initializer.WeightsInitializer
 import estuary.components.layers.LayerLike.ForPrediction
 import estuary.components.regularizer.Regularizer
 import estuary.components.support._
@@ -11,10 +12,9 @@ import estuary.components.support._
 class DropoutLayer(override val numHiddenUnits: Int, val dropoutRate: Double)
   extends Layer with LayerLike[DropoutLayer] with DropoutActivator {
 
+  override def hasParams = false
   /** Cache processed data */
   protected[estuary] var yPrevious: DenseMatrix[Double] = _
-
-  override def hasParams = false
 
   def copyStructure: DropoutLayer = new DropoutLayer(numHiddenUnits, dropoutRate)
 }

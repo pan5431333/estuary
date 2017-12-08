@@ -10,13 +10,12 @@ import estuary.components.support._
 class PoolingLayer(val poolSize: Int, val stride: Int, val pad: Int, val poolType: PoolType)
   extends Layer with LayerLike[PoolingLayer] {
 
-  var preConvSize: ConvSize = _
-
   override def hasParams = false
+  lazy val numHiddenUnits: Int = outputConvSize.dataLength
 
+  var preConvSize: ConvSize = _
   lazy val filter: Filter = Filter(poolSize, pad, stride, preConvSize.channel, preConvSize.channel)
   lazy val outputConvSize: ConvSize = calConvSize(preConvSize, filter)
-
   lazy val maskMatrix: Array[DenseMatrix[Double]] = new Array[DenseMatrix[Double]](preConvSize.channel)
 
   def setPreConvSize(pre: ConvSize): this.type = {
@@ -27,8 +26,6 @@ class PoolingLayer(val poolSize: Int, val stride: Int, val pad: Int, val poolTyp
   def setPreConvSize(preHeight: Int, preWidth: Int, preChannel: Int): this.type = {
     setPreConvSize(ConvSize(preHeight, preWidth, preChannel))
   }
-
-  lazy val numHiddenUnits: Int = outputConvSize.dataLength
 
   override def copyStructure: PoolingLayer = PoolingLayer(poolSize, stride, pad, poolType, preConvSize)
 }

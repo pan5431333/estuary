@@ -1,8 +1,7 @@
-package estuary.support
+package estuary.helper
 
 import breeze.linalg.{DenseMatrix, DenseVector}
 import estuary.data.Data
-import estuary.helper.DlCollection
 
 /**
   * Created by mengpan on 2017/8/26.

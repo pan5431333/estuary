@@ -82,7 +82,7 @@ class ConvLayerLikeTest extends FunSuite {
     val preConvSize = ConvSize(3, 3, 3)
     val layer = PoolingLayer(2, 1, 0, PoolingLayer.MAX_POOL, preConvSize)
     val yP = DenseMatrix.create[Double](1, 27, Array(1,4,7,2,5,8,3,6,9,1,4,7,2,5,8,3,6,9,1,4,7,2,5,8,3,6,9).map(_.toDouble))
-    val yC = layer.forward(yP)
+    val yC = layer.forward(yP)(PoolingLayer.poolingLayerCanForward)
     println(yC)
   }
 
@@ -109,7 +109,7 @@ class ConvLayerLikeTest extends FunSuite {
     val yC = layer.forward(yP)
     println(yC)
 
-    val (dYP, dW) = layer.backward(yC, None)
+    val (dYP, dW) = layer.backward(yC, None)(PoolingLayer.poolingLayerCanBackward)
     println(dYP)
     println(dW)
   }

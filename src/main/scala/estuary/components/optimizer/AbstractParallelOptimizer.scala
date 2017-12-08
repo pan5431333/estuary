@@ -5,7 +5,7 @@ package estuary.components.optimizer
  *
   * @tparam OptParam type of optimization algorithm's parameters.
   */
-trait AbstractParallelOptimizer[OptParam, ModelParam] extends ParallelOptimizer {
+trait AbstractParallelOptimizer[OptParam, ModelParam] extends ParallelOptimizer[ModelParam] {
 
   protected var parameterServer: OptParam = _
 

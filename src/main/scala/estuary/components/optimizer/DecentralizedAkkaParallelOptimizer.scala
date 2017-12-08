@@ -32,7 +32,7 @@ trait DecentralizedAkkaParallelOptimizer[OptParam, ModelParam] extends AbstractA
     *                   or machines.
     * @return trained parameters, with same dimension with the given initial parameters.
     */
-  override def parOptimize(model: Model[ModelParam]): ModelParam = {
+  override def parOptimize(model: Model): ModelParam = {
 
     //Read configuration file "estuary.conf"
     val config = ConfigFactory.load("estuary")

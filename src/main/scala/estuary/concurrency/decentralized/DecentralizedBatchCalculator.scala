@@ -17,7 +17,7 @@ import scala.collection.mutable
 class DecentralizedBatchCalculator[OptParam, ModelParam <: Any](id: Long,
                                                                 filePath: String,
                                                                 dataReader: Reader,
-                                                                model: Model[ModelParam],
+                                                                model: Model,
                                                                 iteration: Int,
                                                                 miniBatchFunc: (DenseMatrix[Double], DenseMatrix[Double]) => Iterator[(DenseMatrix[Double], DenseMatrix[Double])],
                                                                 updateFunc: (OptParam, ModelParam, Int) => OptParam,
@@ -29,7 +29,7 @@ class DecentralizedBatchCalculator[OptParam, ModelParam <: Any](id: Long,
   private[this] var neibours: Seq[ActorRef] = _
   private[this] val neiboursParams: mutable.HashMap[ActorRef, OptParam] = new mutable.HashMap[ActorRef, OptParam]()
   private[this] val (feature, label) = dataReader.read(filePath)
-  private[this] var myParams: OptParam = modelToOpFunc(model.init(feature.cols, label.cols))
+  private[this] var myParams: OptParam = modelToOpFunc({model.init(feature.cols, label.cols); model.getParams[Seq[DenseMatrix[Double]]].asInstanceOf[ModelParam]})
   private[this] var shuffledData: Iterator[(DenseMatrix[Double], DenseMatrix[Double])] = miniBatchFunc(feature, label)
   private[this] var miniBatchIndex: Int = 0
   private[this] var iterTime: Int = 0
@@ -106,7 +106,7 @@ object DecentralizedBatchCalculator {
   def props[OptParam, ModelParam](id: Long,
                                   filePath: String,
                                   dataReader: Reader,
-                                  model: Model[ModelParam],
+                                  model: Model,
                                   iteration: Int,
                                   miniBatchFunc: (DenseMatrix[Double], DenseMatrix[Double]) => Iterator[(DenseMatrix[Double], DenseMatrix[Double])],
                                   updateFunc: (OptParam, ModelParam, Int) => OptParam,
