@@ -28,8 +28,6 @@ trait LayerLike[+Repr <: Layer] extends Serializable {
     op.backward(dYCurrent, repr, regularizer)
 
   def getReguCost(regularizer: Option[Regularizer])(implicit op: CanRegularize[Repr]): Double = op.regu(repr, regularizer)
-
-  def hasParams: Boolean
 }
 
 object LayerLike {

@@ -5,6 +5,7 @@ import estuary.components.layers._
 import estuary.components.optimizer._
 import estuary.data.GasCensorDataReader
 import estuary.model.Model
+import shapeless.{HList, HNil}
 
 /**
   * Created by mengpan on 2017/10/27.
@@ -16,11 +17,11 @@ object AkkaParallelDemo extends App{
 //    PoolingLayer(3, 1, 0, PoolingLayer.MAX_POOL, preConvSize = ConvSize(29, 29, 16)))
 //  val outputLayer = SoftmaxLayer(2)
 
-  val hiddenLayers: Seq[Layer] = List(
-    ReluConvLayer(Filter(size = 2, pad = 0, stride = 1, oldChannel = 2, newChannel = 8), preConvSize = ConvSize(8, 8, 2)),
-    ReluConvLayer(Filter(size = 3, pad = 0, stride = 1, oldChannel = 8, newChannel = 16), preConvSize = ConvSize(7, 7, 8)),
-    PoolingLayer(2, 1, 0, PoolingLayer.MAX_POOL, preConvSize = ConvSize(5, 5, 16))
-  )
+  val hiddenLayers: HList =
+    ReluConvLayer(Filter(size = 2, pad = 0, stride = 1, oldChannel = 2, newChannel = 8), preConvSize = ConvSize(8, 8, 2)) ::
+    ReluConvLayer(Filter(size = 3, pad = 0, stride = 1, oldChannel = 8, newChannel = 16), preConvSize = ConvSize(7, 7, 8)) ::
+    PoolingLayer(2, 1, 0, PoolingLayer.MAX_POOL, preConvSize = ConvSize(5, 5, 16)) :: HNil
+
   val outputLayer = SoftmaxLayer(6)
 
   val nnModel = new Model(hiddenLayers, outputLayer)

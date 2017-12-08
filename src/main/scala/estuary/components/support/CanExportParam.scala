@@ -3,7 +3,7 @@ package estuary.components.support
 import breeze.linalg.DenseMatrix
 import estuary.components.layers._
 
-trait CanExportParam[-From, To] {
+trait CanExportParam[-From, +To] {
   def export(from: From): To
 }
 

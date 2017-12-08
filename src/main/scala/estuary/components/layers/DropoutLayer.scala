@@ -12,7 +12,6 @@ import estuary.components.support._
 class DropoutLayer(override val numHiddenUnits: Int, val dropoutRate: Double)
   extends Layer with LayerLike[DropoutLayer] with DropoutActivator {
 
-  override def hasParams = false
   /** Cache processed data */
   protected[estuary] var yPrevious: DenseMatrix[Double] = _
 

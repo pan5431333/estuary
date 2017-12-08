@@ -3,7 +3,7 @@ package estuary.components.support
 import breeze.linalg.DenseMatrix
 import estuary.components.layers._
 
-trait CanSetParam[For, From] {
+trait CanSetParam[-For, From] {
   def set(from: From, foor: For): Unit
 }
 

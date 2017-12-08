@@ -10,7 +10,6 @@ import estuary.components.support._
 class PoolingLayer(val poolSize: Int, val stride: Int, val pad: Int, val poolType: PoolType)
   extends Layer with LayerLike[PoolingLayer] {
 
-  override def hasParams = false
   lazy val numHiddenUnits: Int = outputConvSize.dataLength
 
   var preConvSize: ConvSize = _

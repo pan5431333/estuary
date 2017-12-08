@@ -11,9 +11,7 @@ import estuary.components.support._
   */
 trait ClassicLayer extends Layer
   with LayerLike[ClassicLayer]
-  with Activator {
-
-  override def hasParams = true
+  with Activator with Trainable{
 
   protected[estuary] var param: (DenseMatrix[Double], DenseVector[Double]) = _
   protected[estuary] var previousHiddenUnits: Int = _

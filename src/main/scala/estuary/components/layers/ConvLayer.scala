@@ -7,11 +7,10 @@ import estuary.components.regularizer.Regularizer
 import estuary.components.support._
 
 
-trait ConvLayer extends Layer with LayerLike[ConvLayer] with Activator {
+trait ConvLayer extends Layer with LayerLike[ConvLayer] with Activator with Trainable{
 
   val param: Filter
   lazy val numHiddenUnits: Int = outputConvSize.dataLength
-  override def hasParams = true
   lazy val previousHiddenUnits: Int = preConvSize.dataLength
 
   protected[estuary] var preConvSize: ConvSize = _
