@@ -11,13 +11,11 @@ import estuary.components.optimizer.{AkkaParallelOptimizer, Optimizer, ParallelO
 import estuary.components.regularizer.Regularizer
 import estuary.components.support._
 import estuary.support.CanTrain
-import shapeless.syntax.std.tuple._
-import shapeless.{HList, HNil, Poly1, Poly2}
 
 import scala.collection.mutable.ArrayBuffer
 
 
-class Model(val hiddenLayers: HList, val outputLayer: ClassicLayer)
+class Model(val hiddenLayers: Seq[Layer], val outputLayer: ClassicLayer)
   extends ModelLike[Model] {
 
   protected var params: Seq[DenseMatrix[Double]] = _
@@ -25,7 +23,7 @@ class Model(val hiddenLayers: HList, val outputLayer: ClassicLayer)
   protected var inputDim: Int = _
   protected var outputDim: Int = _
 
-  lazy val allLayers: HList = hiddenLayers ::: outputLayer :: HNil
+  lazy val allLayers: Seq[Layer] = hiddenLayers :+ outputLayer
 
   def multiNodesParTrain(op: AkkaParallelOptimizer[Seq[DenseMatrix[Double]]]): this.type = {
     val trainedParams = op.parOptimize(repr)
@@ -52,12 +50,7 @@ class Model(val hiddenLayers: HList, val outputLayer: ClassicLayer)
   }
 
   def copyStructure: Model = {
-    object hmapCopyStructure extends Poly1 {
-      implicit def caseLayer[A <: Layer] = at[A] {
-        _.copyStructure
-      }
-    }
-    val newModel = new Model(hiddenLayers.map(hmapCopyStructure), outputLayer.copyStructure.asInstanceOf[ClassicLayer])
+    val newModel = new Model(hiddenLayers.map(_.copyStructure), outputLayer.copyStructure.asInstanceOf[ClassicLayer])
     newModel
   }
 }
@@ -168,47 +161,27 @@ object Model {
     DenseVector(compareArr)
   }
 
-  object initLayer extends Poly1 {
-    implicit def init[A: CanAutoInit] = at[A] {
-      (layer) => implicitly[CanAutoInit[A]].init(layer, HeInitializer)
-    }
-  }
-
-  object getLayerParams extends Poly1 {
-    implicit def get[A: CanExportParam] = at[A] {
-      (layer) => implicitly[CanExportParam[A, DenseMatrix[Double]]].export(layer)
-    }
-  }
-
   implicit val nnModelCanAutoInit: CanAutoInit[Model] =
     (foor: Model, initializer: WeightsInitializer) => {
 
-      foor.outputLayer.setPreviousHiddenUnits(foor.hiddenLayers.last.asInstanceOf[Layer].numHiddenUnits)
+      foor.outputLayer.setPreviousHiddenUnits(foor.hiddenLayers.last.numHiddenUnits)
 
-      object setPrevious extends Poly2 {
-        implicit def setClassicLayer = at[Int, ClassicLayer] {
-          (previousDim, layer) => layer.setPreviousHiddenUnits(previousDim); layer.numHiddenUnits
-        }
-
-        implicit def setOtherLayer = at[Int, Layer] {
-          (_, layer) => layer.numHiddenUnits
-        }
+      foor.hiddenLayers.foldLeft(foor.inputDim){
+        case (previousDim, layer: ClassicLayer) => layer.setPreviousHiddenUnits(previousDim); layer.numHiddenUnits
+        case (_, layer) => layer.numHiddenUnits
       }
 
-      foor.hiddenLayers.foldLeft(foor.inputDim)(setPrevious)
-
-      foor.params = foor.allLayers
-        .map(initLayer)
-        .filter[Trainable]
-        .map(getLayerParams)
-        .runtimeList.map(_.asInstanceOf[DenseMatrix[Double]])
+      import estuary.components.support.CanAutoInit.{cnilCanAutoInit, coproductCanAutoInit, genericCanAutoInit}
+      foor.params = foor.allLayers.map{layer => layer.init(initializer); layer}
+        .filter(_.isInstanceOf[Trainable])
+        .map(_.getParam[DenseMatrix[Double]])
     }
 
   implicit val nnModelCanSetParams: CanSetParam[Model, Seq[DenseMatrix[Double]]] =
     (from: Seq[DenseMatrix[Double]], foor: Model) => {
 
       foor.params = from
-      foor.allLayers.filter[Trainable].zip(foor.params).foreach { case (layer, param) => layer.setParam(param) }
+      foor.allLayers.filter(_.isInstanceOf[Trainable]).zip(foor.params).foreach { case (layer, param) => layer.setParam(param) }
     }
 
   implicit val nnModelCanExportParams: CanExportParam[Model, Seq[DenseMatrix[Double]]] = {
@@ -225,7 +198,7 @@ object Model {
     (input: DenseMatrix[Double], by: Model, regularizer: Option[Regularizer]) => {
       by.setParams(by.params)
       by.allLayers.scanRight[(DenseMatrix[Double], Option[DenseMatrix[Double]]), Seq[(DenseMatrix[Double], Option[DenseMatrix[Double]])]]((input, None)) { case (layer, (dYCurrent, _)) =>
-        if (layer.hasParams) {
+        if (layer.isInstanceOf[Trainable]) {
           val res = layer.backward[DenseMatrix[Double], (DenseMatrix[Double], DenseMatrix[Double])](dYCurrent, regularizer)
           (res._1, Some(res._2))
         } else
