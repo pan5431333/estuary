@@ -3,9 +3,9 @@ package estuary.components.layers
 import breeze.linalg.{DenseMatrix, DenseVector}
 
 trait DropoutActivator extends Activator{
-  val dropoutRate: Double
+  protected[estuary] val dropoutRate: Double
 
-  protected var dropoutVector: DenseVector[Double] = _
+  protected[estuary] var dropoutVector: DenseVector[Double] = _
 
   private def generateDropoutVector(numHiddenUnits: Int, dropoutRate: Double): DenseVector[Double] = {
     val randVec = DenseVector.rand[Double](numHiddenUnits)

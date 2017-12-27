@@ -5,7 +5,7 @@ import java.io.FileWriter
 import breeze.linalg.{DenseMatrix, DenseVector, max, sum}
 import breeze.numerics.log
 import estuary.components.initializer.{HeInitializer, WeightsInitializer}
-import estuary.components.layers.LayerLike.ForPrediction
+import estuary.components.layers.Layer.ForPrediction
 import estuary.components.layers._
 import estuary.components.optimizer.{AkkaParallelOptimizer, Optimizer, ParallelOptimizer}
 import estuary.components.regularizer.Regularizer
@@ -166,15 +166,15 @@ object Model {
 
       foor.outputLayer.setPreviousHiddenUnits(foor.hiddenLayers.last.numHiddenUnits)
 
-      foor.hiddenLayers.foldLeft(foor.inputDim){
+      foor.hiddenLayers.foldLeft(foor.inputDim) {
         case (previousDim, layer: ClassicLayer) => layer.setPreviousHiddenUnits(previousDim); layer.numHiddenUnits
         case (_, layer) => layer.numHiddenUnits
       }
 
-      import estuary.components.support.CanAutoInit.{cnilCanAutoInit, coproductCanAutoInit, genericCanAutoInit}
-      foor.params = foor.allLayers.map{layer => layer.init(initializer); layer}
-        .filter(_.isInstanceOf[Trainable])
-        .map(_.getParam[DenseMatrix[Double]])
+      foor.params = foor.allLayers.map { layer => layer.init(initializer); layer }
+        .map { layer => layer.getParam }
+        .filter(param => param.isDefined)
+        .map(_.get)
     }
 
   implicit val nnModelCanSetParams: CanSetParam[Model, Seq[DenseMatrix[Double]]] =
@@ -191,29 +191,32 @@ object Model {
   implicit val nnModelCanForward: CanForward[Model, DenseMatrix[Double], DenseMatrix[Double]] =
     (input: DenseMatrix[Double], by: Model) => {
       by.setParams(by.params)
-      by.allLayers.foldLeft(input) { case (yPrevious, layer) => layer.forward[DenseMatrix[Double], DenseMatrix[Double]](yPrevious) }
+      by.allLayers.foldLeft(input) { case (yPrevious, layer) => layer.forward(yPrevious) }
     }
 
   implicit val nnModelCanBackward: CanBackward[Model, DenseMatrix[Double], Seq[DenseMatrix[Double]]] =
     (input: DenseMatrix[Double], by: Model, regularizer: Option[Regularizer]) => {
       by.setParams(by.params)
-      by.allLayers.scanRight[(DenseMatrix[Double], Option[DenseMatrix[Double]]), Seq[(DenseMatrix[Double], Option[DenseMatrix[Double]])]]((input, None)) { case (layer, (dYCurrent, _)) =>
-        if (layer.isInstanceOf[Trainable]) {
-          val res = layer.backward[DenseMatrix[Double], (DenseMatrix[Double], DenseMatrix[Double])](dYCurrent, regularizer)
-          (res._1, Some(res._2))
-        } else
-          layer.backward[DenseMatrix[Double], (DenseMatrix[Double], None.type)](dYCurrent, regularizer)
-      }.map(_._2).withFilter(_.isDefined).map(_.get).toList
+
+      val grads = by.allLayers.scanRight(input, None: Option[DenseMatrix[Double]]) { case (layer, (dYCurrent, _)) =>
+        val res: (DenseMatrix[Double], Option[DenseMatrix[Double]]) = layer.backward(dYCurrent, regularizer)
+        (res._1, res._2)
+      }
+
+      grads.map(_._2).withFilter(_.isDefined).map(_.get).toList
     }
 
   implicit val nnModelCanForwardForPrediction: CanForward[Model, ForPrediction[DenseMatrix[Double]], DenseMatrix[Double]] =
     (input: ForPrediction[DenseMatrix[Double]], by: Model) => {
+
       val filtered = by.allLayers.filter(!_.isInstanceOf[DropoutLayer])
-      filtered.foldLeft(input.input) { (yPrevious, layer) => layer.forward[DenseMatrix[Double], DenseMatrix[Double]](yPrevious) }
+
+      filtered.foldLeft(input.input) { (yPrevious, layer) => layer.forward(yPrevious) }
     }
 
   implicit val nnModelCanTrain: CanTrain[Model, DenseMatrix[Double], DenseMatrix[Double]] =
     (feature: DenseMatrix[Double], label: DenseMatrix[Double], optimizer: Optimizer, by: Model) => {
+
       val params = optimizer match {
         case op: ParallelOptimizer[Seq[DenseMatrix[Double]]] => op.parOptimize(feature, label, by, by.params)
         case op: AkkaParallelOptimizer[Seq[DenseMatrix[Double]]] => by.multiNodesParTrain(op).params

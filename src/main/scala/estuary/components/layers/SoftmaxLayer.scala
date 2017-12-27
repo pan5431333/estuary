@@ -9,13 +9,10 @@ import estuary.components.support._
   */
 class SoftmaxLayer(val numHiddenUnits: Int, val batchNorm: Boolean) extends ClassicLayer with SoftmaxActivator{
 
-  /** Make it more convenient to write code in type class design pattern */
-  override def repr: SoftmaxLayer = this.asInstanceOf[SoftmaxLayer]
-
   def copyStructure: SoftmaxLayer = new SoftmaxLayer(numHiddenUnits, batchNorm).setPreviousHiddenUnits(previousHiddenUnits)
 
-  override def backward[BackwardInput, BackwardOutput](dYCurrent: BackwardInput, regularizer: Option[Regularizer])
-                                                      (implicit op: CanBackward[ClassicLayer, BackwardInput, BackwardOutput]): BackwardOutput =
+  override def backward[TT >: Layer, BackwardInput, BackwardOutput](dYCurrent: BackwardInput, regularizer: Option[Regularizer])
+                                                                   (implicit op: CanBackward[TT, BackwardInput, BackwardOutput]) =
     SoftmaxLayer.softmaxLayerCanBackward.backward(dYCurrent.asInstanceOf[DenseMatrix[Double]], this, regularizer).asInstanceOf[BackwardOutput]
 }
 

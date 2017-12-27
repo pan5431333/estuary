@@ -5,7 +5,7 @@ package estuary.components.layers
   */
 class SigmoidLayer(val numHiddenUnits: Int, val batchNorm: Boolean) extends ClassicLayer with SigmoidActivator{
 
-  def copyStructure: SigmoidLayer = new SigmoidLayer(numHiddenUnits, batchNorm).setPreviousHiddenUnits(previousHiddenUnits).asInstanceOf[SigmoidLayer]
+  def copyStructure: SigmoidLayer = new SigmoidLayer(numHiddenUnits, batchNorm).setPreviousHiddenUnits(previousHiddenUnits)
 }
 
 object SigmoidLayer {

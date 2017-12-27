@@ -1,6 +1,6 @@
 package estuary.components.layers
 
-import breeze.linalg.{DenseMatrix, Matrix}
+import breeze.linalg.DenseMatrix
 
 trait Activator {
   def activate(zCurrent: DenseMatrix[Double]): DenseMatrix[Double]
